@@ -1,0 +1,1 @@
+- [Vite: exposing non-VITE_ prefixed secrets](vite-custom-env-prefix.md) — use `envPrefix` in vite.config.ts to expose Repl secrets like SUPABASE_URL to client code without renaming them.

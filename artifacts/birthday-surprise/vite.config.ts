@@ -28,6 +28,10 @@ if (!basePath) {
 
 export default defineConfig({
   base: basePath,
+  // Expose SUPABASE_* secrets (set directly as Repl env vars, not via a
+  // .env file) to client code as import.meta.env.SUPABASE_URL /
+  // import.meta.env.SUPABASE_ANON_KEY, in addition to the default VITE_ prefix.
+  envPrefix: ["VITE_", "SUPABASE_"],
   plugins: [
     react(),
     tailwindcss(),

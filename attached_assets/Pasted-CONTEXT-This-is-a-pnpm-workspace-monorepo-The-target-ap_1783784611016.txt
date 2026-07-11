@@ -1,0 +1,136 @@
+CONTEXT
+
+This is a pnpm workspace monorepo. The target app lives at
+artifacts/birthday-surprise (Vite + React + TypeScript + Tailwind).
+
+Supabase has NOT been connected through any Replit integration panel.
+Instead, the following two secrets have already been added manually to
+this Repl's Secrets (environment variables) — read them from
+process.env / import.meta.env, do not ask me for them, and do not try to
+"connect" Supabase through an integration UI:
+
+  SUPABASE_URL
+  SUPABASE_ANON_KEY
+
+The database schema already exists on that Supabase project. It was
+created directly via SQL migrations, not by you. Specifically, these
+already exist and must NOT be recreated or modified:
+
+  - Table public.profiles (id uuid PK -> auth.users.id, email text,
+    created_at timestamptz)
+  - Table public.surprises (id uuid PK, user_id uuid -> auth.users.id,
+    slug text unique, config jsonb, is_paid boolean default false,
+    photo_urls text[], audio_urls text[], created_at, updated_at)
+    with Row Level Security enabled — authenticated users can only
+    select/insert/update/delete rows where auth.uid() = user_id
+  - A trigger on auth.users (AFTER INSERT) that automatically creates
+    a matching profiles row and a default surprises row (with a random
+    8-character slug and a pre-filled default config) for every new
+    signup — you do not need to insert these rows yourself after signup
+  - Storage buckets "photos" and "audio" (both public=true for reading,
+    but write/update/delete restricted per-user to a folder named after
+    their own auth.uid())
+  - A Postgres function public.get_surprise_by_slug(p_slug text) that
+    returns a single row (config, photo_urls, audio_urls) for public
+    share pages — safe to call with the anon key, no auth required
+
+Your job in this task is ONLY to build the authentication UI and wire it
+to this existing schema. Do not create tables, triggers, buckets, or
+RPC functions — they already exist and work.
+
+GOAL
+
+Build a complete, production-quality authentication system for a SaaS
+product where users sign up, log in, and land on a protected dashboard.
+(The dashboard itself will be built in a separate task — for now just
+create an empty placeholder /dashboard route that shows "Logged in as
+{email}" and a logout button, so the auth flow can be tested end to end.)
+
+REQUIREMENTS
+
+1. Supabase client setup
+   - Install @supabase/supabase-js if not already present
+   - Create a single shared client instance (e.g. src/lib/supabase.ts)
+     reading SUPABASE_URL and SUPABASE_ANON_KEY from environment
+     variables. Throw a clear error at startup if either is missing.
+
+2. Auth state management
+   - Create an AuthProvider (React context) that:
+     - Loads the current session on mount via supabase.auth.getSession()
+     - Subscribes to supabase.auth.onAuthStateChange() to keep session
+       state in sync
+     - Exposes { user, session, loading, signIn, signUp, signOut,
+       resetPassword } to the rest of the app
+   - Wrap the app root with this provider
+
+3. Routes / pages
+   - /login
+     - Email + password fields, "Log In" button
+     - Inline validation and clear error messages (invalid credentials,
+       unconfirmed email, etc.)
+     - Link to /signup ("New here? Create an account")
+     - Link to /forgot-password
+     - Loading state on the submit button while the request is in flight
+   - /signup
+     - Email + password + confirm-password fields
+     - Client-side validation (valid email format, passwords match,
+       minimum 8 characters)
+     - On success, show a message telling the user to check their email
+       to confirm (if email confirmation is enabled on this Supabase
+       project) OR redirect straight to /dashboard if the session is
+       already active after signup
+     - Link back to /login
+   - /forgot-password
+     - Email field, sends a password reset email via
+       supabase.auth.resetPasswordForEmail()
+     - Clear confirmation message after sending
+   - /reset-password
+     - Handles the redirect link from the reset email, lets the user
+       set a new password via supabase.auth.updateUser()
+   - /dashboard (placeholder for now)
+     - Protected route, shows the logged-in user's email and a
+       "Log Out" button
+
+4. Route protection
+   - Create a <ProtectedRoute> wrapper that redirects unauthenticated
+     users to /login
+   - Redirect already-authenticated users away from /login, /signup,
+     and /forgot-password straight to /dashboard
+   - Show a simple loading spinner while the initial session check is
+     in progress (avoid a flash of the wrong screen)
+
+5. Design
+   - Match the existing visual theme of artifacts/birthday-surprise
+     (dark purple/blue background, glassmorphism cards, soft glow,
+     rounded corners). Reuse existing UI primitives from
+     src/components/ui where they fit (buttons, inputs, cards) instead
+     of creating new ones from scratch.
+   - Mobile-first, centered single-column forms
+   - Disable the submit button and show a spinner/label change while a
+     request is in flight
+   - Show field-level and form-level error messages clearly, in plain
+     language, not raw Supabase error strings
+
+6. Do not
+   - Do not create or alter any Supabase tables, policies, triggers, or
+     storage buckets
+   - Do not hardcode the Supabase URL or anon key anywhere in source —
+     always read from environment variables
+   - Do not use the service_role key anywhere in frontend code
+
+VERIFICATION
+
+After building, test the full flow yourself:
+1. Sign up with a new test email/password
+2. Confirm you land on (or are told to check email for) /dashboard
+3. Confirm a matching row now exists in both profiles and surprises for
+   that user (you can check via a Supabase query)
+4. Log out, then log back in with the same credentials
+5. Try visiting /dashboard while logged out — confirm it redirects to
+   /login
+6. Try visiting /login while logged in — confirm it redirects to
+   /dashboard
+7. Test the forgot-password flow end to end
+
+Report back with a summary of what was built and the result of each
+verification step above.
