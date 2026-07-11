@@ -1,0 +1,77 @@
+Upgrade my birthday surprise project to a premium romantic experience without breaking existing structure.
+
+1. TEDDY UPGRADE:
+
+* Replace emoji teddy with image from config.images.teddy
+* Add floating animation (translateY loop)
+* Add slight rotate left-right (subtle)
+* Add soft glow behind teddy (blur pink light)
+* Add fade-in + scale animation on load
+* Position properly top center with spacing
+
+2. CAKE PREMIUM INTERACTION:
+
+* Replace current cake with config.images.cake
+* On tap:
+
+  * Apply press animation (scale 1 → 0.95 → 1)
+  * Add glow pulse effect
+  * Add confetti burst animation
+  * Add sparkle particles around cake
+* After tap:
+
+  * Play birthday-song.mp3
+  * Add slight shake animation
+
+3. AUDIO CONTROL (CRITICAL):
+
+* Ensure only ONE audio plays at a time
+* When cake is tapped:
+
+  * STOP background music
+  * RESET its currentTime = 0
+  * THEN play birthday-song.mp3
+* Prevent multiple instances using single audio controller (useRef or singleton)
+* No overlap, no double play
+
+4. MEMORY WALL REDESIGN:
+
+* Increase card size (bigger, premium look)
+* Convert layout into staggered / polaroid style (not perfect grid)
+* Add random slight rotation to cards
+* Add hover/interaction:
+
+  * scale up slightly
+  * tilt effect
+  * shadow depth
+* Add smooth scroll animation (fade-up)
+* Improve spacing and readability
+* Add glow or light background effect behind cards
+
+5. UI ENHANCEMENT:
+
+* Add floating heart particles in background
+* Add glowing dots / sparkles animation
+* Improve buttons:
+
+  * gradient glow
+  * soft pulse animation
+* Add smooth page transitions:
+
+  * fade + scale (0.95 → 1)
+
+6. PERFORMANCE:
+
+* Keep everything smooth on mobile
+* Avoid heavy lag
+* Use optimized animations only
+
+7. CONFIG USAGE:
+
+* Ensure images are used from config.ts:
+  images: {
+  cake: "/assets/cake.png",
+  teddy: "/assets/teddy.png"
+  }
+
+Do not remove any existing features. Only enhance visuals, animation, and interaction to make it feel emotional, smooth, and premium.
