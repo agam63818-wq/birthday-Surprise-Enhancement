@@ -12,6 +12,8 @@ import PageOurStory from "@/pages/PageOurStory";
 import PageMemoryWall from "@/pages/PageMemoryWall";
 import PageBeforeYouLeave from "@/pages/PageBeforeYouLeave";
 import PageLastNote from "@/pages/PageLastNote";
+import defaultConfig, { type Config } from "@/config";
+import { ConfigProvider } from "@/contexts/ConfigContext";
 
 const PAGES = [
   "landing", "intro", "cuteness", "celebration",
@@ -71,7 +73,21 @@ function AmbientFX() {
   );
 }
 
-export default function BirthdayExperience() {
+// Renders the full birthday experience for a given `config` — either the
+// bundled default (unused now, kept for safety/testing), a user's own live
+// row from `surprises` (dashboard Preview tab), or a publicly fetched
+// config via the `get_surprise_by_slug` RPC (public share page). Every
+// page/component below reads config via `useConfig()` from context instead
+// of importing the static config.ts module directly.
+export default function BirthdayExperience({ config = defaultConfig }: { config?: Config }) {
+  return (
+    <ConfigProvider config={config}>
+      <BirthdayExperienceInner />
+    </ConfigProvider>
+  );
+}
+
+function BirthdayExperienceInner() {
   const [page, setPage] = useState<Page>("landing");
   const [transitioning, setTransitioning] = useState(false);
   const { start, stop, playing, playCakeSong } = useBackgroundMusic();

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { TeddySVGOnly } from "@/components/Teddy";
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 /* Soft camera-shutter tick on photo change */
 let albumCtx: AudioContext | null = null;
@@ -26,6 +26,7 @@ function playTick() {
 interface HeartBurst { id: number; x: number; y: number; }
 
 export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
+  const config = useConfig();
   const { photos, title, subtitle, buttonText } = config.memoryWall;
   const total = photos.length;
 

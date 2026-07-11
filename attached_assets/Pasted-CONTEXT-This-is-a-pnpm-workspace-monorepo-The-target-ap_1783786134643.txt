@@ -1,0 +1,168 @@
+CONTEXT
+
+This is a pnpm workspace monorepo. The target app lives at
+artifacts/birthday-surprise (Vite + React + TypeScript + Tailwind,
+routing via wouter).
+
+Two things already exist and must NOT be rebuilt or duplicated:
+
+1. AUTHENTICATION (already built in a previous task):
+   - src/lib/supabase.ts — shared Supabase client, reads SUPABASE_URL /
+     SUPABASE_ANON_KEY from environment variables
+   - src/contexts/AuthContext.tsx — AuthProvider exposing { user, session,
+     loading, signIn, signUp, signOut, resetPassword }
+   - src/components/auth/ProtectedRoute.tsx — ProtectedRoute (redirects to
+     /login) and PublicOnlyRoute (redirects to /dashboard)
+   - Pages already built: /login, /signup, /forgot-password,
+     /reset-password, and a placeholder /dashboard (you will replace the
+     placeholder dashboard content, not the routing/auth wrapper around it)
+   - The original birthday-surprise experience was moved, unchanged, into
+     a component at src/pages/BirthdayExperience.tsx (or equivalent —
+     locate it before starting) and is currently mounted directly at "/"
+
+2. DATABASE (already created via SQL migrations on Supabase — do not
+   create, alter, or drop any tables, policies, triggers, buckets, or
+   functions):
+   - public.profiles (id uuid -> auth.users.id, email, created_at)
+   - public.surprises (id uuid, user_id uuid -> auth.users.id,
+     slug text unique, config jsonb, is_paid boolean default false,
+     photo_urls text[], audio_urls text[], created_at, updated_at) —
+     RLS restricts all access to auth.uid() = user_id
+   - A signup trigger auto-creates one profiles row and one surprises row
+     (default config, random 8-char slug, is_paid = false) for every new
+     user — every logged-in user already has exactly one surprises row
+   - Storage buckets "photos" and "audio" — public read, but
+     insert/update/delete restricted to a folder named after the
+     uploader's own auth.uid(), e.g. photos/{user_id}/filename.jpg
+   - public.get_surprise_by_slug(p_slug text) — a Postgres RPC function,
+     callable with the anon key (no login required), returns a single row
+     { config, photo_urls, audio_urls } for a given slug. Call it via
+     supabase.rpc('get_surprise_by_slug', { p_slug: slug }) — this is the
+     ONLY way public share pages should fetch data (never query the
+     surprises table directly for this, RLS would block it anyway)
+
+GOAL
+
+Fix the routing so the app behaves like a real product, and build the
+dashboard where users preview, customize, and share their own version of
+the birthday surprise.
+
+PART A — FIX ROOT ROUTING (important, this is the main gap right now)
+
+Currently "/" renders BirthdayExperience.tsx directly for everyone,
+logged in or not, which defeats the purpose of the login system. Change
+this to:
+
+  "/"            -> if logged in, redirect to /dashboard.
+                    If logged out, redirect to /login.
+                    (Do not show the birthday experience here anymore.)
+  "/login" etc.  -> unchanged, already working
+  "/dashboard"   -> protected, replace the placeholder with the real
+                    dashboard built in Part B
+  "/s/:slug"     -> NEW public route (see Part C)
+
+PART B — DASHBOARD (/dashboard, protected route)
+
+Two tabs at the top: "Preview" (default active) and "Customize". Include
+a logout button (reuse the existing signOut from AuthContext).
+
+On mount, fetch the current user's own row from public.surprises (there
+will always be exactly one, via auth.uid() = user_id under RLS) and keep
+it in state.
+
+1. PREVIEW TAB
+   - Render BirthdayExperience.tsx passing the user's own `config` (from
+     their surprises row) as a prop instead of importing the static
+     config.ts file. Refactor BirthdayExperience.tsx to accept a `config`
+     prop with the same shape as the existing config.ts default export,
+     rather than importing config.ts directly, so it can render either
+     the user's live data (here) or a fetched public config (Part C).
+   - Show a Share button/icon in this tab's header. On click:
+     - Build the public URL: `${window.location.origin}/s/${slug}`
+     - Copy it to the clipboard
+     - Show a toast/confirmation: "Link copied!"
+
+2. CUSTOMIZE TAB
+   - If is_paid is false: show a locked/blurred preview of the form with
+     a centered card: "Unlock Customization — ₹20" and an "Unlock" button.
+     For now, wire this button to a TODO-stubbed `initiatePayment()`
+     function (leave a clear // TODO: replace with real Razorpay
+     integration comment) that, when clicked, sets is_paid = true on the
+     user's own surprises row directly via the Supabase client (this is
+     temporary for development only — real payment verification is a
+     separate task).
+   - If is_paid is true: show the full customize form, grouped into
+     clearly labeled, collapsible sections matching the config shape:
+     name, landing, intro, cutenessMeter, celebration, cake,
+     whyYouMatter (repeatable cards list — add/edit/remove), ourStory
+     (repeatable cards list), memoryWall (repeatable photo list with
+     caption + rotate), beforeLeave, lastNote (repeatable lines list +
+     finalLine1/finalLine2/footerText)
+   - Photo upload: file input (accept="image/*", max 5MB, show a clear
+     error if exceeded), upload to the "photos" bucket at
+     `{user_id}/{filename}`, use the returned public URL to update the
+     relevant photo entry in config and in the photo_urls array
+   - Audio upload: two file inputs (accept="audio/*", max 10MB) for
+     background music and the birthday song, upload to the "audio"
+     bucket at `{user_id}/{filename}`, update config.audio and
+     audio_urls accordingly
+   - Show upload progress/spinners during file uploads
+   - A single "Save" button at the bottom that:
+     - Writes the full updated config (plus photo_urls/audio_urls) back
+       to the user's surprises row
+     - Shows a saving spinner, then a success toast
+     - Switches back to the Preview tab automatically so changes are
+       visible immediately
+   - Required-field validation before save (name and core messages
+     cannot be empty)
+
+PART C — PUBLIC SHARE ROUTE (/s/:slug)
+
+- No auth required, no dashboard chrome, no tabs, no branding indicating
+  this was built with a customization tool — it must look and feel
+  exactly like visiting the original static site.
+- On mount, call supabase.rpc('get_surprise_by_slug', { p_slug: slug })
+  to fetch { config, photo_urls, audio_urls }
+- Render BirthdayExperience.tsx with that fetched config as the prop
+- If the slug doesn't exist (no row returned), show a simple, friendly
+  "This surprise doesn't exist" full-screen message — do not leak any
+  error details or mention Supabase/the backend
+
+DESIGN
+
+Keep the existing dark purple/glassmorphism theme throughout. The
+customize form should feel like a clean, modern editor — not a raw JSON
+textarea. Mobile-first, since users will likely edit from their phone.
+Reuse existing UI primitives (Button, Input, Card, Spinner, etc.) from
+src/components/ui wherever they fit.
+
+DO NOT
+
+- Do not create, alter, or drop any Supabase tables, RLS policies,
+  triggers, buckets, or functions
+- Do not query public.surprises directly for the public share route —
+  always use the get_surprise_by_slug RPC (RLS would block a direct
+  query anyway, and the RPC is what keeps this safe)
+- Do not hardcode Supabase URL/anon key or use the service_role key
+  anywhere in frontend code
+
+VERIFICATION
+
+Test the full flow yourself and report the result of each step:
+1. Visit "/" while logged out -> redirects to /login
+2. Log in -> lands on /dashboard, Preview tab shows the default config
+   (name "Zoya" etc.) since nothing has been customized yet
+3. Customize tab is locked behind the ₹20 stub -> click Unlock -> confirm
+   is_paid becomes true in the DB and the form unlocks
+4. Edit a few fields, upload one test photo, hit Save -> confirm Preview
+   tab reflects the change immediately
+5. Click Share, copy the link, open it in an incognito/private window ->
+   confirm it shows the customized experience full-screen with zero
+   dashboard UI, and it loads without being logged in
+6. Visit /s/some-fake-slug-that-does-not-exist -> confirm the friendly
+   "doesn't exist" message shows, not a crash or raw error
+7. Log out, visit "/" again -> redirects to /login again (not stuck on
+   dashboard)
+
+Report a summary of what was built and the result of each verification
+step above, same format as the previous task.

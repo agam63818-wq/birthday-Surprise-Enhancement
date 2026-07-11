@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { TeddySVGOnly } from "@/components/Teddy";
 import TypewriterText from "@/components/TypewriterText";
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 export default function PageBeforeYouLeave({ onNext }: { onNext: () => void }) {
+  const config = useConfig();
   const { message, buttonText } = config.beforeLeave;
   const [showButton, setShowButton] = useState(false);
 

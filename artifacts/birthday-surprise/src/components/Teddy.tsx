@@ -1,5 +1,5 @@
 import { useState } from "react";
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 interface Props {
   size?: number;
@@ -71,6 +71,7 @@ function Sparkles({ size }: { size: number }) {
 }
 
 export default function Teddy({ size = 120, style, animate = "float" }: Props) {
+  const config = useConfig();
   const [failed, setFailed] = useState(false);
   const [visible, setVisible] = useState(false);
   const src = config.images?.teddy ?? "/assets/teddy.png";

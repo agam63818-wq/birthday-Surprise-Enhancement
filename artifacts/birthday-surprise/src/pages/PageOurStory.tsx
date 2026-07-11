@@ -1,6 +1,7 @@
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 export default function PageOurStory({ onNext }: { onNext: () => void }) {
+  const config = useConfig();
   const { cards, title, subtitle, buttonText } = config.ourStory;
 
   return (

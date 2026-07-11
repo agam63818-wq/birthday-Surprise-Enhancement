@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { TeddySVGOnly } from "@/components/Teddy";
 import TypewriterText from "@/components/TypewriterText";
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 export default function PageIntro({ onNext }: { onNext: () => void }) {
+  const config = useConfig();
   const [progress, setProgress] = useState(0);
   const [showButton, setShowButton] = useState(false);
 

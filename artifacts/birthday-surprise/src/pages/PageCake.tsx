@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Confetti from "@/components/Confetti";
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 interface CakePageProps {
   onNext: () => void;
@@ -118,6 +118,7 @@ const CANDLE_X = [98, 114, 130, 146, 162];
 const CANDLE_COLORS = ["#f9a8d4", "#c084fc", "#a78bfa", "#f472b6", "#818cf8"];
 
 function CakeArt({ flameOut, prefix }: { flameOut: boolean; prefix: string }) {
+  const config = useConfig();
   const name = config.name;
   const nameSize = name.length > 9 ? 15 : 19;
   return (
@@ -217,6 +218,7 @@ function Knife() {
 }
 
 export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
+  const config = useConfig();
   const [cut, setCut] = useState(false);
   const [cutting, setCutting] = useState(false);
   const [knife, setKnife] = useState(false);

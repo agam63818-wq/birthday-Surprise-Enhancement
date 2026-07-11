@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import PremiumHeart from "@/components/PremiumHeart";
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 export default function PageCutenessMeter({ onNext }: { onNext: () => void }) {
+  const config = useConfig();
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState<"scanning" | "result">("scanning");
 

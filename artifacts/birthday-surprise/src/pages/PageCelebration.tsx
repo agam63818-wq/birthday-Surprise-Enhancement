@@ -1,8 +1,9 @@
 import PremiumHeart from "@/components/PremiumHeart";
 import TypewriterText from "@/components/TypewriterText";
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 export default function PageCelebration({ onNext }: { onNext: () => void }) {
+  const config = useConfig();
   const { title, subtitle1, subtitle2, badge, message, buttonText } = config.celebration;
 
   return (

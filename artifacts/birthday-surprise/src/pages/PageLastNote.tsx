@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Confetti from "@/components/Confetti";
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 export default function PageLastNote() {
+  const config = useConfig();
   const { lines, finalLine1, finalLine2, footerText } = config.lastNote;
   const [visible, setVisible] = useState<number[]>([]);
   const [showEnding, setShowEnding] = useState(false);

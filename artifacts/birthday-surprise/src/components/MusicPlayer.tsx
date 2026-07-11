@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
 let _bgAudio:   HTMLAudioElement | null = null;
@@ -91,6 +91,7 @@ function stopBgTones() {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 export function useBackgroundMusic() {
+  const config = useConfig();
   const [playing, setPlaying] = useState(_bgPlaying);
 
   const start = useCallback(() => {
@@ -123,7 +124,7 @@ export function useBackgroundMusic() {
         _bgPlaying = true;
         setPlaying(true);
       });
-  }, []);
+  }, [config.audio.backgroundMusic]);
 
   const stop = useCallback(() => {
     clearFadeTimer();
@@ -178,7 +179,7 @@ export function useBackgroundMusic() {
       }
       if (_bgAudio) fadeTo(_bgAudio, 0.35, 1500);
     }, 35000);
-  }, []);
+  }, [config.audio.birthdaySong]);
 
   // Sync playing state on mount
   useEffect(() => { setPlaying(_bgPlaying); }, []);
