@@ -1,0 +1,71 @@
+BUG: The /dashboard Customize tab renders blank (no accordion sections
+visible — no "Name", "Landing page", "Cake page" headers, no form fields,
+just empty background with the "Save changes" button visible at the
+bottom).
+
+ROOT CAUSE (confirmed by reading the code): artifacts/birthday-surprise/
+src/index.css only defines custom brand tokens (--ink, --ink-soft,
+--violet, --pink, --magenta, --bg-deep, etc.). It does NOT define the
+standard shadcn/ui design tokens that components in src/components/ui
+(Button, Input, Textarea, Accordion, Card, etc.) rely on via Tailwind
+classes like bg-primary, text-primary-foreground, bg-secondary,
+text-secondary-foreground, bg-destructive, text-foreground,
+placeholder:text-muted-foreground, border-input, focus-visible:ring-ring,
+and hover-elevate / active-elevate-2. None of these CSS custom properties
+(--primary, --primary-foreground, --primary-border, --secondary,
+--secondary-foreground, --secondary-border, --destructive,
+--destructive-foreground, --destructive-border, --foreground,
+--muted-foreground, --input, --border, --ring, --card,
+--card-foreground, --button-outline) exist anywhere in the codebase —
+confirmed via grep across all .css files.
+
+Also, in src/components/ui/accordion.tsx, AccordionContent uses
+`data-[state=open]:animate-accordion-down` and
+`data-[state=closed]:animate-accordion-up`, which require
+`--animate-accordion-down` / `--animate-accordion-up` and their
+`@keyframes accordion-down` / `@keyframes accordion-up` to be registered.
+Confirmed via grep that "accordion" does not appear anywhere in index.css,
+so these keyframes are missing too.
+
+FIX REQUIRED:
+
+1. Add a complete, properly-mapped set of shadcn design tokens to
+   index.css's :root block, matching this site's existing dark
+   purple/glassmorphism palette (do not use generic shadcn defaults —
+   derive the values from the existing --bg-deep, --ink, --ink-soft,
+   --violet, --pink, --magenta tokens so buttons/inputs/accordion match
+   the site's look):
+   --background, --foreground, --card, --card-foreground, --popover,
+   --popover-foreground, --primary, --primary-foreground,
+   --primary-border, --secondary, --secondary-foreground,
+   --secondary-border, --muted, --muted-foreground, --accent,
+   --accent-foreground, --destructive, --destructive-foreground,
+   --destructive-border, --border, --input, --ring, --button-outline
+
+   Since this project uses Tailwind v4 (@tailwindcss/vite, no
+   tailwind.config.js), also add the corresponding `@theme inline { }`
+   block mapping `--color-*` Tailwind tokens to these CSS variables
+   (e.g. --color-primary: var(--primary);), the same pattern shadcn's
+   Tailwind v4 setup uses, so utility classes like bg-primary and
+   text-muted-foreground actually resolve.
+
+2. Add the missing accordion keyframes and animation variables (either
+   via @theme inline + @keyframes in index.css, or confirm tw-animate-css
+   already provides them — if it does, figure out why they're not being
+   applied and fix that instead of duplicating).
+
+3. After fixing, actually load /dashboard, unlock Customize (is_paid
+   true), and visually confirm every accordion section (Name, Landing
+   page, Intro, Cuteness meter, Celebration, Cake page, Why you matter,
+   Our story, Memory wall, Before you leave, Last note, Music) expands
+   and shows its fields with clearly readable text against the dark
+   background — not just that the page doesn't crash. Also re-check the
+   /login, /signup, and /dashboard Preview tab still look correct after
+   this change (don't want to fix Customize and break something else).
+
+4. Open the browser console while testing and fix any errors/warnings
+   that show up, not just the visual issue.
+
+Report back exactly what was missing and what you added, plus
+confirmation (with a screenshot if possible) that the Customize tab now
+shows real, readable form content.
