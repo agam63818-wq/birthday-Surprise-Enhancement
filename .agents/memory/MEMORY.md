@@ -1,1 +1,3 @@
 - [Vite: exposing non-VITE_ prefixed secrets](vite-custom-env-prefix.md) — use `envPrefix` in vite.config.ts to expose Repl secrets like SUPABASE_URL to client code without renaming them.
+- [Running real-browser Playwright flows in this environment](playwright-in-replit-sandbox.md) — use REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE since `playwright install` can't fetch browsers here.
+- [Fixed ambient background hides unpositioned content](fixed-background-stacking-context.md) — positioned elements always paint above unpositioned in-flow content regardless of DOM order/z-index value.

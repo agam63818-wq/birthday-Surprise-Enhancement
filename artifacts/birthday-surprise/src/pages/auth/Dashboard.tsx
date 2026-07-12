@@ -105,7 +105,7 @@ export default function Dashboard() {
         {tab === "preview" ? (
           <BirthdayExperience config={surprise.config} />
         ) : (
-          <div style={{ padding: "20px 16px 60px" }}>
+          <div style={{ padding: "20px 16px 60px", position: "relative", zIndex: 5 }}>
             <CustomizeForm
               surprise={surprise}
               onSurpriseChange={setSurprise}
