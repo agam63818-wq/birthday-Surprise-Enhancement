@@ -234,6 +234,7 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
 
   const handleTap = () => {
     if (cut || cutting) return;
+    try { navigator.vibrate?.([30, 40, 60]); } catch { /* haptics unsupported */ }
     setCutting(true);
 
     // 1. Knife slices down
@@ -299,6 +300,35 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
 
         {/* Cake stage */}
         <div style={{ position: "relative", display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+          {/* Rotating golden celebration rays behind the cake */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute", inset: "-14%", zIndex: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              pointerEvents: "none", overflow: "hidden",
+            }}
+          >
+            <div style={{
+              width: "125%", aspectRatio: "1", borderRadius: "50%",
+              opacity: cut ? 0.55 : 0.3,
+              transition: "opacity 0.8s ease",
+              background: "repeating-conic-gradient(rgba(253,224,71,0.16) 0deg 9deg, transparent 9deg 32deg)",
+              WebkitMaskImage: "radial-gradient(circle, black 26%, transparent 68%)",
+              maskImage: "radial-gradient(circle, black 26%, transparent 68%)",
+              animation: "ray-spin 28s linear infinite",
+            }} />
+          </div>
+
+          {/* Party emojis rising after the cut */}
+          {cut && ["🎉", "🎈", "💖", "✨", "🎊", "💝"].map((e, i) => (
+            <span key={i} style={{
+              position: "absolute", bottom: "6%", left: `${10 + i * 15}%`,
+              fontSize: `${18 + (i % 3) * 7}px`, zIndex: 11, pointerEvents: "none",
+              animation: `fun-heart-rise ${2.6 + (i % 3) * 0.7}s ease-out ${i * 0.25}s infinite`,
+            }}>{e}</span>
+          ))}
+
           <SparkleParticles active={sparkling} />
 
           <div
@@ -375,10 +405,16 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
 
         {showMessage && (
           <div className="page-enter" style={{
-            background: "rgba(236,72,153,0.06)",
-            border: "1px solid rgba(236,72,153,0.18)",
-            borderRadius: "16px", padding: "16px 18px", marginBottom: "22px",
+            background: "linear-gradient(165deg, rgba(236,72,153,0.1), rgba(124,58,237,0.08))",
+            border: "1px solid rgba(236,72,153,0.28)",
+            borderRadius: "18px", padding: "18px", marginBottom: "22px",
+            boxShadow: "0 14px 40px rgba(236,72,153,0.12), 0 0 0 1px rgba(255,255,255,0.03) inset",
           }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "10px" }}>
+              <span aria-hidden="true" style={{ fontSize: "1.5rem", display: "inline-block", animation: "teddy-bounce 1.3s ease-in-out infinite" }}>🧸</span>
+              <span className="chip">✨ Wish granted ✨</span>
+              <span aria-hidden="true" style={{ fontSize: "1.5rem", display: "inline-block", animation: "teddy-bounce 1.3s ease-in-out 0.35s infinite" }}>🐻</span>
+            </div>
             <p className="shimmer-text font-serif" style={{ fontSize: "1.45rem", marginBottom: "8px" }}>
               Happy Birthday {config.name}! 🎂
             </p>

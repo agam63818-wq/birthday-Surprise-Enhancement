@@ -1,8 +1,9 @@
 import { useState } from "react";
 import PremiumHeart from "@/components/PremiumHeart";
-import config from "@/config";
+import { useConfig } from "@/contexts/ConfigContext";
 
 export default function PageLanding({ onNext }: { onNext: () => void }) {
+  const config = useConfig();
   const [pressed, setPressed] = useState(false);
 
   const handleClick = () => {

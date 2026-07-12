@@ -110,6 +110,21 @@ export default function PageLastNote() {
           <p style={{ color: "rgba(200,170,255,0.5)", fontSize: "12px", fontStyle: "italic" }}>
             {footerText}
           </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: "18px",
+              display: "inline-flex", alignItems: "center", gap: "8px",
+              padding: "11px 26px", borderRadius: "999px",
+              border: "1px solid rgba(236,72,153,0.4)",
+              background: "linear-gradient(135deg, rgba(236,72,153,0.18), rgba(124,58,237,0.15))",
+              color: "#f9a8d4", fontSize: "0.85rem", fontWeight: 600,
+              cursor: "pointer", letterSpacing: "0.04em",
+              boxShadow: "0 6px 22px rgba(236,72,153,0.2)",
+            }}
+          >
+            🔁 Replay the surprise
+          </button>
         </div>
       )}
     </div>

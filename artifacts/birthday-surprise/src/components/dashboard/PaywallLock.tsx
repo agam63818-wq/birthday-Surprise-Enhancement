@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { TeddySVGOnly } from "@/components/Teddy";
 import { supabase } from "@/lib/supabase";
 import type { SurpriseRow } from "@/types/surprise";
 
@@ -18,6 +18,13 @@ async function initiatePayment(surpriseId: string): Promise<void> {
     .eq("id", surpriseId);
   if (error) throw new Error(error.message);
 }
+
+const FEATURES = [
+  "💝 Personalize all 10 pages",
+  "📸 Upload your own photos",
+  "🎵 Add your special songs",
+  "🔗 Share with a private link",
+];
 
 export default function PaywallLock({
   surprise,
@@ -42,11 +49,11 @@ export default function PaywallLock({
   };
 
   return (
-    <div style={{ position: "relative", minHeight: "60vh" }}>
+    <div style={{ position: "relative", minHeight: "70vh" }}>
       {/* Blurred preview of what's behind the paywall */}
       <div
         aria-hidden="true"
-        style={{ filter: "blur(6px)", opacity: 0.4, pointerEvents: "none", userSelect: "none", padding: "8px" }}
+        style={{ filter: "blur(6px)", opacity: 0.35, pointerEvents: "none", userSelect: "none", padding: "8px" }}
       >
         {["Name", "Landing page", "Intro message", "Cuteness meter", "Celebration", "Cake page", "Why you matter", "Our story", "Memory wall", "Before you leave", "Last note", "Audio"].map(
           (section) => (
@@ -71,38 +78,87 @@ export default function PaywallLock({
           position: "absolute",
           inset: 0,
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "center",
-          padding: "20px",
+          padding: "28px 16px",
         }}
       >
-        <div className="glass-card-dark card-enter" style={{ maxWidth: "360px", width: "100%", padding: "36px 28px", textAlign: "center" }}>
-          <p className="chip" style={{ marginBottom: "16px" }}>🔒 Locked</p>
-          <h2
-            className="font-serif"
-            style={{
-              fontSize: "1.6rem",
-              marginBottom: "10px",
-              background: "linear-gradient(135deg, #f9a8d4, #e879f9, #a78bfa)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}
-          >
-            Unlock Customization
-          </h2>
-          <p style={{ color: "var(--ink-soft)", fontSize: "0.9rem", lineHeight: 1.6, marginBottom: "24px" }}>
-            Pay ₹20 once to personalize every page — name, photos, messages, music, and more.
-          </p>
-          <Button className="w-full" size="lg" disabled={unlocking} onClick={handleUnlock}>
-            {unlocking ? (
-              <>
-                <Spinner /> Unlocking…
-              </>
-            ) : (
-              "Unlock for ₹20"
-            )}
-          </Button>
+        <div className="auth-card-frame card-enter" style={{ maxWidth: "380px", width: "100%", position: "sticky", top: "calc(76px + env(safe-area-inset-top, 0px))" }}>
+          <div className="glass-card-dark" style={{ borderRadius: "27px", padding: "28px 24px 30px", textAlign: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "4px" }}>
+              <TeddySVGOnly size={90} animate="float" />
+            </div>
+
+            <p className="chip" style={{ marginBottom: "14px" }}>🔒 Locked</p>
+
+            <h2
+              className="font-serif"
+              style={{
+                fontSize: "1.7rem",
+                marginBottom: "8px",
+                background: "var(--grad-brand)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              Unlock Customization
+            </h2>
+            <p style={{ color: "var(--ink-soft)", fontSize: "0.88rem", lineHeight: 1.6, marginBottom: "20px" }}>
+              Make every page truly theirs — one tiny payment, endless smiles.
+            </p>
+
+            {/* What you get */}
+            <div style={{ textAlign: "left", marginBottom: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
+              {FEATURES.map((f) => (
+                <div
+                  key={f}
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: "12px",
+                    background: "rgba(167,139,250,0.07)",
+                    border: "1px solid rgba(167,139,250,0.14)",
+                    color: "var(--ink)",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  {f}
+                </div>
+              ))}
+            </div>
+
+            {/* Price */}
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "8px", marginBottom: "18px" }}>
+              <span
+                className="font-serif"
+                style={{
+                  fontSize: "2.4rem",
+                  fontWeight: 700,
+                  background: "var(--grad-brand)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                ₹20
+              </span>
+              <span style={{ color: "var(--ink-soft)", fontSize: "0.78rem" }}>one-time · yours forever</span>
+            </div>
+
+            <button className="btn-auth-submit" disabled={unlocking} onClick={handleUnlock}>
+              {unlocking ? (
+                <>
+                  <Spinner /> Unlocking…
+                </>
+              ) : (
+                <>✨ Unlock for ₹20</>
+              )}
+            </button>
+
+            <p style={{ color: "var(--ink-soft)", fontSize: "0.72rem", marginTop: "12px", opacity: 0.8 }}>
+              Secure & instant · no subscription
+            </p>
+          </div>
         </div>
       </div>
     </div>

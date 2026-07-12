@@ -3,6 +3,7 @@ import { Link } from "wouter";
 
 // Shared glass-card shell for all auth screens, matching the birthday
 // experience's dark purple/pink theme (glassmorphism, soft glow, rounded).
+// Wrapped in a gradient ring frame with drifting glow orbs behind it.
 export function AuthLayout({
   title,
   subtitle,
@@ -26,65 +27,102 @@ export function AuthLayout({
           "calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px))",
         position: "relative",
         zIndex: 5,
+        overflow: "hidden",
       }}
     >
+      {/* Ambient glow orbs (decorative) */}
       <div
-        className="glass-card-dark card-enter"
+        className="auth-orb"
+        aria-hidden="true"
         style={{
-          maxWidth: "400px",
-          width: "100%",
-          padding: "clamp(32px, 8vw, 44px) clamp(24px, 6vw, 36px)",
+          width: "300px",
+          height: "300px",
+          top: "10%",
+          left: "-70px",
+          background: "radial-gradient(circle, rgba(124,58,237,0.5), transparent 70%)",
         }}
-      >
-        <p className="chip" style={{ marginBottom: "18px" }}>
-          ✦ Birthday Surprise ✦
-        </p>
+      />
+      <div
+        className="auth-orb"
+        aria-hidden="true"
+        style={{
+          width: "340px",
+          height: "340px",
+          bottom: "6%",
+          right: "-90px",
+          background: "radial-gradient(circle, rgba(190,24,93,0.42), transparent 70%)",
+          animationDelay: "-7s",
+        }}
+      />
 
-        <h1
-          className="font-serif"
+      <div className="auth-card-frame card-enter" style={{ maxWidth: "410px", width: "100%" }}>
+        <div
+          className="glass-card-dark"
           style={{
-            fontSize: "clamp(1.6rem, 5vw, 2.1rem)",
-            background: "linear-gradient(135deg, #f9a8d4, #e879f9, #a78bfa)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            lineHeight: 1.25,
-            marginBottom: subtitle ? "8px" : "24px",
+            borderRadius: "27px",
+            padding: "clamp(32px, 8vw, 44px) clamp(24px, 6vw, 36px)",
           }}
         >
-          {title}
-        </h1>
-
-        {subtitle && (
-          <p
-            style={{
-              color: "var(--ink-soft)",
-              fontSize: "0.9rem",
-              lineHeight: 1.6,
-              marginBottom: "24px",
-            }}
-          >
-            {subtitle}
+          <p className="chip" style={{ marginBottom: "18px" }}>
+            ✦ Birthday Surprise ✦
           </p>
-        )}
 
-        {children}
-
-        {footer && (
-          <div
+          <h1
+            className="font-serif"
             style={{
-              marginTop: "22px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-              alignItems: "center",
-              fontSize: "0.85rem",
-              color: "var(--ink-soft)",
+              fontSize: "clamp(1.7rem, 5.5vw, 2.2rem)",
+              background: "var(--grad-brand)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              lineHeight: 1.25,
+              marginBottom: subtitle ? "8px" : "24px",
             }}
           >
-            {footer}
-          </div>
-        )}
+            {title}
+          </h1>
+
+          {subtitle && (
+            <p
+              style={{
+                color: "var(--ink-soft)",
+                fontSize: "0.9rem",
+                lineHeight: 1.6,
+                marginBottom: "26px",
+              }}
+            >
+              {subtitle}
+            </p>
+          )}
+
+          {children}
+
+          {footer && (
+            <>
+              <div
+                aria-hidden="true"
+                style={{
+                  height: "1px",
+                  background:
+                    "linear-gradient(90deg, transparent, rgba(167,139,250,0.3), transparent)",
+                  margin: "24px 0 18px",
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                  alignItems: "center",
+                  fontSize: "0.85rem",
+                  color: "var(--ink-soft)",
+                }}
+              >
+                {footer}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

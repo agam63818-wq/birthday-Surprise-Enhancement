@@ -1,0 +1,12 @@
+{
+  "name": "Birthday Surprise",
+  "short_name": "Surprise",
+  "description": "A magical, personalized birthday surprise made with love.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07011a",
+  "theme_color": "#07011a",
+  "icons": [
+    { "src": "/assets/teddy.png", "sizes": "any", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,35 @@
+modules = ["nodejs-24", "postgresql-16", "python-base-3.13"]
+
+[[artifacts]]
+id = "artifacts/api-server"
+
+[[artifacts]]
+id = "artifacts/mockup-sandbox"
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_URL = "https://fhzogztljvdazpyefwrr.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZoem9nenRsanZkYXpweWVmd3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3NzYzOTQsImV4cCI6MjA5OTM1MjM5NH0.KVOPmUMlY536jZaKjlG4RMVBFqk-pcawgtf8qvPH6q8"
+
+[nix]
+channel = "stable-25_05"

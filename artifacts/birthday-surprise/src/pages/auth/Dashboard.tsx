@@ -65,6 +65,22 @@ export default function Dashboard() {
   const handleShare = async () => {
     if (!surprise) return;
     const url = `${window.location.origin}/s/${surprise.slug}`;
+
+    // Native share sheet on mobile (WhatsApp, Instagram, SMS, etc.)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "A Birthday Surprise \ud83c\udf82",
+          text: "I made something special for you\u2026 open it! \ud83d\udc9d",
+          url,
+        });
+        return;
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return; // user closed the sheet
+        // otherwise fall through to clipboard copy
+      }
+    }
+
     try {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied!");
@@ -101,11 +117,19 @@ export default function Dashboard() {
         onShare={handleShare}
         onLogout={() => signOut()}
       />
-      <div style={{ paddingTop: "calc(52px + env(safe-area-inset-top, 0px))" }}>
+      <div style={{ paddingTop: "calc(56px + env(safe-area-inset-top, 0px))" }}>
         {tab === "preview" ? (
           <BirthdayExperience config={surprise.config} />
         ) : (
-          <div style={{ padding: "20px 16px 60px", position: "relative", zIndex: 5 }}>
+          <div
+            style={{
+              padding: "24px 16px 72px",
+              position: "relative",
+              zIndex: 5,
+              maxWidth: "760px",
+              margin: "0 auto",
+            }}
+          >
             <CustomizeForm
               surprise={surprise}
               onSurpriseChange={setSurprise}

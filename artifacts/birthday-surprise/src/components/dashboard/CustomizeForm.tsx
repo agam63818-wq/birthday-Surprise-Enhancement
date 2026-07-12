@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,19 @@ import { supabase } from "@/lib/supabase";
 import type { Config } from "@/config";
 import type { SurpriseRow } from "@/types/surprise";
 
+const SECTION_EMOJI: Record<string, string> = {
+  Name: "💖", "Landing page": "🎁", Intro: "💌", "Cuteness meter": "🥰",
+  Celebration: "🎉", "Cake page": "🎂", "Why you matter": "🌟", "Our story": "📖",
+  "Memory wall": "📸", "Before you leave": "🥺", "Last note": "📝", Music: "🎵",
+};
+
 function SectionTitle({ children }: { children: string }) {
-  return <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: "1.05rem" }}>{children}</span>;
+  return (
+    <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: "1.05rem", display: "inline-flex", alignItems: "center", gap: "8px" }}>
+      <span aria-hidden="true" style={{ fontSize: "1rem" }}>{SECTION_EMOJI[children] ?? "✨"}</span>
+      {children}
+    </span>
+  );
 }
 
 export default function CustomizeForm({
@@ -30,6 +41,18 @@ export default function CustomizeForm({
   const [config, setConfig] = useState<Config>(() => structuredClone(surprise.config));
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Warn before closing/refreshing the page with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (JSON.stringify(config) !== JSON.stringify(surprise.config)) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [config, surprise.config]);
 
   if (!surprise.is_paid) {
     return (
@@ -83,7 +106,7 @@ export default function CustomizeForm({
   };
 
   return (
-    <div style={{ maxWidth: "560px", width: "100%", margin: "0 auto", padding: "0 4px" }}>
+    <div className="customize-shell" style={{ maxWidth: "560px", width: "100%", margin: "0 auto", padding: "0 4px" }}>
       <FormError>{validationError}</FormError>
 
       <Accordion type="multiple" defaultValue={["name"]}>
@@ -232,16 +255,28 @@ export default function CustomizeForm({
         </AccordionItem>
       </Accordion>
 
-      <div style={{ position: "sticky", bottom: "16px", marginTop: "24px", paddingTop: "12px" }}>
-        <Button className="w-full" size="lg" disabled={saving} onClick={handleSave}>
-          {saving ? (
-            <>
-              <Spinner /> Saving…
-            </>
-          ) : (
-            "Save changes"
-          )}
-        </Button>
+      <div style={{ position: "sticky", bottom: "calc(12px + env(safe-area-inset-bottom, 0px))", marginTop: "24px", zIndex: 20 }}>
+        <div
+          style={{
+            padding: "10px",
+            borderRadius: "18px",
+            background: "rgba(10,3,28,0.72)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            border: "1px solid rgba(167,139,250,0.2)",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
+          }}
+        >
+          <Button className="w-full" size="lg" disabled={saving} onClick={handleSave}>
+            {saving ? (
+              <>
+                <Spinner /> Saving…
+              </>
+            ) : (
+              "💾 Save changes"
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

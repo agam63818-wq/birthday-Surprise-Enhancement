@@ -452,3 +452,287 @@ button { user-select: none; -webkit-user-select: none; touch-action: manipulatio
     scroll-behavior: auto !important;
   }
 }
+
+/* ── AUTH & DASHBOARD CHROME POLISH ─────────────────── */
+
+/* Soft drifting glow orbs behind the auth card */
+@keyframes orb-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(26px, -20px, 0) scale(1.12); }
+}
+
+.auth-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  opacity: 0.55;
+  z-index: 0;
+  animation: orb-drift 14s ease-in-out infinite alternate;
+}
+
+/* Gradient ring frame around the glass auth card */
+.auth-card-frame {
+  position: relative;
+  z-index: 1;
+  border-radius: 28px;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    rgba(249, 168, 212, 0.45),
+    rgba(167, 139, 250, 0.12) 30%,
+    rgba(232, 121, 249, 0.4) 65%,
+    rgba(167, 139, 250, 0.18)
+  );
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65), 0 0 70px rgba(124, 58, 237, 0.16);
+}
+
+/* Input with a leading icon */
+.input-shell { position: relative; display: flex; align-items: center; }
+.input-shell > svg {
+  position: absolute;
+  left: 13px;
+  color: rgba(226, 199, 255, 0.45);
+  pointer-events: none;
+  z-index: 1;
+}
+.input-shell input {
+  height: 46px;
+  padding-left: 40px;
+  border-radius: 14px;
+  background: rgba(167, 139, 250, 0.06);
+  border-color: rgba(167, 139, 250, 0.25);
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.input-shell input:focus {
+  border-color: rgba(232, 121, 249, 0.55);
+  box-shadow: 0 0 0 3px rgba(232, 121, 249, 0.14);
+  background: rgba(167, 139, 250, 0.1);
+}
+
+/* Show/hide password toggle */
+.eye-toggle {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(226, 199, 255, 0.5);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+.eye-toggle:hover { color: #f9a8d4; background: rgba(236, 72, 153, 0.1); }
+
+/* Gradient submit button for auth forms */
+.btn-auth-submit {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4c1d95, #7c3aed 45%, #be185d);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow:
+    0 6px 24px rgba(124, 58, 237, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.15) inset;
+  transition: transform 0.22s var(--ease-spring), box-shadow 0.22s ease, filter 0.22s ease;
+}
+.btn-auth-submit::after {
+  content: "";
+  position: absolute;
+  top: 0; left: -80%;
+  width: 55%; height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: skewX(-20deg);
+  animation: btn-shine 3.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.btn-auth-submit:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.015);
+  box-shadow: 0 10px 34px rgba(124, 58, 237, 0.6), 0 6px 24px rgba(190, 24, 93, 0.3);
+  filter: brightness(1.07);
+}
+.btn-auth-submit:active:not(:disabled) { transform: scale(0.98); }
+.btn-auth-submit:disabled { opacity: 0.7; cursor: not-allowed; }
+
+/* Dashboard fixed top bar */
+.dash-topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  height: calc(56px + var(--safe-top));
+  padding: var(--safe-top) 14px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: linear-gradient(180deg, rgba(10, 2, 32, 0.94), rgba(7, 1, 26, 0.8));
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.16);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.dash-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.2rem;
+  font-weight: 600;
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  white-space: nowrap;
+}
+
+.tab-group {
+  display: flex;
+  gap: 4px;
+  background: rgba(167, 139, 250, 0.08);
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+.tab-pill:hover { color: var(--ink); background: rgba(167, 139, 250, 0.12); }
+.tab-pill.active {
+  background: linear-gradient(135deg, #7c3aed, #be185d);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.45);
+}
+.tab-pill.active:hover { background: linear-gradient(135deg, #7c3aed, #be185d); }
+
+.chrome-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+.chrome-btn.share {
+  border: 1px solid rgba(236, 72, 153, 0.45);
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.28), rgba(232, 121, 249, 0.18));
+  color: #fbcfe8;
+  box-shadow: 0 4px 18px rgba(236, 72, 153, 0.22);
+}
+.chrome-btn.share:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.42), rgba(232, 121, 249, 0.3));
+  box-shadow: 0 6px 24px rgba(236, 72, 153, 0.38);
+}
+.chrome-btn.logout {
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  background: rgba(167, 139, 250, 0.07);
+  color: var(--ink-soft);
+}
+.chrome-btn.logout:hover {
+  color: #fda4af;
+  border-color: rgba(244, 63, 94, 0.4);
+  background: rgba(244, 63, 94, 0.1);
+}
+
+@media (max-width: 640px) {
+  .dash-brand { display: none; }
+}
+@media (max-width: 420px) {
+  .chrome-btn .label { display: none; }
+  .tab-pill { padding: 7px 12px; }
+}
+
+/* ── FUN LAYER: peeking teddy, bubbles, rising emojis, cake rays ── */
+@keyframes ray-spin { to { transform: rotate(360deg); } }
+
+@keyframes fun-heart-rise {
+  0%   { opacity: 0; transform: translateY(0) scale(0.6) rotate(0deg); }
+  12%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-150px) scale(1.3) rotate(16deg); }
+}
+
+@keyframes teddy-peek {
+  from { transform: translateY(110%) rotate(-8deg); }
+  to   { transform: translateY(30%) rotate(0deg); }
+}
+
+@keyframes bubble-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.85); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.fun-teddy {
+  transform: translateY(30%);
+  animation: teddy-peek 0.9s var(--ease-spring) both;
+  cursor: pointer;
+  transition: filter 0.25s ease;
+}
+.fun-teddy:hover { filter: brightness(1.12); }
+
+.fun-bubble {
+  position: absolute;
+  bottom: 96px;
+  left: 6px;
+  max-width: 230px;
+  padding: 10px 14px;
+  border-radius: 16px 16px 16px 4px;
+  background: linear-gradient(165deg, rgba(30,12,60,0.92), rgba(12,4,32,0.9));
+  border: 1px solid rgba(232,121,249,0.35);
+  box-shadow: 0 10px 32px rgba(0,0,0,0.5), 0 0 24px rgba(236,72,153,0.15);
+  color: var(--ink);
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  white-space: normal;
+  animation: bubble-pop 0.35s var(--ease-spring) both;
+  pointer-events: none;
+}
+
+/* Comfier fields inside the customize form (mobile friendly) */
+.customize-shell input:not([type="checkbox"]),
+.customize-shell textarea {
+  min-height: 44px;
+  border-radius: 12px;
+  background: rgba(167, 139, 250, 0.06);
+  border-color: rgba(167, 139, 250, 0.25);
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.customize-shell textarea { min-height: 88px; }
+.customize-shell input:not([type="checkbox"]):focus,
+.customize-shell textarea:focus {
+  border-color: rgba(232, 121, 249, 0.55);
+  box-shadow: 0 0 0 3px rgba(232, 121, 249, 0.14);
+}

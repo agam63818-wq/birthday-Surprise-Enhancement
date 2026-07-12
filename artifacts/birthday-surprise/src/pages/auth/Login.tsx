@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
+import { Mail, Lock, Eye, EyeOff, Heart } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthLayout, FieldLabel, FormError, AuthLink } from "@/components/auth/AuthLayout";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
 export default function Login() {
@@ -11,6 +11,7 @@ export default function Login() {
   const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,37 +54,55 @@ export default function Login() {
 
         <div style={{ marginBottom: "16px" }}>
           <FieldLabel>Email</FieldLabel>
-          <Input
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            disabled={submitting}
-          />
+          <div className="input-shell">
+            <Mail size={16} aria-hidden="true" />
+            <Input
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              disabled={submitting}
+            />
+          </div>
         </div>
 
-        <div style={{ marginBottom: "22px" }}>
+        <div style={{ marginBottom: "24px" }}>
           <FieldLabel>Password</FieldLabel>
-          <Input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            disabled={submitting}
-          />
+          <div className="input-shell">
+            <Lock size={16} aria-hidden="true" />
+            <Input
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              disabled={submitting}
+              style={{ paddingRight: "42px" }}
+            />
+            <button
+              type="button"
+              className="eye-toggle"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((v) => !v)}
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
         </div>
 
-        <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+        <button type="submit" className="btn-auth-submit" disabled={submitting}>
           {submitting ? (
             <>
               <Spinner /> Logging in…
             </>
           ) : (
-            "Log In"
+            <>
+              <Heart size={16} fill="currentColor" /> Log In
+            </>
           )}
-        </Button>
+        </button>
       </form>
     </AuthLayout>
   );

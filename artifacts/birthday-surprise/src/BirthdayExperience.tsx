@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import Background from "@/components/Background";
 import MusicToggle, { useBackgroundMusic } from "@/components/MusicPlayer";
 import SurprisePopup from "@/components/SurprisePopup";
+import FunLayer from "@/components/FunLayer";
 import PageLanding from "@/pages/PageLanding";
 import PageIntro from "@/pages/PageIntro";
 import PageCutenessMeter from "@/pages/PageCutenessMeter";
@@ -133,6 +134,7 @@ function BirthdayExperienceInner() {
       />
       <Background />
       <AmbientFX />
+      <FunLayer page={page} />
       <MusicToggle playing={playing} onToggle={toggleMusic} />
       <SurprisePopup message="You are my favorite person in this entire world. Just wanted you to know that. ❤️" />
 

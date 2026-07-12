@@ -35,6 +35,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
   const [swapKey, setSwapKey] = useState(0);
   const [maxSeen, setMaxSeen] = useState(0);
   const [hearts, setHearts] = useState<HeartBurst[]>([]);
+  const [zoomed, setZoomed] = useState(false);
   const seenAll = maxSeen >= total - 1;
 
   const go = (d: number, target?: number) => {
@@ -128,6 +129,20 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
           }}>
             {idx + 1} / {total}
           </span>
+          {/* Zoom (lightbox) button */}
+          <button
+            aria-label="View photo fullscreen"
+            onClick={(e) => { e.stopPropagation(); setZoomed(true); }}
+            style={{
+              position: "absolute", top: "12px", left: "12px",
+              width: "34px", height: "34px", borderRadius: "50%",
+              border: "1px solid rgba(167,139,250,0.3)",
+              background: "rgba(8,2,24,0.6)", backdropFilter: "blur(10px)",
+              color: "rgba(240,200,255,0.9)", fontSize: "15px", lineHeight: 1,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >⤢</button>
         </div>
 
         {/* Heart bursts at tap point */}
@@ -212,6 +227,51 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
         >
           skip album →
         </button>
+      )}
+
+      {/* Fullscreen lightbox */}
+      {zoomed && (
+        <div
+          onClick={() => setZoomed(false)}
+          role="dialog"
+          aria-label="Photo fullscreen"
+          style={{
+            position: "fixed", inset: 0, zIndex: 900,
+            background: "rgba(5,1,16,0.92)",
+            backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            padding: "24px", animation: "bubble-pop 0.3s ease both",
+          }}
+        >
+          <img
+            src={photo.src}
+            alt={photo.caption}
+            style={{
+              maxWidth: "94vw", maxHeight: "72vh", objectFit: "contain",
+              borderRadius: "14px",
+              boxShadow: "0 24px 80px rgba(0,0,0,0.8), 0 0 60px rgba(236,72,153,0.15)",
+            }}
+          />
+          <p className="font-serif" style={{
+            color: "rgba(252,231,243,0.95)", fontSize: "1.35rem",
+            marginTop: "16px", textAlign: "center", maxWidth: "480px",
+          }}>
+            {photo.caption}
+          </p>
+          <div style={{ display: "flex", gap: "16px", marginTop: "18px", alignItems: "center" }}>
+            <button aria-label="Previous photo" onClick={(e) => { e.stopPropagation(); go(-1); }} style={navBtnStyle}>‹</button>
+            <span style={{ color: "rgba(220,185,255,0.6)", fontSize: "12.5px", letterSpacing: "0.1em" }}>
+              {idx + 1} / {total}
+            </span>
+            <button aria-label="Next photo" onClick={(e) => { e.stopPropagation(); go(1); }} style={navBtnStyle}>›</button>
+          </div>
+          <button
+            aria-label="Close fullscreen"
+            onClick={() => setZoomed(false)}
+            style={{ position: "absolute", top: "calc(16px + env(safe-area-inset-top, 0px))", right: "16px", ...navBtnStyle }}
+          >✕</button>
+        </div>
       )}
     </div>
   );
