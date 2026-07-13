@@ -3,20 +3,74 @@ import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { TeddySVGOnly } from "@/components/Teddy";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 import type { SurpriseRow } from "@/types/surprise";
+import type { RazorpaySuccessResponse } from "@/types/razorpay";
 
-// Dev-only stub paywall: unlocking flips `is_paid` directly via the
-// Supabase client. Real payment collection (Razorpay) is not wired up yet.
-//
-// TODO: replace this stub with a real Razorpay checkout flow before
-// launch — this currently unlocks customization without collecting any
-// payment, which is only acceptable for local development/testing.
-async function initiatePayment(surpriseId: string): Promise<void> {
-  const { error } = await supabase
-    .from("surprises")
-    .update({ is_paid: true })
-    .eq("id", surpriseId);
-  if (error) throw new Error(error.message);
+// Real Razorpay checkout flow:
+// 1. Ask our own Edge Function to create a Razorpay order (server-side,
+//    using the secret key — never exposed here).
+// 2. Open Razorpay's Checkout with that order.
+// 3. On successful payment, send the payment id/signature to another
+//    Edge Function which verifies the signature server-side and only
+//    THEN flips is_paid = true. The client never sets is_paid directly.
+async function initiatePayment(userEmail: string | undefined): Promise<void> {
+  const { data: orderData, error: orderError } = await supabase.functions.invoke(
+    "create-razorpay-order",
+  );
+
+  if (orderError || !orderData) {
+    throw new Error(orderError?.message ?? "Could not start payment");
+  }
+
+  const { order_id, amount, currency, key_id } = orderData as {
+    order_id: string;
+    amount: number;
+    currency: string;
+    key_id: string;
+  };
+
+  return new Promise<void>((resolve, reject) => {
+    const razorpay = new window.Razorpay({
+      key: key_id,
+      amount,
+      currency,
+      order_id,
+      name: "Birthday Surprise",
+      description: "Unlock customization",
+      prefill: userEmail ? { email: userEmail } : undefined,
+      theme: { color: "#a78bfa" },
+      handler: async (response: RazorpaySuccessResponse) => {
+        try {
+          const { data: verifyData, error: verifyError } =
+            await supabase.functions.invoke("verify-razorpay-payment", {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+            });
+
+          if (verifyError || !(verifyData as { success?: boolean })?.success) {
+            reject(new Error("verification_failed"));
+            return;
+          }
+
+          resolve();
+        } catch {
+          reject(new Error("verification_failed"));
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          // User closed the popup without paying — not an error.
+          reject(new Error("dismissed"));
+        },
+      },
+    });
+
+    razorpay.open();
+  });
 }
 
 const FEATURES = [
@@ -33,16 +87,26 @@ export default function PaywallLock({
   surprise: SurpriseRow;
   onUnlocked: () => void;
 }) {
+  const { user } = useAuth();
   const [unlocking, setUnlocking] = useState(false);
 
   const handleUnlock = async () => {
     setUnlocking(true);
     try {
-      await initiatePayment(surprise.id);
+      await initiatePayment(user?.email);
       toast.success("Unlocked! You can now customize your surprise.");
       onUnlocked();
-    } catch {
-      toast.error("Couldn't unlock customization. Please try again.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message === "dismissed") {
+        // Popup closed without paying — silent, not an error.
+      } else if (message === "verification_failed") {
+        toast.error(
+          "Payment could not be verified. If money was deducted, it will be refunded automatically — please contact support.",
+        );
+      } else {
+        toast.error("Couldn't unlock customization. Please try again.");
+      }
     } finally {
       setUnlocking(false);
     }

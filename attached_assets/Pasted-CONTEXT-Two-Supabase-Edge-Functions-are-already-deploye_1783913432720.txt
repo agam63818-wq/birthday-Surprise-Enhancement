@@ -1,0 +1,133 @@
+CONTEXT
+
+Two Supabase Edge Functions are already deployed and working (do not
+recreate them, do not touch them):
+
+  - create-razorpay-order — authenticated call, returns
+    { order_id, amount, currency, key_id }. It creates the Razorpay order
+    server-side and records a row in the `payments` table
+    (status: "created"). It will return an error if the user's surprise
+    is already is_paid = true.
+  - verify-razorpay-payment — authenticated call, accepts
+    { razorpay_order_id, razorpay_payment_id, razorpay_signature } in the
+    JSON body, verifies the signature server-side using the Razorpay
+    secret (never exposed to the client), and on success sets
+    is_paid = true on the user's surprises row. Returns { success: true }
+    or an error.
+
+Both are called the standard Supabase way:
+  const { data, error } = await supabase.functions.invoke("create-razorpay-order")
+This automatically forwards the logged-in user's auth token, so no manual
+header wiring is needed.
+
+The Razorpay Key Secret is stored only as a Supabase Edge Function secret
+— it must never appear in any frontend file. Only the Key ID (public,
+already returned by create-razorpay-order as key_id) is safe to use in
+the browser.
+
+CURRENT FILE: artifacts/birthday-surprise/src/components/dashboard/
+PaywallLock.tsx
+
+This file currently has a stub:
+
+  async function initiatePayment(surpriseId: string): Promise<void> {
+    const { error } = await supabase
+      .from("surprises")
+      .update({ is_paid: true })
+      .eq("id", surpriseId);
+    if (error) throw new Error(error.message);
+  }
+
+This stub directly sets is_paid = true with no real payment — it exists
+only because real Razorpay integration wasn't wired up yet. That is now
+done on the backend side; your job is to replace this stub with the real
+flow, WITHOUT changing anything else in this file (keep the exact same
+JSX, styling, FEATURES list, price display, button text, etc. — only the
+payment logic changes).
+
+TASK
+
+1. Add the Razorpay Checkout script to artifacts/birthday-surprise/
+   index.html, right before the closing </head> tag:
+
+     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+2. In PaywallLock.tsx, replace the `initiatePayment` stub with a real
+   Razorpay checkout flow:
+
+   a. Call `supabase.functions.invoke("create-razorpay-order")`. If it
+      errors or returns no data, throw so the existing catch block in
+      handleUnlock shows the existing "Couldn't unlock customization"
+      toast (don't change that error handling, it already works).
+
+   b. Use the returned { order_id, amount, currency, key_id } to open
+      Razorpay Checkout via `window.Razorpay`. Add a `declare global`
+      TypeScript block (or a small `razorpay.d.ts` in src/types/) so
+      `window.Razorpay` is typed instead of using `any`.
+
+   c. Razorpay options to use:
+      - key: key_id
+      - amount: amount
+      - currency: currency
+      - order_id: order_id
+      - name: "Birthday Surprise"
+      - description: "Unlock customization"
+      - prefill.email: the current logged-in user's email (get it from
+        `supabase.auth.getUser()` or the existing auth context if one is
+        already available in this component tree — check AuthContext
+        first before calling getUser directly)
+      - theme.color: use this site's brand pink/violet, e.g. "#a78bfa"
+        or read it from the --violet / --pink CSS custom properties if
+        there's already a JS constant for these colors elsewhere in the
+        codebase; otherwise hardcode "#a78bfa"
+      - handler: an async function that receives
+        { razorpay_order_id, razorpay_payment_id, razorpay_signature }
+        from Razorpay on successful payment. Inside it, call
+        `supabase.functions.invoke("verify-razorpay-payment", { body: {...} })`
+        with those three fields. If verification succeeds
+        (data.success === true), call the existing `onUnlocked()` prop
+        and show the existing success toast. If it fails, show an error
+        toast ("Payment could not be verified. If money was deducted, it
+        will be refunded automatically — please contact support.") and
+        do NOT call onUnlocked().
+      - modal.ondismiss: a function that just resets the `unlocking`
+        state back to false (so the button becomes clickable again) if
+        the user closes the Razorpay popup without paying — do not show
+        an error toast in this case, closing the popup isn't a failure.
+
+   d. Instantiate with `new window.Razorpay(options)` and call `.open()`.
+
+   e. Keep the surrounding handleUnlock function's try/catch/finally
+      structure as close to the original as possible — the goal is a
+      minimal, surgical change to the payment logic only.
+
+3. Do not modify: the JSX/markup, FEATURES array, pricing display, any
+   CSS classes, or any other component in the dashboard folder.
+
+4. Do not touch the create-razorpay-order or verify-razorpay-payment
+   Edge Functions — they are already deployed and working.
+
+VERIFICATION
+
+Test with Razorpay's official test mode card:
+  Card number: 4111 1111 1111 1111
+  Any future expiry date, any 3-digit CVV, any name
+
+1. Go to /dashboard → Customize tab (with a fresh, not-yet-paid test
+   account) → confirm the paywall card looks unchanged
+2. Click "Unlock for ₹20" → confirm the real Razorpay checkout modal
+   opens (not the old instant-unlock behavior)
+3. Pay with the test card above → confirm it redirects back, shows the
+   success toast, and the Customize tab unlocks with the real form
+4. Check the `payments` table in Supabase → confirm a row exists with
+   status = "paid" and a razorpay_payment_id filled in
+5. Check the `surprises` table → confirm is_paid is now true for that user
+6. Open the Razorpay checkout again on a different (or reset) test
+   account, and this time close the popup without paying → confirm the
+   button becomes clickable again with no error toast, and is_paid stays
+   false
+7. Confirm the browser console shows no errors, and confirm the Key
+   Secret does not appear anywhere in the built frontend bundle (only
+   key_id, which is safe/public)
+
+Report back what was changed and the result of each verification step.
