@@ -1,9 +1,11 @@
 import { useState } from "react";
 import PremiumHeart from "@/components/PremiumHeart";
 import { useConfig } from "@/contexts/ConfigContext";
+import { resolveFontFamily } from "@/lib/fontPresets";
 
 export default function PageLanding({ onNext }: { onNext: () => void }) {
   const config = useConfig();
+  const bodyFont = resolveFontFamily(config.textStyles, "landing");
   const [pressed, setPressed] = useState(false);
 
   const handleClick = () => {
@@ -46,7 +48,7 @@ export default function PageLanding({ onNext }: { onNext: () => void }) {
         <p style={{
           color: "rgba(220,185,255,0.68)", fontSize: "1.05rem",
           lineHeight: 1.8, marginBottom: "34px",
-          fontFamily: "'Dancing Script', cursive",
+          fontFamily: bodyFont,
         }}>
           {config.landing.subtitle}
         </p>

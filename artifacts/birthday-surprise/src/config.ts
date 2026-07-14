@@ -3,6 +3,8 @@
 //  Edit this file to personalize the experience!
 // ============================================================
 
+import type { FontPresetId } from "@/lib/fontPresets";
+
 const config = {
   // ── Person's name ──────────────────────────────────────────
   name: "Zoya",
@@ -153,4 +155,19 @@ images: {
 };
 
 export default config;
-export type Config = typeof config;
+
+// Base type derived from the config literal above.
+type BaseConfig = typeof config;
+
+// Public Config type. Adds an OPTIONAL top-level `textStyles` field
+// used by Part 1's per-page Font Picker. It is optional (with `?`)
+// so existing saved surprises (which don't have this field yet) keep
+// working without a database migration — this is stored inside the
+// existing `config` jsonb column.
+export type Config = BaseConfig & {
+  textStyles?: Partial<Record<
+    "landing" | "intro" | "cutenessMeter" | "celebration" | "cake" |
+    "whyYouMatter" | "ourStory" | "memoryWall" | "beforeLeave" | "lastNote",
+    FontPresetId
+  >>;
+};

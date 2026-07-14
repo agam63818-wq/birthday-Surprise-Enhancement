@@ -1,7 +1,9 @@
 import { useConfig } from "@/contexts/ConfigContext";
+import { resolveFontFamily } from "@/lib/fontPresets";
 
 export default function PageOurStory({ onNext }: { onNext: () => void }) {
   const config = useConfig();
+  const bodyFont = resolveFontFamily(config.textStyles, "ourStory");
   const { cards, title, subtitle, buttonText } = config.ourStory;
 
   return (
@@ -24,7 +26,7 @@ export default function PageOurStory({ onNext }: { onNext: () => void }) {
         }}>
           {title}
         </h1>
-        <p style={{ color: "rgba(220,185,255,0.5)", fontSize: "13px", fontFamily: "'Dancing Script', cursive", marginBottom: "28px" }}>
+        <p style={{ color: "rgba(220,185,255,0.5)", fontSize: "13px", fontFamily: bodyFont, marginBottom: "28px" }}>
           {subtitle}
         </p>
 
@@ -53,10 +55,10 @@ export default function PageOurStory({ onNext }: { onNext: () => void }) {
               }}
             >
               <div style={{ fontSize: "22px", marginBottom: "10px" }}>{card.icon}</div>
-              <div style={{ fontFamily: "'Dancing Script', cursive", color: "rgba(235,205,255,0.9)", fontSize: "1rem", fontWeight: "700", marginBottom: "6px" }}>
+              <div style={{ fontFamily: bodyFont, color: "rgba(235,205,255,0.9)", fontSize: "1rem", fontWeight: "700", marginBottom: "6px" }}>
                 {card.title}
               </div>
-              <div style={{ color: "rgba(200,170,255,0.65)", fontSize: "11.5px", lineHeight: 1.6 }}>
+              <div style={{ color: "rgba(200,170,255,0.65)", fontSize: "11.5px", lineHeight: 1.6, fontFamily: bodyFont }}>
                 {card.desc}
               </div>
             </div>
