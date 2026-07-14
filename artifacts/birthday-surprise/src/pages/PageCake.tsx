@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Confetti from "@/components/Confetti";
 import { useConfig } from "@/contexts/ConfigContext";
+import { resolveFontFamily } from "@/lib/fontPresets";
 
 interface CakePageProps {
   onNext: () => void;
@@ -219,6 +220,7 @@ function Knife() {
 
 export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
   const config = useConfig();
+  const bodyFont = resolveFontFamily(config.textStyles, "cake");
   const [cut, setCut] = useState(false);
   const [cutting, setCutting] = useState(false);
   const [knife, setKnife] = useState(false);
@@ -294,7 +296,7 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
         }}>
           {config.cake.title}
         </h1>
-        <p style={{ color: "rgba(220,185,255,0.5)", fontSize: "13px", fontFamily: "'Dancing Script',cursive", marginBottom: "20px" }}>
+        <p style={{ color: "rgba(220,185,255,0.5)", fontSize: "13px", fontFamily: bodyFont, marginBottom: "20px" }}>
           {config.cake.subtitle}
         </p>
 
@@ -418,8 +420,9 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
             <p className="shimmer-text font-serif" style={{ fontSize: "1.45rem", marginBottom: "8px" }}>
               Happy Birthday {config.name}! 🎂
             </p>
-            <p className="font-serif" style={{
+            <p style={{
               color: "rgba(249,168,212,0.92)", fontSize: "1.05rem", lineHeight: 1.85,
+              fontFamily: bodyFont,
             }}>
               {config.cake.message}
             </p>

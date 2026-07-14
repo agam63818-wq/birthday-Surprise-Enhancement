@@ -1,9 +1,11 @@
 import PremiumHeart from "@/components/PremiumHeart";
 import TypewriterText from "@/components/TypewriterText";
 import { useConfig } from "@/contexts/ConfigContext";
+import { resolveFontFamily } from "@/lib/fontPresets";
 
 export default function PageCelebration({ onNext }: { onNext: () => void }) {
   const config = useConfig();
+  const bodyFont = resolveFontFamily(config.textStyles, "celebration");
   const { title, subtitle1, subtitle2, badge, message, buttonText } = config.celebration;
 
   return (
@@ -26,8 +28,8 @@ export default function PageCelebration({ onNext }: { onNext: () => void }) {
         }}>
           {title}
         </h1>
-        <p style={{ color: "rgba(220,185,255,0.65)", fontSize: "14px", fontFamily: "'Dancing Script', cursive", marginBottom: "2px" }}>{subtitle1}</p>
-        <p style={{ color: "rgba(220,185,255,0.5)", fontSize: "13px", fontFamily: "'Dancing Script', cursive", marginBottom: "20px" }}>{subtitle2}</p>
+        <p style={{ color: "rgba(220,185,255,0.65)", fontSize: "14px", fontFamily: bodyFont, marginBottom: "2px" }}>{subtitle1}</p>
+        <p style={{ color: "rgba(220,185,255,0.5)", fontSize: "13px", fontFamily: bodyFont, marginBottom: "20px" }}>{subtitle2}</p>
 
         <div style={{
           display: "inline-block", padding: "5px 16px", borderRadius: "30px",
@@ -39,8 +41,9 @@ export default function PageCelebration({ onNext }: { onNext: () => void }) {
 
         <PremiumHeart size={100} style={{ margin: "0 auto 24px" }} />
 
-        <p className="font-serif" style={{
+        <p style={{
           color: "rgba(235,210,255,0.85)", fontSize: "1.05rem", lineHeight: 1.8, marginBottom: "32px",
+          fontFamily: bodyFont,
         }}>
           <TypewriterText text={message} speed={40} delay={0.3} />
         </p>

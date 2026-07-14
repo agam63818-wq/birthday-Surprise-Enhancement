@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { TeddySVGOnly } from "@/components/Teddy";
 import TypewriterText from "@/components/TypewriterText";
 import { useConfig } from "@/contexts/ConfigContext";
+import { resolveFontFamily } from "@/lib/fontPresets";
 
 export default function PageBeforeYouLeave({ onNext }: { onNext: () => void }) {
   const config = useConfig();
+  const bodyFont = resolveFontFamily(config.textStyles, "beforeLeave");
   const { message, buttonText } = config.beforeLeave;
   const [showButton, setShowButton] = useState(false);
 
@@ -24,11 +26,12 @@ export default function PageBeforeYouLeave({ onNext }: { onNext: () => void }) {
       }}>
         <TeddySVGOnly size={100} animate="bounce" style={{ margin: "0 auto 24px" }} />
 
-        <h1 className="font-serif" style={{
+        <h1 style={{
           fontSize: "clamp(1.7rem, 5vw, 2.5rem)", lineHeight: 1.35, marginBottom: "36px",
           background: "linear-gradient(135deg, #f9a8d4, #c084fc)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
           filter: "drop-shadow(0 0 16px rgba(196,132,252,0.3))",
+          fontFamily: bodyFont,
         }}>
           <TypewriterText text={message} speed={48} delay={0.3} />
         </h1>

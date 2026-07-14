@@ -1,7 +1,9 @@
 import { useConfig } from "@/contexts/ConfigContext";
+import { resolveFontFamily } from "@/lib/fontPresets";
 
 export default function PageWhyYouMatter({ onNext }: { onNext: () => void }) {
   const config = useConfig();
+  const bodyFont = resolveFontFamily(config.textStyles, "whyYouMatter");
   const { cards, title, subtitle, buttonText } = config.whyYouMatter;
 
   return (
@@ -54,10 +56,10 @@ export default function PageWhyYouMatter({ onNext }: { onNext: () => void }) {
               }}
             >
               <div style={{ fontSize: "22px", marginBottom: "10px" }}>{card.icon}</div>
-              <div style={{ fontFamily: "'Dancing Script', cursive", color: "rgba(235,205,255,0.9)", fontSize: "1rem", fontWeight: "700", marginBottom: "6px" }}>
+              <div style={{ fontFamily: bodyFont, color: "rgba(235,205,255,0.9)", fontSize: "1rem", fontWeight: "700", marginBottom: "6px" }}>
                 {card.title}
               </div>
-              <div style={{ color: "rgba(200,170,255,0.65)", fontSize: "11.5px", lineHeight: 1.6 }}>
+              <div style={{ color: "rgba(200,170,255,0.65)", fontSize: "11.5px", lineHeight: 1.6, fontFamily: bodyFont }}>
                 {card.desc}
               </div>
             </div>

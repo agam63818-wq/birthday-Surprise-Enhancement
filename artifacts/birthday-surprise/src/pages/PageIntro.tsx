@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { TeddySVGOnly } from "@/components/Teddy";
 import TypewriterText from "@/components/TypewriterText";
 import { useConfig } from "@/contexts/ConfigContext";
+import { resolveFontFamily } from "@/lib/fontPresets";
 
 export default function PageIntro({ onNext }: { onNext: () => void }) {
   const config = useConfig();
+  const bodyFont = resolveFontFamily(config.textStyles, "intro");
   const [progress, setProgress] = useState(0);
   const [showButton, setShowButton] = useState(false);
 
@@ -44,7 +46,7 @@ export default function PageIntro({ onNext }: { onNext: () => void }) {
 
         <p style={{
           color: "rgba(220,190,255,0.8)", fontSize: "1rem", lineHeight: 1.8,
-          fontFamily: "'Dancing Script', cursive", marginBottom: "28px", minHeight: "3.2rem",
+          fontFamily: bodyFont, marginBottom: "28px", minHeight: "3.2rem",
         }}>
           <TypewriterText text={config.intro.message} speed={36} delay={0.5} />
         </p>

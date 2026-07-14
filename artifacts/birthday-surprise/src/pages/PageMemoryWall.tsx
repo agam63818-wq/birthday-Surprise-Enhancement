@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TeddySVGOnly } from "@/components/Teddy";
 import { useConfig } from "@/contexts/ConfigContext";
+import { resolveFontFamily } from "@/lib/fontPresets";
 
 /* Soft camera-shutter tick on photo change */
 let albumCtx: AudioContext | null = null;
@@ -27,6 +28,7 @@ interface HeartBurst { id: number; x: number; y: number; }
 
 export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
   const config = useConfig();
+  const bodyFont = resolveFontFamily(config.textStyles, "memoryWall");
   const { photos, title, subtitle, buttonText } = config.memoryWall;
   const total = photos.length;
 
@@ -76,7 +78,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
         }}>
           {title}
         </h1>
-        <p style={{ color: "rgba(220,185,255,0.55)", fontSize: "13px", fontFamily: "'Dancing Script', cursive" }}>
+        <p style={{ color: "rgba(220,185,255,0.55)", fontSize: "13px", fontFamily: bodyFont }}>
           {subtitle}
         </p>
       </div>
@@ -110,11 +112,12 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
             background: "linear-gradient(to top, rgba(8,2,24,0.82) 0%, transparent 42%)",
             pointerEvents: "none",
           }} />
-          <p className="font-serif" style={{
+          <p style={{
             position: "absolute", left: "16px", right: "16px", bottom: "14px",
             color: "rgba(252,231,243,0.95)", fontSize: "1.3rem", lineHeight: 1.4,
             textShadow: "0 2px 12px rgba(0,0,0,0.7)",
             pointerEvents: "none",
+            fontFamily: bodyFont,
           }}>
             {photo.caption}
           </p>
@@ -253,9 +256,10 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
               boxShadow: "0 24px 80px rgba(0,0,0,0.8), 0 0 60px rgba(236,72,153,0.15)",
             }}
           />
-          <p className="font-serif" style={{
+          <p style={{
             color: "rgba(252,231,243,0.95)", fontSize: "1.35rem",
             marginTop: "16px", textAlign: "center", maxWidth: "480px",
+            fontFamily: bodyFont,
           }}>
             {photo.caption}
           </p>

@@ -10,9 +10,11 @@ import LinesListEditor from "@/components/dashboard/LinesListEditor";
 import PhotoListEditor from "@/components/dashboard/PhotoListEditor";
 import AudioField from "@/components/dashboard/AudioField";
 import PaywallLock from "@/components/dashboard/PaywallLock";
+import FontPicker from "@/components/dashboard/FontPicker";
 import { supabase } from "@/lib/supabase";
 import type { Config } from "@/config";
 import type { SurpriseRow } from "@/types/surprise";
+import type { FontPresetId } from "@/lib/fontPresets";
 
 const SECTION_EMOJI: Record<string, string> = {
   Name: "💖", "Landing page": "🎁", Intro: "💌", "Cuteness meter": "🥰",
@@ -65,6 +67,16 @@ export default function CustomizeForm({
 
   const set = <K extends keyof Config>(section: K, patch: Partial<Config[K]>) => {
     setConfig((c) => ({ ...c, [section]: { ...(c[section] as object), ...patch } }));
+  };
+
+  // textStyles is a new OPTIONAL top-level key (not a patch to an existing
+  // section), so it needs its own setter.
+  type FontPageKey = keyof NonNullable<Config["textStyles"]>;
+  const setFont = (page: FontPageKey, id: FontPresetId) => {
+    setConfig((c) => ({
+      ...c,
+      textStyles: { ...(c.textStyles ?? {}), [page]: id },
+    }));
   };
 
   const handleSave = async () => {
@@ -120,6 +132,7 @@ export default function CustomizeForm({
         <AccordionItem value="landing">
           <AccordionTrigger><SectionTitle>Landing page</SectionTitle></AccordionTrigger>
           <AccordionContent>
+            <FontPicker value={config.textStyles?.landing} onChange={(id) => setFont("landing", id)} />
             <TextField label="Title" value={config.landing.title} onChange={(v) => set("landing", { title: v })} />
             <TextField label="Subtitle" value={config.landing.subtitle} onChange={(v) => set("landing", { subtitle: v })} />
             <TextField label="Button text" value={config.landing.buttonText} onChange={(v) => set("landing", { buttonText: v })} />
@@ -129,6 +142,7 @@ export default function CustomizeForm({
         <AccordionItem value="intro">
           <AccordionTrigger><SectionTitle>Intro</SectionTitle></AccordionTrigger>
           <AccordionContent>
+            <FontPicker value={config.textStyles?.intro} onChange={(id) => setFont("intro", id)} />
             <TextField label="Heading" value={config.intro.heading} onChange={(v) => set("intro", { heading: v })} />
             <TextAreaField label="Message" value={config.intro.message} onChange={(v) => set("intro", { message: v })} />
             <TextField label="Loading text" value={config.intro.loadingText} onChange={(v) => set("intro", { loadingText: v })} />
@@ -139,6 +153,7 @@ export default function CustomizeForm({
         <AccordionItem value="cutenessMeter">
           <AccordionTrigger><SectionTitle>Cuteness meter</SectionTitle></AccordionTrigger>
           <AccordionContent>
+            <FontPicker value={config.textStyles?.cutenessMeter} onChange={(id) => setFont("cutenessMeter", id)} />
             <TextField label="Title" value={config.cutenessMeter.title} onChange={(v) => set("cutenessMeter", { title: v })} />
             <TextField label="Subtitle" value={config.cutenessMeter.subtitle} onChange={(v) => set("cutenessMeter", { subtitle: v })} />
             <TextField label="Scanning text" value={config.cutenessMeter.scanningText} onChange={(v) => set("cutenessMeter", { scanningText: v })} />
@@ -152,6 +167,7 @@ export default function CustomizeForm({
         <AccordionItem value="celebration">
           <AccordionTrigger><SectionTitle>Celebration</SectionTitle></AccordionTrigger>
           <AccordionContent>
+            <FontPicker value={config.textStyles?.celebration} onChange={(id) => setFont("celebration", id)} />
             <TextField label="Title" value={config.celebration.title} onChange={(v) => set("celebration", { title: v })} />
             <TextField label="Subtitle 1" value={config.celebration.subtitle1} onChange={(v) => set("celebration", { subtitle1: v })} />
             <TextField label="Subtitle 2" value={config.celebration.subtitle2} onChange={(v) => set("celebration", { subtitle2: v })} />
@@ -164,6 +180,7 @@ export default function CustomizeForm({
         <AccordionItem value="cake">
           <AccordionTrigger><SectionTitle>Cake page</SectionTitle></AccordionTrigger>
           <AccordionContent>
+            <FontPicker value={config.textStyles?.cake} onChange={(id) => setFont("cake", id)} />
             <TextField label="Title" value={config.cake.title} onChange={(v) => set("cake", { title: v })} />
             <TextField label="Subtitle" value={config.cake.subtitle} onChange={(v) => set("cake", { subtitle: v })} />
             <TextField label="Tap hint" value={config.cake.tapHint} onChange={(v) => set("cake", { tapHint: v })} />
@@ -180,6 +197,7 @@ export default function CustomizeForm({
         <AccordionItem value="whyYouMatter">
           <AccordionTrigger><SectionTitle>Why you matter</SectionTitle></AccordionTrigger>
           <AccordionContent>
+            <FontPicker value={config.textStyles?.whyYouMatter} onChange={(id) => setFont("whyYouMatter", id)} />
             <TextField label="Title" value={config.whyYouMatter.title} onChange={(v) => set("whyYouMatter", { title: v })} />
             <TextField label="Subtitle" value={config.whyYouMatter.subtitle} onChange={(v) => set("whyYouMatter", { subtitle: v })} />
             <TextField label="Button text" value={config.whyYouMatter.buttonText} onChange={(v) => set("whyYouMatter", { buttonText: v })} />
@@ -190,6 +208,7 @@ export default function CustomizeForm({
         <AccordionItem value="ourStory">
           <AccordionTrigger><SectionTitle>Our story</SectionTitle></AccordionTrigger>
           <AccordionContent>
+            <FontPicker value={config.textStyles?.ourStory} onChange={(id) => setFont("ourStory", id)} />
             <TextField label="Title" value={config.ourStory.title} onChange={(v) => set("ourStory", { title: v })} />
             <TextField label="Subtitle" value={config.ourStory.subtitle} onChange={(v) => set("ourStory", { subtitle: v })} />
             <TextField label="Button text" value={config.ourStory.buttonText} onChange={(v) => set("ourStory", { buttonText: v })} />
@@ -200,6 +219,7 @@ export default function CustomizeForm({
         <AccordionItem value="memoryWall">
           <AccordionTrigger><SectionTitle>Memory wall</SectionTitle></AccordionTrigger>
           <AccordionContent>
+            <FontPicker value={config.textStyles?.memoryWall} onChange={(id) => setFont("memoryWall", id)} />
             <TextField label="Title" value={config.memoryWall.title} onChange={(v) => set("memoryWall", { title: v })} />
             <TextField label="Subtitle" value={config.memoryWall.subtitle} onChange={(v) => set("memoryWall", { subtitle: v })} />
             <TextField label="Button text" value={config.memoryWall.buttonText} onChange={(v) => set("memoryWall", { buttonText: v })} />
@@ -214,6 +234,7 @@ export default function CustomizeForm({
         <AccordionItem value="beforeLeave">
           <AccordionTrigger><SectionTitle>Before you leave</SectionTitle></AccordionTrigger>
           <AccordionContent>
+            <FontPicker value={config.textStyles?.beforeLeave} onChange={(id) => setFont("beforeLeave", id)} />
             <TextAreaField label="Message" value={config.beforeLeave.message} onChange={(v) => set("beforeLeave", { message: v })} rows={2} />
             <TextField label="Button text" value={config.beforeLeave.buttonText} onChange={(v) => set("beforeLeave", { buttonText: v })} />
           </AccordionContent>
@@ -222,6 +243,11 @@ export default function CustomizeForm({
         <AccordionItem value="lastNote">
           <AccordionTrigger><SectionTitle>Last note</SectionTitle></AccordionTrigger>
           <AccordionContent>
+            <FontPicker
+              value={config.textStyles?.lastNote}
+              onChange={(id) => setFont("lastNote", id)}
+              helperText="Tip: 'Clean & Readable' works great for longer Hinglish messages"
+            />
             <LinesListEditor lines={config.lastNote.lines} onChange={(lines) => set("lastNote", { lines })} />
             <div style={{ marginTop: "16px" }}>
               <TextAreaField label="Final line 1" value={config.lastNote.finalLine1} onChange={(v) => set("lastNote", { finalLine1: v })} rows={2} />

@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import PremiumHeart from "@/components/PremiumHeart";
 import { useConfig } from "@/contexts/ConfigContext";
+import { resolveFontFamily } from "@/lib/fontPresets";
 
 export default function PageCutenessMeter({ onNext }: { onNext: () => void }) {
   const config = useConfig();
+  const bodyFont = resolveFontFamily(config.textStyles, "cutenessMeter");
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState<"scanning" | "result">("scanning");
 
@@ -38,7 +40,7 @@ export default function PageCutenessMeter({ onNext }: { onNext: () => void }) {
             }}>
               {config.cutenessMeter.title}
             </h2>
-            <p style={{ color: "rgba(220,185,255,0.5)", fontSize: "13px", fontFamily: "'Dancing Script', cursive", marginBottom: "32px" }}>
+            <p style={{ color: "rgba(220,185,255,0.5)", fontSize: "13px", fontFamily: bodyFont, marginBottom: "32px" }}>
               {config.cutenessMeter.subtitle}
             </p>
 
@@ -96,7 +98,7 @@ export default function PageCutenessMeter({ onNext }: { onNext: () => void }) {
 
             <p style={{
               color: "rgba(220,185,255,0.7)", fontSize: "14px", lineHeight: 1.8,
-              fontFamily: "'Dancing Script', cursive", marginBottom: "28px",
+              fontFamily: bodyFont, marginBottom: "28px",
             }}>
               {config.cutenessMeter.resultMessage}
             </p>
