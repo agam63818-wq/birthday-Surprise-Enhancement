@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { TeddySVGOnly } from "@/components/Teddy";
+import GlowButton from "@/components/GlowButton";
+import StaggeredText from "@/components/StaggeredText";
+import BackgroundEffectsLayer from "@/components/BackgroundEffectsLayer";
 import { useConfig } from "@/contexts/ConfigContext";
 import { resolveFontFamily } from "@/lib/fontPresets";
 
@@ -26,6 +29,12 @@ function playTick() {
 
 interface HeartBurst { id: number; x: number; y: number; }
 
+/**
+ * Memory Wall — polished memory gallery. Keeps the story-card flow
+ * (tap for the next memory), preserves each photo's candid `rotate`,
+ * adds premium frame/hover treatment, lazy images and a token-based
+ * lightbox. Respects config.textStyles?.memoryWall for captions.
+ */
 export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
   const config = useConfig();
   const bodyFont = resolveFontFamily(config.textStyles, "memoryWall");
@@ -67,101 +76,114 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
       padding: "calc(56px + env(safe-area-inset-top, 0px)) 20px calc(40px + env(safe-area-inset-bottom, 0px))",
       position: "relative", zIndex: 5,
     }}>
+      <BackgroundEffectsLayer accent="violet" density="low" zIndex={1} />
+
       {/* Header */}
-      <div className="page-enter" style={{ textAlign: "center", maxWidth: "460px", width: "100%", marginBottom: "18px" }}>
+      <div className="page-enter" style={{ textAlign: "center", maxWidth: "460px", width: "100%", marginBottom: "18px", position: "relative", zIndex: 5 }}>
         <p className="chip" style={{ marginBottom: "12px" }}>📸 Memories</p>
-        <h1 className="font-serif" style={{
-          fontSize: "clamp(1.9rem, 5.5vw, 2.8rem)", lineHeight: 1.25, marginBottom: "6px",
-          background: "linear-gradient(135deg, #f9a8d4, #c084fc)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-          filter: "drop-shadow(0 0 18px rgba(196,132,252,0.4))",
-        }}>
-          {title}
-        </h1>
-        <p style={{ color: "rgba(220,185,255,0.55)", fontSize: "13px", fontFamily: bodyFont }}>
+        <StaggeredText
+          as="h1"
+          text={title}
+          delay={0.2}
+          className="font-script hero-gradient-text"
+          style={{
+            fontSize: "clamp(1.9rem, 5.5vw, 2.8rem)",
+            lineHeight: "var(--leading-tight)",
+            marginBottom: "6px",
+            filter: "drop-shadow(0 0 18px rgba(196, 132, 252, 0.4))",
+          }}
+        />
+        <p style={{ color: "var(--ink-faint)", fontSize: "13px", fontFamily: bodyFont }}>
           {subtitle}
         </p>
       </div>
 
-      {/* Story card — one big photo at a time, tap to reveal the next */}
+      {/* Story card — one big photo at a time, tap to reveal the next.
+          The candid per-photo rotation lives on the frame so the
+          swap-in animation on the card doesn't override it. */}
       <div
-        key={swapKey}
-        className="glass-card-dark"
-        onClick={onPhotoTap}
-        style={{
-          width: "min(88vw, 400px)",
-          padding: "14px",
-          position: "relative",
-          cursor: "pointer",
-          animation: "photo-swap-in 0.55s cubic-bezier(0.22,1,0.36,1) both",
-          "--dx": `${dir * 70}px`,
-          "--dr": `${dir * 4}deg`,
-          marginBottom: "18px",
-        } as React.CSSProperties}
+        className="memory-frame"
+        style={{ "--mrot": `${photo.rotate ?? 0}deg`, marginBottom: "18px", position: "relative", zIndex: 5 } as React.CSSProperties}
       >
-        <div style={{ borderRadius: "16px", overflow: "hidden", position: "relative" }}>
-          <img
-            src={photo.src}
-            alt={photo.caption}
-            style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover", display: "block" }}
-            onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = "0.15"; }}
-          />
-          {/* Cinematic bottom gradient + caption */}
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "linear-gradient(to top, rgba(8,2,24,0.82) 0%, transparent 42%)",
-            pointerEvents: "none",
-          }} />
-          <p style={{
-            position: "absolute", left: "16px", right: "16px", bottom: "14px",
-            color: "rgba(252,231,243,0.95)", fontSize: "1.3rem", lineHeight: 1.4,
-            textShadow: "0 2px 12px rgba(0,0,0,0.7)",
-            pointerEvents: "none",
-            fontFamily: bodyFont,
-          }}>
-            {photo.caption}
-          </p>
-          {/* Counter chip */}
-          <span style={{
-            position: "absolute", top: "12px", right: "12px",
-            padding: "5px 12px", borderRadius: "999px",
-            background: "rgba(8,2,24,0.6)", backdropFilter: "blur(10px)",
-            border: "1px solid rgba(167,139,250,0.25)",
-            color: "rgba(240,200,255,0.9)", fontSize: "11.5px", fontWeight: 600,
-            letterSpacing: "0.1em", pointerEvents: "none",
-          }}>
-            {idx + 1} / {total}
-          </span>
-          {/* Zoom (lightbox) button */}
-          <button
-            aria-label="View photo fullscreen"
-            onClick={(e) => { e.stopPropagation(); setZoomed(true); }}
-            style={{
-              position: "absolute", top: "12px", left: "12px",
-              width: "34px", height: "34px", borderRadius: "50%",
-              border: "1px solid rgba(167,139,250,0.3)",
+        <div
+          key={swapKey}
+          className="glass-card-dark"
+          onClick={onPhotoTap}
+          style={{
+            width: "min(88vw, 400px)",
+            padding: "14px",
+            position: "relative",
+            cursor: "pointer",
+            animation: "photo-swap-in 0.55s var(--ease-luxe) both",
+            "--dx": `${dir * 70}px`,
+            "--dr": `${dir * 4}deg`,
+          } as React.CSSProperties}
+        >
+          <div style={{ borderRadius: "var(--rad-lg)", overflow: "hidden", position: "relative" }}>
+            <img
+              src={photo.src}
+              alt={photo.caption}
+              decoding="async"
+              style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover", display: "block" }}
+              onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = "0.15"; }}
+            />
+            {/* Cinematic bottom gradient + caption */}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "linear-gradient(to top, rgba(8,2,24,0.82) 0%, transparent 42%)",
+              pointerEvents: "none",
+            }} />
+            <p style={{
+              position: "absolute", left: "16px", right: "16px", bottom: "14px",
+              color: "rgba(252,231,243,0.95)", fontSize: "1.3rem", lineHeight: 1.4,
+              textShadow: "0 2px 12px rgba(0,0,0,0.7)",
+              pointerEvents: "none",
+              fontFamily: bodyFont,
+            }}>
+              {photo.caption}
+            </p>
+            {/* Counter chip */}
+            <span style={{
+              position: "absolute", top: "12px", right: "12px",
+              padding: "5px 12px", borderRadius: "var(--rad-pill)",
               background: "rgba(8,2,24,0.6)", backdropFilter: "blur(10px)",
-              color: "rgba(240,200,255,0.9)", fontSize: "15px", lineHeight: 1,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer",
-            }}
-          >⤢</button>
-        </div>
+              border: "1px solid rgba(167,139,250,0.25)",
+              color: "rgba(240,200,255,0.9)", fontSize: "11.5px", fontWeight: 600,
+              letterSpacing: "0.1em", pointerEvents: "none",
+            }}>
+              {idx + 1} / {total}
+            </span>
+            {/* Zoom (lightbox) button */}
+            <button
+              aria-label="View photo fullscreen"
+              onClick={(e) => { e.stopPropagation(); setZoomed(true); }}
+              style={{
+                position: "absolute", top: "12px", left: "12px",
+                width: "34px", height: "34px", borderRadius: "50%",
+                border: "1px solid rgba(167,139,250,0.3)",
+                background: "rgba(8,2,24,0.6)", backdropFilter: "blur(10px)",
+                color: "rgba(240,200,255,0.9)", fontSize: "15px", lineHeight: 1,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >⤢</button>
+          </div>
 
-        {/* Heart bursts at tap point */}
-        {hearts.map(h => (
-          <span key={h.id} style={{
-            position: "absolute", left: h.x, top: h.y,
-            fontSize: "24px", color: "#f472b6", zIndex: 20,
-            textShadow: "0 0 14px rgba(236,72,153,0.8)",
-            animation: "heart-pop 1s ease-out forwards",
-            pointerEvents: "none",
-          }}>♥</span>
-        ))}
+          {/* Heart bursts at tap point */}
+          {hearts.map(h => (
+            <span key={h.id} style={{
+              position: "absolute", left: h.x, top: h.y,
+              fontSize: "24px", color: "#f472b6", zIndex: 20,
+              textShadow: "0 0 14px rgba(236,72,153,0.8)",
+              animation: "heart-pop 1s ease-out forwards",
+              pointerEvents: "none",
+            }}>♥</span>
+          ))}
+        </div>
       </div>
 
       {/* Prev / dots / Next */}
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px", position: "relative", zIndex: 5 }}>
         <button aria-label="Previous photo" onClick={() => go(-1)} style={navBtnStyle}>‹</button>
         <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
           {photos.map((_, i) => (
@@ -178,20 +200,22 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
         <button aria-label="Next photo" onClick={() => go(1)} style={navBtnStyle}>›</button>
       </div>
 
-      {/* Thumbnail strip */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "22px", flexWrap: "wrap", justifyContent: "center" }}>
+      {/* Thumbnail strip — lazy-loaded, candid slight rotation */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "22px", flexWrap: "wrap", justifyContent: "center", position: "relative", zIndex: 5 }}>
         {photos.map((p, i) => (
           <img
             key={i}
             src={p.src}
             alt=""
+            loading="lazy"
+            decoding="async"
             onClick={() => go(0, i)}
             style={{
               width: "42px", height: "42px", objectFit: "cover",
               borderRadius: "10px", cursor: "pointer",
               border: i === idx ? "2px solid rgba(236,72,153,0.85)" : "2px solid rgba(167,139,250,0.18)",
               opacity: i === idx ? 1 : 0.55,
-              transform: i === idx ? "scale(1.12)" : "scale(1)",
+              transform: i === idx ? "scale(1.12)" : `rotate(${(p.rotate ?? 0) / 2}deg)`,
               transition: "all 0.35s ease",
               boxShadow: i === idx ? "0 4px 16px rgba(236,72,153,0.4)" : "none",
             }}
@@ -202,23 +226,25 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
 
       {!seenAll && (
         <p style={{
-          color: "rgba(220,185,255,0.5)", fontSize: "12.5px", marginBottom: "18px",
+          color: "var(--ink-faint)", fontSize: "12.5px", marginBottom: "18px",
           letterSpacing: "0.04em", animation: "bounce-soft 2.2s ease-in-out infinite",
+          position: "relative", zIndex: 5,
         }}>
           Tap the photo for the next memory ✨
         </p>
       )}
 
-      <TeddySVGOnly size={64} animate="wave" style={{ marginBottom: "14px" }} />
+      <TeddySVGOnly size={64} animate="wave" style={{ marginBottom: "14px", position: "relative", zIndex: 5 }} />
 
-      <button className="btn-primary" onClick={onNext} style={{
+      <GlowButton onClick={onNext} style={{
         background: "linear-gradient(135deg, #4c1d95, #7c3aed, #be185d)",
         opacity: seenAll ? 1 : 0.35,
         pointerEvents: seenAll ? "all" : "none",
-        transition: "opacity 0.6s ease",
+        transition: "opacity var(--dur-slow) var(--ease-smooth)",
+        position: "relative", zIndex: 5,
       }}>
         {buttonText}
-      </button>
+      </GlowButton>
       {!seenAll && (
         <button
           onClick={onNext}
@@ -226,34 +252,37 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
             marginTop: "10px", background: "none", border: "none", cursor: "pointer",
             color: "rgba(196,181,253,0.45)", fontSize: "12px", letterSpacing: "0.06em",
             textDecoration: "underline", textUnderlineOffset: "3px",
+            position: "relative", zIndex: 5,
           }}
         >
           skip album →
         </button>
       )}
 
-      {/* Fullscreen lightbox */}
+      {/* Fullscreen lightbox — smooth scale + fade on the motion tokens */}
       {zoomed && (
         <div
           onClick={() => setZoomed(false)}
           role="dialog"
           aria-label="Photo fullscreen"
+          className="lightbox-in"
           style={{
             position: "fixed", inset: 0, zIndex: 900,
             background: "rgba(5,1,16,0.92)",
             backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
             display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center",
-            padding: "24px", animation: "bubble-pop 0.3s ease both",
+            padding: "24px",
           }}
         >
           <img
             src={photo.src}
             alt={photo.caption}
+            decoding="async"
             style={{
               maxWidth: "94vw", maxHeight: "72vh", objectFit: "contain",
-              borderRadius: "14px",
-              boxShadow: "0 24px 80px rgba(0,0,0,0.8), 0 0 60px rgba(236,72,153,0.15)",
+              borderRadius: "var(--rad-md)",
+              boxShadow: "var(--shadow-strong), var(--glow-subtle)",
             }}
           />
           <p style={{

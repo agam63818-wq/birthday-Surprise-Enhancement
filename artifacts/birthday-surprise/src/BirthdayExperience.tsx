@@ -129,7 +129,7 @@ function BirthdayExperienceInner() {
   return (
     <>
       <link
-        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600&display=swap"
         rel="stylesheet"
       />
       <Background />

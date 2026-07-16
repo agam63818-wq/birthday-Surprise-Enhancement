@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import Confetti from "@/components/Confetti";
+import GlassCard from "@/components/GlassCard";
+import BackgroundEffectsLayer from "@/components/BackgroundEffectsLayer";
 import { useConfig } from "@/contexts/ConfigContext";
-import { resolveFontFamily } from "@/lib/fontPresets";
+import { resolveFontFamily, FONT_PRESETS } from "@/lib/fontPresets";
 
-/* ── Grapheme splitter ─────────────────────────────────────────────
+/* ── Grapheme splitter ──────────────────────────────────────
  * Splits a string into user-perceived characters (graphemes) so we
  * never split Devanagari conjuncts / matras or multi-codepoint
  * emoji (skin tones, ZWJ sequences) mid-animation.
@@ -37,6 +39,13 @@ export default function PageLastNote() {
   const config = useConfig();
   const bodyFont = resolveFontFamily(config.textStyles, "lastNote");
   const { lines, finalLine1, finalLine2, footerText } = config.lastNote;
+
+  /* Closing flourish: the final signature lines may use the elegant
+   * script — but only when short enough to stay readable. Long lines
+   * keep the user's chosen (readable) font. The main letter body
+   * always stays in bodyFont — script is never forced on paragraphs. */
+  const scriptFont = FONT_PRESETS.elegant.fontFamily;
+  const flourishFont = (line: string) => (line.trim().length <= 100 ? scriptFont : bodyFont);
 
   /* Pre-split every line into graphemes once per config change. */
   const linesGraphemes = useMemo(
@@ -73,10 +82,10 @@ export default function PageLastNote() {
     return () => clearInterval(blink);
   }, []);
 
-  /* ────────────────────────────────────────────────────────────
+  /* ────────────────────────────────────────────────────────
    * Main reveal effect: either instant fade-in per line (reduced
    * motion) or true character-by-character typewriter.
-   * ────────────────────────────────────────────────────────── */
+   * ────────────────────────────────────────────────────── */
   useEffect(() => {
     // Reset state whenever the lines change (e.g. live Preview edits).
     setRevealed(lines.map(() => 0));
@@ -113,7 +122,7 @@ export default function PageLastNote() {
       };
     }
 
-    /* ── Real typewriter path. ─────────────────────────────────── */
+    /* ── Real typewriter path. ─────────────────────────────── */
     // Tunable rhythm — feels typewriter-natural without being slow.
     const BASE_MS = 32;         // avg per grapheme
     const JITTER_MS = 10;       // ± randomness so it's not robotic
@@ -215,8 +224,18 @@ export default function PageLastNote() {
     }}>
       <Confetti active={confetti} />
 
-      <div className="glass-card-dark page-enter" style={{
+      {/* Warm afterglow + gentle ambient settle once the letter ends —
+          a calm, lingering close rather than an abrupt stop. */}
+      {showEnding && (
+        <>
+          <div className="afterglow" aria-hidden="true" />
+          <BackgroundEffectsLayer accent="rose" density="low" zIndex={1} />
+        </>
+      )}
+
+      <GlassCard enter style={{
         maxWidth: "410px", width: "100%", overflow: "hidden",
+        position: "relative", zIndex: 5,
       }}>
         {/* Header bar */}
         <div style={{
@@ -235,8 +254,8 @@ export default function PageLastNote() {
           </span>
         </div>
 
-        {/* Letter body */}
-        <div style={{ padding: "28px 28px 32px", overflowY: "auto", maxHeight: "70vh" }}>
+        {/* Letter body — premium spacing, readable font from the picker */}
+        <div style={{ padding: "30px 28px 34px", overflowY: "auto", maxHeight: "70vh" }}>
           {lines.map((_, i) => {
             const graphemes = linesGraphemes[i];
             const shown = revealed[i] ?? 0;
@@ -261,7 +280,7 @@ export default function PageLastNote() {
                   fontFamily: bodyFont,
                   fontSize: "1.05rem",
                   lineHeight: 1.85,
-                  marginBottom: "2px",
+                  marginBottom: "12px",
                   color: "rgba(235,210,255,0.9)",
                   opacity: prefersReducedMotion ? (visible ? 1 : 0) : 1,
                   transform:
@@ -298,21 +317,38 @@ export default function PageLastNote() {
           })}
 
           {showEnding && (
-            <div className="page-enter" style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid rgba(167,139,250,0.12)" }}>
-              <p style={{ fontFamily: bodyFont, color: "#f472b6", fontSize: "1.15rem", fontWeight: "700", marginBottom: "4px" }}>
+            <div className="section-enter" style={{ marginTop: "28px", paddingTop: "22px", borderTop: "1px solid rgba(167,139,250,0.12)" }}>
+              {/* Closing signature flourish — script only when short enough */}
+              <p aria-hidden="true" style={{ color: "rgba(232,121,249,0.5)", fontSize: "14px", marginBottom: "12px", textAlign: "center" }}>
+                ❦
+              </p>
+              <p style={{
+                fontFamily: flourishFont(finalLine1),
+                color: "#f472b6",
+                fontSize: flourishFont(finalLine1) === scriptFont ? "1.35rem" : "1.15rem",
+                fontWeight: 700,
+                lineHeight: 1.7,
+                marginBottom: "8px",
+              }}>
                 {finalLine1}
               </p>
-              <p style={{ fontFamily: bodyFont, color: "#a78bfa", fontSize: "1.05rem", fontWeight: "700" }}>
+              <p style={{
+                fontFamily: flourishFont(finalLine2),
+                color: "#a78bfa",
+                fontSize: flourishFont(finalLine2) === scriptFont ? "1.25rem" : "1.05rem",
+                fontWeight: 700,
+                lineHeight: 1.7,
+              }}>
                 {finalLine2}
               </p>
             </div>
           )}
         </div>
-      </div>
+      </GlassCard>
 
       {showEnding && (
-        <div className="page-enter" style={{ marginTop: "24px", textAlign: "center" }}>
-          <h2 className="font-serif" style={{
+        <div className="section-enter" style={{ marginTop: "24px", textAlign: "center", position: "relative", zIndex: 5 }}>
+          <h2 className="font-script" style={{
             fontSize: "clamp(1.6rem, 5vw, 2.6rem)",
             background: "linear-gradient(135deg, #f9a8d4, #e879f9)",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
@@ -325,16 +361,17 @@ export default function PageLastNote() {
             {footerText}
           </p>
           <button
+            className="glow-hover"
             onClick={() => window.location.reload()}
             style={{
               marginTop: "18px",
               display: "inline-flex", alignItems: "center", gap: "8px",
-              padding: "11px 26px", borderRadius: "999px",
+              padding: "11px 26px", borderRadius: "var(--rad-pill)",
               border: "1px solid rgba(236,72,153,0.4)",
               background: "linear-gradient(135deg, rgba(236,72,153,0.18), rgba(124,58,237,0.15))",
               color: "#f9a8d4", fontSize: "0.85rem", fontWeight: 600,
               cursor: "pointer", letterSpacing: "0.04em",
-              boxShadow: "0 6px 22px rgba(236,72,153,0.2)",
+              boxShadow: "var(--glow-subtle)",
             }}
           >
             🔁 Replay the surprise

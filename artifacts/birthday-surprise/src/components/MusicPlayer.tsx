@@ -1,38 +1,61 @@
 /**
- * AUDIO SINGLETON
+ * AUDIO SINGLETON — TWO-SONG CINEMATIC MUSIC SYSTEM
  * Module-level variables persist across React re-renders and page transitions.
- * There is exactly ONE background audio and ONE song audio in the entire app lifetime.
+ * There is exactly ONE background audio (Song 1) and ONE celebration song
+ * (Song 2) in the entire app lifetime.
+ *
+ * Song 1 (config.audio.backgroundMusic): soft romantic ambient soundtrack.
+ * Starts on the first user interaction (the \"Open It\" tap — never autoplay)
+ * with a gentle fade-in, and loops through the experience.
+ *
+ * Song 2 (config.audio.birthdaySong): powerful celebratory track triggered
+ * at the cake-cutting moment. Song 1 crossfades down while Song 2 fades up
+ * (they overlap — no hard cut). Song 2 owns the climax; when it ends, the
+ * experience fades smoothly back to Song 1.
+ *
+ * config.audio.useFallbackTones: when true (default), Web Audio tones are
+ * used if the real files fail to play; when false, audio fails silently.
  */
 
 import { useState, useCallback, useEffect } from "react";
 import { useConfig } from "@/contexts/ConfigContext";
 
-// ─── Module-level singletons ─────────────────────────────────────────────────
+// ─── Module-level singletons ───────────────────────────────────────
 let _bgAudio:   HTMLAudioElement | null = null;
 let _songAudio: HTMLAudioElement | null = null;
 let _bgStarted  = false;   // has bg audio ever been created?
 let _bgPlaying  = false;   // is it currently unpaused?
-let _fadeTimer: ReturnType<typeof setInterval> | null = null;
-// ─────────────────────────────────────────────────────────────────────────────
 
-function clearFadeTimer() {
-  if (_fadeTimer) { clearInterval(_fadeTimer); _fadeTimer = null; }
+// Per-audio fade timers — lets two fades run at the same time so the
+// Song 1 → Song 2 handover is a true overlapping crossfade, not a cut.
+const _fadeTimers = new Map<HTMLAudioElement, ReturnType<typeof setInterval>>();
+
+// Volume levels (Song 1 stays ambient; Song 2 owns the climax)
+const BG_VOL = 0.35;
+const BG_DUCK = 0.04;
+const SONG_VOL = 0.8;
+// ─────────────────────────────────────────────────────────────────────
+
+function clearFade(audio: HTMLAudioElement) {
+  const t = _fadeTimers.get(audio);
+  if (t) { clearInterval(t); _fadeTimers.delete(audio); }
 }
 
 function fadeTo(audio: HTMLAudioElement, target: number, ms = 1200, onDone?: () => void) {
-  clearFadeTimer();
+  clearFade(audio);
   const steps = Math.max(1, Math.round(ms / 40));
   const start = audio.volume;
   let i = 0;
-  _fadeTimer = setInterval(() => {
+  const timer = setInterval(() => {
     i++;
     audio.volume = Math.max(0, Math.min(1, start + (target - start) * (i / steps)));
     if (i >= steps) {
-      clearFadeTimer();
+      clearFade(audio);
       audio.volume = target;
       onDone?.();
     }
   }, 40);
+  _fadeTimers.set(audio, timer);
 }
 
 function playHappyBirthdayFallback() {
@@ -89,16 +112,19 @@ function stopBgTones() {
   _fallbackCtx = null;
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+// ─── Hook ───────────────────────────────────────────────────────────────
 export function useBackgroundMusic() {
   const config = useConfig();
   const [playing, setPlaying] = useState(_bgPlaying);
+  const fallbackAllowed = config.audio.useFallbackTones !== false;
 
   const start = useCallback(() => {
     // Guard: never create more than one background audio
     if (_bgStarted) {
       if (_bgAudio && _bgAudio.paused) {
         _bgAudio.play().catch(() => {});
+        // Restore volume gently (it was faded to 0 by stop())
+        fadeTo(_bgAudio, BG_VOL, 900);
         _bgPlaying = true;
         setPlaying(true);
       }
@@ -115,22 +141,31 @@ export function useBackgroundMusic() {
       .then(() => {
         _bgPlaying = true;
         setPlaying(true);
-        fadeTo(audio, 0.35, 1800);
+        fadeTo(audio, BG_VOL, 1800); // gentle fade-in for Song 1
       })
       .catch(() => {
-        // mp3 blocked — use Web Audio fallback
+        // mp3 blocked/missing — Web Audio fallback only if allowed
         _bgAudio = null;
-        playBgTones();
-        _bgPlaying = true;
-        setPlaying(true);
+        if (fallbackAllowed) {
+          playBgTones();
+          _bgPlaying = true;
+          setPlaying(true);
+        } else {
+          _bgPlaying = false;
+          setPlaying(false);
+        }
       });
-  }, [config.audio.backgroundMusic]);
+  }, [config.audio.backgroundMusic, fallbackAllowed]);
 
   const stop = useCallback(() => {
-    clearFadeTimer();
     if (_bgAudio) {
       const a = _bgAudio;
       fadeTo(a, 0, 700, () => { a.pause(); });
+    }
+    if (_songAudio) {
+      const s = _songAudio;
+      _songAudio = null;
+      fadeTo(s, 0, 500, () => { s.pause(); });
     }
     stopBgTones();
     _bgPlaying = false;
@@ -140,46 +175,49 @@ export function useBackgroundMusic() {
   const playCakeSong = useCallback(() => {
     // 1. Kill any existing song instance
     if (_songAudio) {
+      clearFade(_songAudio);
       _songAudio.pause();
       _songAudio.currentTime = 0;
       _songAudio = null;
     }
 
-    // 2. Duck background music volume (keep it playing, just quieter)
-    clearFadeTimer();
-    if (_bgAudio) {
-      fadeTo(_bgAudio, 0.06, 700);   // fade bg down to 6%
-    }
+    // 2. Crossfade: Song 1 eases down while Song 2 fades up — both
+    //    briefly overlap (per-audio fade timers make this possible).
+    if (_bgAudio) fadeTo(_bgAudio, BG_DUCK, 1400);
 
-    // 3. Play birthday song
+    // 3. Play the celebration song (Song 2)
     const song = new Audio(config.audio.birthdaySong);
     song.volume = 0;
     _songAudio = song;
 
     song.play()
-      .then(() => { fadeTo(song, 0.8, 700); })
+      .then(() => { fadeTo(song, SONG_VOL, 1400); })
       .catch(() => {
         _songAudio = null;
-        playHappyBirthdayFallback();
-        // Restore bg volume after fallback tones (~8s)
-        setTimeout(() => { if (_bgAudio) fadeTo(_bgAudio, 0.35, 1500); }, 8000);
+        if (fallbackAllowed) {
+          playHappyBirthdayFallback();
+          // Restore bg volume after fallback tones (~8s)
+          setTimeout(() => { if (_bgAudio) fadeTo(_bgAudio, BG_VOL, 2200); }, 8000);
+        } else if (_bgAudio) {
+          fadeTo(_bgAudio, BG_VOL, 1500);
+        }
       });
 
-    // 4. When song ends → restore background to normal volume
+    // 4. Song 2 owns the climax; when it ends → fade back to Song 1
     const handleEnd = () => {
       _songAudio = null;
-      if (_bgAudio) fadeTo(_bgAudio, 0.35, 1500);  // fade bg back up
+      if (_bgAudio) fadeTo(_bgAudio, BG_VOL, 2200);
     };
     song.addEventListener("ended", handleEnd, { once: true });
 
-    // 5. Safety: restore bg after 35s even if song never fires "ended"
+    // 5. Safety: hand back to Song 1 after 35s even if \"ended\" never fires
     setTimeout(() => {
       if (_songAudio === song) {
-        fadeTo(song, 0, 800, () => { song.pause(); _songAudio = null; });
+        fadeTo(song, 0, 1500, () => { song.pause(); _songAudio = null; });
       }
-      if (_bgAudio) fadeTo(_bgAudio, 0.35, 1500);
+      if (_bgAudio) fadeTo(_bgAudio, BG_VOL, 2200);
     }, 35000);
-  }, [config.audio.birthdaySong]);
+  }, [config.audio.birthdaySong, fallbackAllowed]);
 
   // Sync playing state on mount
   useEffect(() => { setPlaying(_bgPlaying); }, []);
@@ -187,23 +225,33 @@ export function useBackgroundMusic() {
   return { start, stop, playing, playCakeSong };
 }
 
+/**
+ * Floating music control — persistent glass/glow mute-unmute button,
+ * styled with the Part 1 token treatment.
+ */
 export default function MusicToggle({ playing, onToggle }: { playing: boolean; onToggle: () => void }) {
   return (
     <button
       onClick={onToggle}
-      title={playing ? "Pause music" : "Play music"}
-      aria-label={playing ? "Pause music" : "Play music"}
+      title={playing ? "Mute music" : "Play music"}
+      aria-label={playing ? "Mute music" : "Play music"}
       style={{
-        position: "fixed", bottom: "22px", right: "22px", zIndex: 600,
-        width: "46px", height: "46px", borderRadius: "50%",
-        border: `1px solid ${playing ? "rgba(236,72,153,0.55)" : "rgba(167,139,250,0.2)"}`,
-        background: "rgba(12,3,28,0.85)", backdropFilter: "blur(16px)",
+        position: "fixed",
+        bottom: "calc(22px + env(safe-area-inset-bottom, 0px))",
+        right: "22px",
+        zIndex: 600,
+        width: "48px", height: "48px", borderRadius: "50%",
+        border: `1px solid ${playing ? "rgba(236,72,153,0.55)" : "rgba(167,139,250,0.25)"}`,
+        background: "linear-gradient(165deg, rgba(20,7,48,0.88), rgba(8,2,24,0.82))",
+        backdropFilter: "blur(var(--blur-soft)) saturate(1.25)",
+        WebkitBackdropFilter: "blur(var(--blur-soft)) saturate(1.25)",
         color: "#d8b4fe", fontSize: "16px", cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
-        transition: "all 0.3s ease",
+        transition:
+          "transform var(--dur-base) var(--ease-smooth), box-shadow var(--dur-base) var(--ease-smooth), border-color var(--dur-base) ease",
         boxShadow: playing
-          ? "0 0 22px rgba(236,72,153,0.4), inset 0 0 10px rgba(236,72,153,0.08)"
-          : "0 2px 12px rgba(0,0,0,0.4)",
+          ? "var(--glow-soft), 0 8px 24px rgba(0,0,0,0.45)"
+          : "var(--shadow-soft)",
         animation: playing ? "btn-pulse 3s ease-in-out infinite" : undefined,
       }}
       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1.12)"; }}

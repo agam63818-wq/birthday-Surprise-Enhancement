@@ -1,5 +1,9 @@
 import { useState } from "react";
-import Confetti from "@/components/Confetti";
+import CelebrationBurst from "@/components/CelebrationBurst";
+import GlassCard from "@/components/GlassCard";
+import GlowButton from "@/components/GlowButton";
+import StaggeredText from "@/components/StaggeredText";
+import BackgroundEffectsLayer from "@/components/BackgroundEffectsLayer";
 import { useConfig } from "@/contexts/ConfigContext";
 import { resolveFontFamily } from "@/lib/fontPresets";
 
@@ -81,7 +85,7 @@ function playCelebrateSfx() {
   } catch {}
 }
 
-/* ── Radial sparkle particles that burst on cut ───────────────── */
+/* ── Radial sparkle particles that burst on cut ─────────────── */
 function SparkleParticles({ active }: { active: boolean }) {
   if (!active) return null;
   const sparks = Array.from({ length: 18 }, (_, i) => {
@@ -218,6 +222,12 @@ function Knife() {
   );
 }
 
+/**
+ * The cake-cutting moment — the emotional centerpiece. Tap-to-cut only
+ * (no microphone interactions). Cinematic buildup glow invites the tap;
+ * the cut triggers the grand CelebrationBurst from Part 1 plus the
+ * Song 1 → Song 2 crossfade via playCakeSong.
+ */
 export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
   const config = useConfig();
   const bodyFont = resolveFontFamily(config.textStyles, "cake");
@@ -226,7 +236,7 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
   const [knife, setKnife] = useState(false);
   const [shaking, setShaking] = useState(false);
   const [sparkling, setSparkling] = useState(false);
-  const [confetti, setConfetti] = useState(false);
+  const [burst, setBurst] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [showButton, setShowButton] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -243,15 +253,15 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
     setKnife(true);
     playSliceSfx();
 
-    // 2. Cake splits, candles blow out, celebration begins
+    // 2. Cake splits, candles blow out, the celebration erupts
     setTimeout(() => {
       setCut(true);
       playBlowSfx();
       setShaking(true);
       setSparkling(true);
-      setConfetti(true);
+      setBurst(true);            // grand CelebrationBurst (Part 1)
       playCelebrateSfx();
-      playCakeSong?.();
+      playCakeSong?.();          // Song 1 → Song 2 crossfade
     }, 620);
 
     setTimeout(() => setKnife(false), 1150);
@@ -259,7 +269,6 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
     setTimeout(() => setSparkling(false), 1900);
     setTimeout(() => setShowMessage(true), 1250);
     setTimeout(() => setShowButton(true), 2600);
-    setTimeout(() => setConfetti(false), 8000);
   };
 
   const halfStyle = (side: "left" | "right"): React.CSSProperties => ({
@@ -271,7 +280,7 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
         : "translateX(13px) rotate(2.5deg)"
       : "none",
     transformOrigin: "50% 100%",
-    transition: "transform 0.75s cubic-bezier(0.22,1,0.36,1)",
+    transition: "transform 0.75s var(--ease-luxe)",
     willChange: "transform",
   });
 
@@ -282,26 +291,35 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
       padding: "calc(56px + env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px))",
       position: "relative", zIndex: 5,
     }}>
-      <Confetti active={confetti} />
+      <BackgroundEffectsLayer accent="rose" density="medium" zIndex={1} />
+      <CelebrationBurst active={burst} intensity="grand" origin={{ x: 0.5, y: 0.5 }} />
 
-      <div className="glass-card-dark page-enter" style={{
-        maxWidth: "430px", width: "100%", padding: "32px 26px", textAlign: "center",
+      <GlassCard enter style={{
+        maxWidth: "430px", width: "100%", padding: "32px 26px",
+        textAlign: "center", position: "relative", zIndex: 5,
       }}>
         <p className="chip" style={{ marginBottom: "12px" }}>🎂 Birthday Wishes</p>
-        <h1 className="font-serif" style={{
-          fontSize: "clamp(1.7rem,5vw,2.5rem)", lineHeight: 1.25, marginBottom: "6px",
-          background: "linear-gradient(135deg,#f9a8d4,#e879f9,#c084fc)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-          filter: "drop-shadow(0 0 20px rgba(236,72,153,0.35))",
-        }}>
-          {config.cake.title}
-        </h1>
-        <p style={{ color: "rgba(220,185,255,0.5)", fontSize: "13px", fontFamily: bodyFont, marginBottom: "20px" }}>
+        <StaggeredText
+          as="h1"
+          text={config.cake.title}
+          delay={0.2}
+          className="font-script hero-gradient-text"
+          style={{
+            fontSize: "clamp(1.7rem, 5vw, 2.5rem)",
+            lineHeight: "var(--leading-tight)",
+            marginBottom: "6px",
+            filter: "drop-shadow(0 0 20px rgba(236, 72, 153, 0.35))",
+          }}
+        />
+        <p className="blur-in" style={{ color: "var(--ink-faint)", fontSize: "13px", fontFamily: bodyFont, marginBottom: "20px", animationDelay: "0.5s" }}>
           {config.cake.subtitle}
         </p>
 
         {/* Cake stage */}
         <div style={{ position: "relative", display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+          {/* Cinematic buildup — soft glow pulse inviting the tap */}
+          {!cut && <div className="cake-invite-glow" aria-hidden="true" />}
+
           {/* Rotating golden celebration rays behind the cake */}
           <div
             aria-hidden="true"
@@ -390,11 +408,11 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
           </div>
         </div>
 
-        {/* Tap hint */}
+        {/* Tap hint — anticipation, not abruptness */}
         {!cut && (
           <div style={{
             marginBottom: "18px", padding: "9px 22px",
-            borderRadius: "20px", display: "inline-block",
+            borderRadius: "var(--rad-pill)", display: "inline-block",
             background: "rgba(236,72,153,0.07)",
             border: "1px solid rgba(236,72,153,0.22)",
             color: "rgba(249,168,212,0.7)", fontSize: "12.5px",
@@ -405,23 +423,25 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
           </div>
         )}
 
+        {/* Dynamic text reaction after the cut */}
         {showMessage && (
-          <div className="page-enter" style={{
+          <div className="section-enter" style={{
             background: "linear-gradient(165deg, rgba(236,72,153,0.1), rgba(124,58,237,0.08))",
             border: "1px solid rgba(236,72,153,0.28)",
-            borderRadius: "18px", padding: "18px", marginBottom: "22px",
-            boxShadow: "0 14px 40px rgba(236,72,153,0.12), 0 0 0 1px rgba(255,255,255,0.03) inset",
+            borderRadius: "var(--rad-lg)", padding: "18px", marginBottom: "22px",
+            boxShadow: "var(--glow-subtle), 0 0 0 1px rgba(255,255,255,0.03) inset",
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "10px" }}>
               <span aria-hidden="true" style={{ fontSize: "1.5rem", display: "inline-block", animation: "teddy-bounce 1.3s ease-in-out infinite" }}>🧸</span>
               <span className="chip">✨ Wish granted ✨</span>
               <span aria-hidden="true" style={{ fontSize: "1.5rem", display: "inline-block", animation: "teddy-bounce 1.3s ease-in-out 0.35s infinite" }}>🐻</span>
             </div>
-            <p className="shimmer-text font-serif" style={{ fontSize: "1.45rem", marginBottom: "8px" }}>
+            <p className="shimmer-text font-script" style={{ fontSize: "1.45rem", marginBottom: "8px" }}>
               Happy Birthday {config.name}! 🎂
             </p>
             <p style={{
-              color: "rgba(249,168,212,0.92)", fontSize: "1.05rem", lineHeight: 1.85,
+              color: "rgba(249,168,212,0.92)", fontSize: "1.05rem",
+              lineHeight: "var(--leading-relaxed)",
               fontFamily: bodyFont,
             }}>
               {config.cake.message}
@@ -429,16 +449,16 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
           </div>
         )}
 
-        <button className="btn-primary" onClick={onNext} style={{
+        <GlowButton onClick={onNext} style={{
           background: "linear-gradient(135deg,#7c1d6f,#be185d,#7c3aed)",
           opacity: showButton ? 1 : 0,
           transform: showButton ? "translateY(0)" : "translateY(12px)",
           pointerEvents: showButton ? "all" : "none",
-          transition: "opacity 0.7s ease, transform 0.7s ease",
+          transition: "opacity var(--dur-slow) var(--ease-entrance), transform var(--dur-slow) var(--ease-entrance)",
         }}>
           {config.cake.buttonText}
-        </button>
-      </div>
+        </GlowButton>
+      </GlassCard>
     </div>
   );
 }

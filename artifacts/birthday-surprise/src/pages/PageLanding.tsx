@@ -1,63 +1,75 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PremiumHeart from "@/components/PremiumHeart";
+import HeroRevealCard from "@/components/HeroRevealCard";
+import BackgroundEffectsLayer from "@/components/BackgroundEffectsLayer";
 import { useConfig } from "@/contexts/ConfigContext";
 import { resolveFontFamily } from "@/lib/fontPresets";
+import { prefersReducedMotion } from "@/lib/motion";
 
+/**
+ * Landing = cinematic prelude + hero reveal.
+ * 1. Prelude: the glowing heart blooms out of the darkness with three
+ *    shimmering dots — an intentional, premium opening beat (not a
+ *    generic spinner). Skipped entirely under prefers-reduced-motion.
+ * 2. Hero: HeroRevealCard with the personalized config.landing copy,
+ *    staggered title reveal and a shimmering GlowButton CTA.
+ */
 export default function PageLanding({ onNext }: { onNext: () => void }) {
   const config = useConfig();
   const bodyFont = resolveFontFamily(config.textStyles, "landing");
+  const reduced = useMemo(() => prefersReducedMotion(), []);
+  const [phase, setPhase] = useState<"prelude" | "hero">(reduced ? "hero" : "prelude");
   const [pressed, setPressed] = useState(false);
 
-  const handleClick = () => {
+  useEffect(() => {
+    if (phase !== "prelude") return;
+    const t = window.setTimeout(() => setPhase("hero"), 1700);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  const handleCta = () => {
     setPressed(true);
     setTimeout(onNext, 700);
   };
 
   return (
-    <div className="min-h-screen-dvh" style={{
-      display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "center",
-      padding: "calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px))",
-      position: "relative", zIndex: 5,
-    }}>
-      <div className="glass-card-dark page-enter" style={{
-        maxWidth: "380px", width: "100%",
-        padding: "clamp(36px, 9vw, 48px) clamp(24px, 7vw, 36px)",
-        textAlign: "center",
-        opacity: pressed ? 0 : 1,
-        transform: pressed ? "scale(1.05) translateY(-10px)" : "scale(1)",
-        transition: "opacity 0.6s ease, transform 0.6s ease",
-      }}>
-        <PremiumHeart size={96} style={{ margin: "0 auto 26px" }} />
+    <div
+      className="min-h-screen-dvh"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding:
+          "calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px))",
+        position: "relative",
+        zIndex: 5,
+      }}
+    >
+      <BackgroundEffectsLayer accent="pink" density="medium" zIndex={1} />
 
-        <p className="chip" style={{ marginBottom: "18px" }}>
-          ✦ A Special Surprise ✦
-        </p>
-
-        <h1 className="font-serif" style={{
-          fontSize: "clamp(1.9rem, 6vw, 2.8rem)",
-          background: "linear-gradient(135deg, #f9a8d4, #e879f9, #a78bfa)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          backgroundClip: "text",
-          lineHeight: 1.25, marginBottom: "14px",
-          filter: "drop-shadow(0 0 30px rgba(236,72,153,0.4))",
-        }}>
-          {config.landing.title}
-        </h1>
-
-        <p style={{
-          color: "rgba(220,185,255,0.68)", fontSize: "1.05rem",
-          lineHeight: 1.8, marginBottom: "34px",
-          fontFamily: bodyFont,
-        }}>
-          {config.landing.subtitle}
-        </p>
-
-        <button className="btn-primary" onClick={handleClick}
-          style={{ background: "linear-gradient(135deg, #7c1d6f, #9d174d, #be185d, #7c3aed)" }}>
-          {config.landing.buttonText}
-        </button>
-      </div>
+      {phase === "prelude" ? (
+        <div className="prelude-bloom" style={{ textAlign: "center", position: "relative", zIndex: 5 }}>
+          <PremiumHeart size={110} style={{ margin: "0 auto 22px" }} />
+          <div style={{ display: "flex", gap: "8px", justifyContent: "center" }} aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="prelude-dot" style={{ animationDelay: `${i * 0.18}s` }} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <HeroRevealCard
+          icon={<PremiumHeart size={96} style={{ margin: "0 auto 26px" }} />}
+          eyebrow="✦ A Special Surprise ✦"
+          title={config.landing.title}
+          subtitle={config.landing.subtitle}
+          subtitleFontFamily={bodyFont}
+          ctaText={config.landing.buttonText}
+          onCta={handleCta}
+          ctaStyle={{ background: "linear-gradient(135deg, #7c1d6f, #9d174d, #be185d, #7c3aed)" }}
+          exiting={pressed}
+        />
+      )}
     </div>
   );
 }

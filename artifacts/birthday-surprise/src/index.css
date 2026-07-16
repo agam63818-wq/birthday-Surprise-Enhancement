@@ -3,14 +3,93 @@
 
 /* ── DESIGN TOKENS ──────────────────────────────────── */
 :root {
+  /* ── Color — deep romantic night sky ─────────────────── */
   --bg-deep: #07011a;
+  --plum-deep: #2a0a3f;
+  --midnight-purple: #1e0550;
+  --black-violet: #0f0228;
   --ink: #f3ecff;
   --ink-soft: rgba(226, 199, 255, 0.72);
+  --ink-faint: rgba(226, 199, 255, 0.45);
   --pink: #f472b6;
+  --pink-magenta: #ec4899;
   --violet: #a78bfa;
+  --lavender: #c4b5fd;
   --magenta: #e879f9;
+  --rose-gold: #e0a899;
+  --rose-gold-soft: rgba(224, 168, 153, 0.35);
   --grad-brand: linear-gradient(135deg, #f9a8d4, #e879f9, #a78bfa);
+
+  /* ── Spacing scale ────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* ── Typography — 3 font roles ────────────────────────────
+     script  = elegant script, SHORT emotional headings only
+     heading = refined serif, section headings
+     body    = clean sans-serif, body copy + all UI/form text
+     (long body text rendered from config always goes through
+     resolveFontFamily/config.textStyles — never hardcode script) */
+  --font-script: 'Dancing Script', cursive;
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --text-xs: 0.72rem;
+  --text-sm: 0.85rem;
+  --text-base: 1rem;
+  --text-lg: 1.15rem;
+  --text-xl: 1.45rem;
+  --text-2xl: clamp(1.6rem, 5vw, 2.4rem);
+  --text-hero: clamp(1.9rem, 6vw, 2.8rem);
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --leading-tight: 1.25;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.85;
+
+  /* ── Border radius scale ─────────────────────────────── */
+  --rad-sm: 10px;
+  --rad-md: 14px;
+  --rad-lg: 20px;
+  --rad-xl: 26px;
+  --rad-pill: 999px;
+
+  /* ── Shadow levels ────────────────────────────────────── */
+  --shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.3);
+  --shadow-medium: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --shadow-strong: 0 24px 70px rgba(0, 0, 0, 0.7);
+
+  /* ── Glow strengths (buttons, cards, active states) ──── */
+  --glow-subtle: 0 0 14px rgba(236, 72, 153, 0.18);
+  --glow-soft: 0 0 22px rgba(236, 72, 153, 0.28), 0 0 40px rgba(167, 139, 250, 0.14);
+  --glow-medium: 0 0 30px rgba(236, 72, 153, 0.42), 0 0 60px rgba(167, 139, 250, 0.2);
+  --glow-strong: 0 0 44px rgba(236, 72, 153, 0.6), 0 0 90px rgba(167, 139, 250, 0.3);
+
+  /* ── Blur levels ──────────────────────────────────────── */
+  --blur-soft: 14px;   /* light glass */
+  --blur-panel: 24px;  /* main glassmorphism panels */
+  --blur-orb: 90px;    /* blurred light orbs */
+
+  /* ── Motion durations ─────────────────────────────────── */
+  --dur-fast: 150ms;
+  --dur-base: 300ms;
+  --dur-slow: 600ms;
+  --dur-cinematic: 950ms;
+
+  /* ── Easing curves ────────────────────────────────────── */
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);  /* gentle ease-out entrances */
+  --ease-smooth: cubic-bezier(0.65, 0, 0.35, 1);   /* smooth ease-in-out transitions */
+  --ease-luxe: cubic-bezier(0.22, 1, 0.36, 1);     /* luxurious hero/cinematic moments */
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --radius: 0.75rem;
@@ -735,4 +814,357 @@ button { user-select: none; -webkit-user-select: none; touch-action: manipulatio
 .customize-shell textarea:focus {
   border-color: rgba(232, 121, 249, 0.55);
   box-shadow: 0 0 0 3px rgba(232, 121, 249, 0.14);
+}
+
+/* ═══ PART 1 — CINEMATIC MOTION SYSTEM ═══════════════════════
+   Built on the design tokens above. Transform/opacity-based only.
+   The global prefers-reduced-motion rule above collapses every
+   animation here to an instant state; components additionally
+   branch via prefersReducedMotion() in src/lib/motion.ts. */
+
+/* Font role helpers — script for SHORT emotional headings only,
+   display (serif) for section headings, body for UI/body text.
+   (.font-serif is legacy — kept untouched for existing pages.) */
+.font-script  { font-family: var(--font-script) !important; }
+.font-display { font-family: var(--font-heading) !important; }
+.font-body    { font-family: var(--font-body) !important; }
+
+/* Gradient headline treatment — also applied per word so it
+   survives the staggered inline-block spans */
+.hero-gradient-text,
+.hero-gradient-text .stagger-word {
+  background-image: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Blur-to-clear entrance */
+@keyframes blur-in {
+  from { opacity: 0; filter: blur(10px); transform: translateY(14px); }
+  to   { opacity: 1; filter: blur(0);    transform: translateY(0); }
+}
+.blur-in {
+  animation: blur-in var(--dur-cinematic) var(--ease-entrance) both;
+}
+
+/* Staggered word reveal (headings / short emotional copy only) */
+@keyframes stagger-word-in {
+  from { opacity: 0; filter: blur(6px); transform: translateY(0.35em); }
+  to   { opacity: 1; filter: blur(0);   transform: translateY(0); }
+}
+.stagger-word {
+  display: inline-block;
+  animation: stagger-word-in 0.75s var(--ease-entrance) both;
+  animation-delay: var(--stagger-delay, 0s);
+  will-change: transform, opacity, filter;
+}
+
+/* Soft section-to-section transition — fade + subtle vertical drift */
+@keyframes section-drift-in {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section-enter {
+  animation: section-drift-in var(--dur-slow) var(--ease-smooth) both;
+}
+
+/* Glow-based hover for interactive cards — soft bloom, no color swap */
+.glow-hover {
+  transition:
+    box-shadow var(--dur-base) var(--ease-smooth),
+    transform var(--dur-base) var(--ease-smooth),
+    filter var(--dur-base) ease;
+}
+.glow-hover:hover,
+.glow-hover:focus-visible {
+  box-shadow: var(--glow-medium);
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+
+/* GlowButton — stronger bloom layered on .btn-primary */
+.glow-btn:hover,
+.glow-btn:focus-visible {
+  box-shadow: var(--glow-strong), 0 12px 44px rgba(190, 24, 93, 0.3);
+}
+
+/* Accordion shell (AccordionEditorItem) — smooth grid-rows expand */
+.accordion-item {
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  border-radius: var(--rad-md);
+  background: linear-gradient(165deg, rgba(20, 7, 48, 0.6), rgba(8, 2, 24, 0.55));
+  backdrop-filter: blur(var(--blur-soft));
+  -webkit-backdrop-filter: blur(var(--blur-soft));
+  overflow: hidden;
+  transition: border-color var(--dur-base) ease, box-shadow var(--dur-base) ease;
+}
+.accordion-item.open {
+  border-color: rgba(232, 121, 249, 0.35);
+  box-shadow: var(--glow-soft);
+}
+.accordion-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease;
+}
+.accordion-trigger:hover { background: rgba(167, 139, 250, 0.07); }
+.accordion-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: rgba(226, 199, 255, 0.55);
+  transition: transform var(--dur-base) var(--ease-smooth);
+}
+.accordion-item.open .accordion-chevron { transform: rotate(180deg); }
+.accordion-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-slow) var(--ease-smooth);
+}
+.accordion-item.open .accordion-panel { grid-template-rows: 1fr; }
+.accordion-panel-inner { overflow: hidden; min-height: 0; }
+
+/* BackgroundEffectsLayer — stars twinkle + orbs breathe */
+@keyframes bg-star-twinkle {
+  0%, 100% { opacity: 0.12; transform: scale(0.9); }
+  50%       { opacity: 0.75; transform: scale(1.15); }
+}
+@keyframes bg-orb-breathe {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%       { transform: translate3d(18px, -14px, 0) scale(1.12); }
+}
+.bgfx-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  animation: bg-star-twinkle var(--bgfx-dur, 3.5s) ease-in-out var(--bgfx-delay, 0s) infinite;
+  will-change: opacity, transform;
+}
+.bgfx-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(var(--blur-orb));
+  pointer-events: none;
+  animation: bg-orb-breathe 16s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* Landing prelude — heart bloom + shimmer dots */
+@keyframes prelude-bloom {
+  from { opacity: 0; transform: scale(0.55); filter: blur(12px); }
+  to   { opacity: 1; transform: scale(1);    filter: blur(0); }
+}
+.prelude-bloom {
+  animation: prelude-bloom var(--dur-cinematic) var(--ease-luxe) both;
+}
+@keyframes prelude-dot {
+  0%, 100% { opacity: 0.2; transform: translateY(0); }
+  50%       { opacity: 0.9; transform: translateY(-4px); }
+}
+.prelude-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--grad-brand);
+  animation: prelude-dot 1.2s ease-in-out infinite;
+}
+
+/* CelebrationBurst — reduced-motion fallback: one soft light flash */
+@keyframes celebration-flash {
+  from { opacity: 0.85; }
+  to   { opacity: 0; }
+}
+.celebration-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 55%,
+    rgba(249, 168, 212, 0.5),
+    rgba(124, 58, 237, 0.25) 45%,
+    transparent 75%
+  );
+  animation: celebration-flash 0.9s ease-out forwards;
+}
+
+/* ═══ PART 2 — CAKE MOMENT, SPOTLIGHT CARDS, TIMELINE ════════════
+   Built on the Part 1 tokens/motion system. Transform/opacity only;
+   the global prefers-reduced-motion rule collapses everything here. */
+
+/* Reveal-on-view — blur-to-clear entrance driven by <Reveal /> */
+.reveal-init {
+  opacity: 0;
+  transform: translateY(24px);
+  filter: blur(8px);
+  transition:
+    opacity var(--dur-cinematic) var(--ease-entrance),
+    transform var(--dur-cinematic) var(--ease-entrance),
+    filter var(--dur-cinematic) var(--ease-entrance);
+  will-change: transform, opacity, filter;
+}
+.reveal-init.revealed {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+/* Cake buildup — inviting glow pulse behind the cake before the cut */
+@keyframes cake-invite {
+  0%, 100% { opacity: 0.25; transform: scale(0.96); }
+  50%       { opacity: 0.6;  transform: scale(1.04); }
+}
+.cake-invite-glow {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    circle,
+    rgba(236, 72, 153, 0.35),
+    rgba(124, 58, 237, 0.15) 55%,
+    transparent 75%
+  );
+  filter: blur(28px);
+  animation: cake-invite 2.6s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* Spotlight card — Why You Matter appreciation cards */
+.spotlight-card {
+  position: relative;
+  height: 100%;
+  text-align: left;
+  padding: 20px 16px;
+  border-radius: var(--rad-lg);
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  background: linear-gradient(165deg, rgba(30, 10, 63, 0.72), rgba(10, 3, 28, 0.66));
+  backdrop-filter: blur(var(--blur-soft));
+  -webkit-backdrop-filter: blur(var(--blur-soft));
+  overflow: hidden;
+}
+.spotlight-card::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  left: -20%;
+  width: 70%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(232, 121, 249, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+/* Romantic timeline — Our Story. Stacked on mobile, alternating
+   left/right along a glowing central line on desktop. */
+.timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-left: 34px;
+  text-align: left;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(249, 168, 212, 0.55),
+    rgba(167, 139, 250, 0.4),
+    rgba(232, 121, 249, 0.5)
+  );
+  box-shadow: 0 0 12px rgba(232, 121, 249, 0.35);
+}
+.timeline-item { position: relative; }
+.timeline-dot {
+  position: absolute;
+  left: -28px;
+  top: 18px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--grad-brand);
+  box-shadow: var(--glow-soft);
+  border: 2px solid rgba(10, 3, 28, 0.9);
+}
+.timeline-card {
+  padding: 16px;
+  border-radius: var(--rad-lg);
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  background: linear-gradient(165deg, rgba(30, 10, 63, 0.7), rgba(10, 3, 28, 0.64));
+  backdrop-filter: blur(var(--blur-soft));
+  -webkit-backdrop-filter: blur(var(--blur-soft));
+}
+
+@media (min-width: 640px) {
+  .timeline { padding-left: 0; gap: 26px; }
+  .timeline::before { left: 50%; transform: translateX(-50%); }
+  .timeline-item { width: calc(50% - 26px); }
+  .timeline-item.tl-left  { align-self: flex-start; }
+  .timeline-item.tl-right { align-self: flex-end; }
+  .timeline-item.tl-left  .timeline-dot { left: auto; right: -32px; }
+  .timeline-item.tl-right .timeline-dot { left: -32px; right: auto; }
+}
+
+/* ═══ PART 3 — MEMORY WALL, LAST NOTE ENDING ══════════════════
+   Built on the Part 1 tokens/motion system. */
+
+/* Memory photo frame — keeps the per-photo candid rotate while adding
+   a premium hover lift + glow (rotation preserved through hover). */
+.memory-frame {
+  transform: rotate(var(--mrot, 0deg));
+  transition:
+    transform var(--dur-base) var(--ease-smooth),
+    box-shadow var(--dur-base) var(--ease-smooth);
+  will-change: transform;
+}
+.memory-frame:hover {
+  transform: rotate(var(--mrot, 0deg)) translateY(-6px) scale(1.01);
+  box-shadow: var(--glow-medium);
+}
+
+/* Lightbox expand — smooth scale + fade on the motion tokens */
+@keyframes lightbox-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.lightbox-in {
+  animation: lightbox-in var(--dur-base) var(--ease-entrance) both;
+}
+
+/* Warm afterglow — lingering soft light once the last note ends */
+@keyframes afterglow-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.afterglow {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 60%,
+    rgba(236, 72, 153, 0.12),
+    rgba(124, 58, 237, 0.08) 45%,
+    transparent 75%
+  );
+  animation: afterglow-in 2.2s var(--ease-smooth) both;
 }
