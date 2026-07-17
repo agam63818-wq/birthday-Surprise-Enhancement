@@ -40,6 +40,7 @@
     "@radix-ui/react-tooltip": "^1.2.0",
     "@supabase/supabase-js": "^2.110.2",
     "@tanstack/react-query": "catalog:",
+    "@vercel/og": "^0.6.8",
     "@workspace/api-client-react": "workspace:*",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "catalog:",
