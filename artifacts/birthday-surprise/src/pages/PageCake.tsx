@@ -25,6 +25,28 @@ function getCtx(): AudioContext | null {
   } catch { return null; }
 }
 
+// Soft match-strike ignite chime (for lighting the candles)
+function playIgniteSfx() {
+  const c = getCtx(); if (!c) return;
+  try {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(520, c.currentTime);
+    o.frequency.exponentialRampToValueAtTime(1040, c.currentTime + 0.12);
+    g.gain.setValueAtTime(0.16, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.4);
+    o.connect(g); g.connect(c.destination);
+    o.start(); o.stop(c.currentTime + 0.45);
+    // tiny sparkle tail
+    const o2 = c.createOscillator(), g2 = c.createGain();
+    o2.type = "sine"; o2.frequency.value = 1560;
+    g2.gain.setValueAtTime(0.07, c.currentTime + 0.1);
+    g2.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.5);
+    o2.connect(g2); g2.connect(c.destination);
+    o2.start(c.currentTime + 0.1); o2.stop(c.currentTime + 0.55);
+  } catch {}
+}
+
 // Soft knife-through-cake whoosh (filtered noise sweep)
 function playSliceSfx() {
   const c = getCtx(); if (!c) return;
@@ -85,7 +107,20 @@ function playCelebrateSfx() {
   } catch {}
 }
 
-/* ── Radial sparkle particles that burst on cut ─────────────── */
+/* ── Page-local keyframes (glow flash + wish shimmer) ────────── */
+const LOCAL_KEYFRAMES = `
+@keyframes cake-flash {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes wish-shimmer {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+`;
+
+/* ── Radial sparkle particles that burst on cut ───────────── */
 function SparkleParticles({ active }: { active: boolean }) {
   if (!active) return null;
   const sparks = Array.from({ length: 18 }, (_, i) => {
@@ -122,7 +157,7 @@ function SparkleParticles({ active }: { active: boolean }) {
 const CANDLE_X = [98, 114, 130, 146, 162];
 const CANDLE_COLORS = ["#f9a8d4", "#c084fc", "#a78bfa", "#f472b6", "#818cf8"];
 
-function CakeArt({ flameOut, prefix }: { flameOut: boolean; prefix: string }) {
+function CakeArt({ flamesLit, prefix }: { flamesLit: boolean; prefix: string }) {
   const config = useConfig();
   const name = config.name;
   const nameSize = name.length > 9 ? 15 : 19;
@@ -186,7 +221,7 @@ function CakeArt({ flameOut, prefix }: { flameOut: boolean; prefix: string }) {
         <circle key={i} cx={x} cy={y} r="2" fill={["#fde68a","#fbcfe8","#c4b5fd","#a5f3fc"][i%4]} opacity="0.85"/>
       ))}
 
-      {/* Candles + flames */}
+      {/* Candles + flames — flames fade in when lit, out when blown */}
       {CANDLE_X.map((x, i) => (
         <g key={i}>
           <rect x={x-3} y="58" width="6" height="25" rx="3" fill={CANDLE_COLORS[i]}/>
@@ -194,8 +229,8 @@ function CakeArt({ flameOut, prefix }: { flameOut: boolean; prefix: string }) {
           <rect x={x-3} y="72" width="6" height="3" fill="rgba(255,255,255,0.45)"/>
           <rect x={x-0.6} y="53" width="1.2" height="6" fill="#78350f"/>
           <g style={{
-            opacity: flameOut ? 0 : 1,
-            transition: "opacity 0.45s ease",
+            opacity: flamesLit ? 1 : 0,
+            transition: `opacity 0.5s ease ${flamesLit ? i * 0.12 : 0}s`,
           }}>
             <circle cx={x} cy="48" r="9" fill="rgba(253,224,71,0.18)"/>
             <ellipse cx={x} cy="48" rx="4" ry="7.5" fill={`url(#${prefix}fl)`}
@@ -223,29 +258,54 @@ function Knife() {
 }
 
 /**
- * The cake-cutting moment — the emotional centerpiece. Tap-to-cut only
- * (no microphone interactions). Cinematic buildup glow invites the tap;
- * the cut triggers the grand CelebrationBurst from Part 1 plus the
- * Song 1 → Song 2 crossfade via playCakeSong.
+ * The cake-cutting moment — the emotional climax of the whole experience.
+ * Upgraded from a single tap into a three-step ritual that builds
+ * anticipation (tap-only — no microphone interactions):
+ *
+ *   1. \"unlit\"  — tap to light the candles (ignite chime, flames fade in)
+ *   2. \"lit\"    — make a wish… tap to blow them out (blow SFX, smoke)
+ *   3. \"blown\"  — tap to cut: knife slice, cake splits, grand
+ *      CelebrationBurst, golden glow flash, Song 1 → Song 2 crossfade.
+ *
+ * Custom cake photos (useImage) skip the candle ritual — a photo has no
+ * drawn candles — and go straight to the cut, exactly as before.
  */
+type Stage = "unlit" | "lit" | "blown" | "cut";
+
 export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
   const config = useConfig();
   const bodyFont = resolveFontFamily(config.textStyles, "cake");
-  const [cut, setCut] = useState(false);
+  const useImageCfg = (config.cake as { useImage?: boolean }).useImage === true;
+  const [imgError, setImgError] = useState(false);
+  const useImage = useImageCfg && !imgError;
+
+  const [stage, setStage] = useState<Stage>(useImageCfg ? "blown" : "unlit");
   const [cutting, setCutting] = useState(false);
   const [knife, setKnife] = useState(false);
   const [shaking, setShaking] = useState(false);
   const [sparkling, setSparkling] = useState(false);
   const [burst, setBurst] = useState(false);
+  const [flash, setFlash] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [showButton, setShowButton] = useState(false);
-  const [imgError, setImgError] = useState(false);
 
-  const useImage = (config.cake as { useImage?: boolean }).useImage === true && !imgError;
   const cakeSrc = config.images?.cake ?? "/assets/cake.png";
+  const cut = stage === "cut";
 
-  const handleTap = () => {
-    if (cut || cutting) return;
+  const lightCandles = () => {
+    try { navigator.vibrate?.(20); } catch { /* haptics unsupported */ }
+    playIgniteSfx();
+    setStage("lit");
+  };
+
+  const blowCandles = () => {
+    try { navigator.vibrate?.([15, 30]); } catch { /* haptics unsupported */ }
+    playBlowSfx();
+    setStage("blown");
+  };
+
+  const cutCake = () => {
+    if (cutting) return;
     try { navigator.vibrate?.([30, 40, 60]); } catch { /* haptics unsupported */ }
     setCutting(true);
 
@@ -253,13 +313,13 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
     setKnife(true);
     playSliceSfx();
 
-    // 2. Cake splits, candles blow out, the celebration erupts
+    // 2. Cake splits and the celebration erupts — burst, flash, Song 2
     setTimeout(() => {
-      setCut(true);
-      playBlowSfx();
+      setStage("cut");
       setShaking(true);
       setSparkling(true);
-      setBurst(true);            // grand CelebrationBurst (Part 1)
+      setBurst(true);            // grand CelebrationBurst
+      setFlash(true);            // full-screen golden glow flash
       playCelebrateSfx();
       playCakeSong?.();          // Song 1 → Song 2 crossfade
     }, 620);
@@ -267,9 +327,29 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
     setTimeout(() => setKnife(false), 1150);
     setTimeout(() => setShaking(false), 1350);
     setTimeout(() => setSparkling(false), 1900);
+    setTimeout(() => setFlash(false), 2200);
     setTimeout(() => setShowMessage(true), 1250);
     setTimeout(() => setShowButton(true), 2600);
   };
+
+  const handleTap = () => {
+    if (cut || cutting) return;
+    if (!useImage && stage === "unlit") { lightCandles(); return; }
+    if (!useImage && stage === "lit")   { blowCandles(); return; }
+    cutCake();
+  };
+
+  const hint =
+    !useImage && stage === "unlit"
+      ? "Tap the cake to light the candles ✨"
+      : !useImage && stage === "lit"
+      ? "Close your eyes, make a wish… then tap to blow 🌬️"
+      : config.cake.tapHint;
+
+  const ariaLabel =
+    !useImage && stage === "unlit" ? "Light the candles"
+    : !useImage && stage === "lit" ? "Blow out the candles"
+    : "Cut the cake";
 
   const halfStyle = (side: "left" | "right"): React.CSSProperties => ({
     position: "absolute", inset: 0,
@@ -291,8 +371,19 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
       padding: "calc(56px + env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px))",
       position: "relative", zIndex: 5,
     }}>
+      <style>{LOCAL_KEYFRAMES}</style>
       <BackgroundEffectsLayer accent="rose" density="medium" zIndex={1} />
       <CelebrationBurst active={burst} intensity="grand" origin={{ x: 0.5, y: 0.5 }} />
+
+      {/* Full-screen golden glow flash at the moment of the cut */}
+      {flash && (
+        <div aria-hidden="true" style={{
+          position: "fixed", inset: 0, zIndex: 40, pointerEvents: "none",
+          background: "radial-gradient(circle at 50% 55%, rgba(253,224,71,0.42), rgba(236,72,153,0.26) 38%, rgba(124,58,237,0.12) 60%, transparent 75%)",
+          animation: "cake-flash 2s ease-out forwards",
+          willChange: "opacity",
+        }} />
+      )}
 
       <GlassCard enter style={{
         maxWidth: "430px", width: "100%", padding: "32px 26px",
@@ -331,7 +422,7 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
           >
             <div style={{
               width: "125%", aspectRatio: "1", borderRadius: "50%",
-              opacity: cut ? 0.55 : 0.3,
+              opacity: cut ? 0.55 : stage === "lit" ? 0.42 : 0.3,
               transition: "opacity 0.8s ease",
               background: "repeating-conic-gradient(rgba(253,224,71,0.16) 0deg 9deg, transparent 9deg 32deg)",
               WebkitMaskImage: "radial-gradient(circle, black 26%, transparent 68%)",
@@ -354,7 +445,7 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
           <div
             onClick={handleTap}
             role="button"
-            aria-label="Cut the cake"
+            aria-label={ariaLabel}
             style={{
               cursor: cut ? "default" : "pointer",
               userSelect: "none",
@@ -364,8 +455,10 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
               animation: shaking ? "screen-shake 0.55s ease" : undefined,
               filter: cut
                 ? "drop-shadow(0 16px 48px rgba(236,72,153,0.65)) drop-shadow(0 0 60px rgba(192,132,252,0.35))"
+                : stage === "lit"
+                ? "drop-shadow(0 12px 34px rgba(236,72,153,0.45)) drop-shadow(0 0 44px rgba(253,224,71,0.28))"
                 : "drop-shadow(0 12px 34px rgba(236,72,153,0.4))",
-              transition: "filter 0.5s ease",
+              transition: "filter 0.6s ease",
             }}
           >
             {/* Two halves — they separate when the knife cuts through */}
@@ -373,13 +466,13 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
               {useImage
                 ? <img src={cakeSrc} alt="Birthday cake" onError={() => setImgError(true)}
                     style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "18px", display: "block" }}/>
-                : <CakeArt flameOut={cut} prefix="cl" />}
+                : <CakeArt flamesLit={stage === "lit"} prefix="cl" />}
             </div>
             <div style={halfStyle("right")}>
               {useImage
                 ? <img src={cakeSrc} alt="" aria-hidden="true"
                     style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "18px", display: "block" }}/>
-                : <CakeArt flameOut={cut} prefix="cr" />}
+                : <CakeArt flamesLit={stage === "lit"} prefix="cr" />}
             </div>
 
             {/* Knife slice */}
@@ -394,7 +487,7 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
             )}
 
             {/* Candle smoke after blow-out */}
-            {cut && !useImage && CANDLE_X.map((x, i) => (
+            {(stage === "blown" || cut) && !useImage && CANDLE_X.map((x, i) => (
               <div key={i} style={{
                 position: "absolute",
                 left: `${(x / 260) * 100}%`, top: "17%",
@@ -408,18 +501,22 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
           </div>
         </div>
 
-        {/* Tap hint — anticipation, not abruptness */}
+        {/* Stage-aware tap hint — anticipation, not abruptness */}
         {!cut && (
-          <div style={{
+          <div key={stage} style={{
             marginBottom: "18px", padding: "9px 22px",
             borderRadius: "var(--rad-pill)", display: "inline-block",
-            background: "rgba(236,72,153,0.07)",
-            border: "1px solid rgba(236,72,153,0.22)",
-            color: "rgba(249,168,212,0.7)", fontSize: "12.5px",
+            background: stage === "lit" ? "rgba(253,224,71,0.07)" : "rgba(236,72,153,0.07)",
+            border: stage === "lit" ? "1px solid rgba(253,224,71,0.25)" : "1px solid rgba(236,72,153,0.22)",
+            color: stage === "lit" ? "rgba(253,230,138,0.85)" : "rgba(249,168,212,0.7)",
+            fontSize: "12.5px",
             letterSpacing: "0.05em",
-            animation: "pulse-glow 2.4s ease-in-out infinite",
+            animation: stage === "lit"
+              ? "wish-shimmer 2s ease-in-out infinite"
+              : "pulse-glow 2.4s ease-in-out infinite",
+            transition: "background 0.5s ease, border-color 0.5s ease, color 0.5s ease",
           }}>
-            {config.cake.tapHint}
+            {hint}
           </div>
         )}
 

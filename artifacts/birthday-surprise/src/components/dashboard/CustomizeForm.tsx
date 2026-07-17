@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import AccordionEditorItem from "@/components/AccordionEditorItem";
 import ProgressIndicator from "@/components/ProgressIndicator";
+import SaveStatusIndicator from "@/components/dashboard/SaveStatusIndicator";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { FormError } from "@/components/auth/AuthLayout";
@@ -19,16 +20,16 @@ import type { FontPresetId } from "@/lib/fontPresets";
 
 // Romantic-theme section icons (kept from the existing emoji set)
 const SECTION_EMOJI: Record<string, string> = {
-  name: "\ud83d\udc96", landing: "\ud83c\udf81", intro: "\ud83d\udc8c", cutenessMeter: "\ud83e\udd70",
-  celebration: "\ud83c\udf89", cake: "\ud83c\udf82", whyYouMatter: "\ud83c\udf1f", ourStory: "\ud83d\udcd6",
-  memoryWall: "\ud83d\udcf8", beforeLeave: "\ud83e\udd7a", lastNote: "\ud83d\udcdd", audio: "\ud83c\udfb5",
+  name: "💖", landing: "🎁", intro: "💌", cutenessMeter: "🥰",
+  celebration: "🎉", cake: "🎂", whyYouMatter: "🌟", ourStory: "📖",
+  memoryWall: "📸", beforeLeave: "🥺", lastNote: "📝", audio: "🎵",
 };
 
 /** One-line preview under a section header (nice-to-have summary). */
 const snip = (s: string, n = 36): string | undefined => {
   const t = s.trim();
   if (!t) return undefined;
-  return t.length > n ? `${t.slice(0, n)}\u2026` : t;
+  return t.length > n ? `${t.slice(0, n)}…` : t;
 };
 
 export default function CustomizeForm({
@@ -44,6 +45,11 @@ export default function CustomizeForm({
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<string[]>(["name"]);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  // Local edits vs the saved row — drives the save-status pill and the
+  // smart Save button (same comparison the beforeunload guard uses).
+  const dirty = JSON.stringify(config) !== JSON.stringify(surprise.config);
 
   // Warn before closing/refreshing the page with unsaved changes
   useEffect(() => {
@@ -85,7 +91,7 @@ export default function CustomizeForm({
 
   const isOpen = (key: string) => openSections.includes(key);
 
-  /* ── Per-section completion (required fields filled) ─────────── */
+  /* ── Per-section completion (required fields filled) ───────── */
   const filled = (s: string) => s.trim().length > 0;
   const completion: Record<string, boolean> = {
     name: filled(config.name),
@@ -111,8 +117,8 @@ export default function CustomizeForm({
     if (!config.landing.subtitle.trim()) missing.push("Landing subtitle");
     if (!config.intro.heading.trim()) missing.push("Intro heading");
     if (!config.intro.message.trim()) missing.push("Intro message");
-    if (!config.lastNote.finalLine1.trim()) missing.push("Last note \u2014 final line 1");
-    if (!config.lastNote.finalLine2.trim()) missing.push("Last note \u2014 final line 2");
+    if (!config.lastNote.finalLine1.trim()) missing.push("Last note — final line 1");
+    if (!config.lastNote.finalLine2.trim()) missing.push("Last note — final line 2");
 
     if (missing.length > 0) {
       setValidationError(`Please fill in: ${missing.join(", ")}.`);
@@ -138,14 +144,15 @@ export default function CustomizeForm({
       return;
     }
 
-    toast.success("Saved! Your surprise has been updated.");
+    setLastSavedAt(new Date());
+    toast.success("Saved! Your surprise has been updated. ✨");
     onSaved(data as SurpriseRow);
   };
 
   const item = (key: string, title: string, subtitle: string | undefined, children: React.ReactNode) => (
     <AccordionEditorItem
       key={key}
-      icon={SECTION_EMOJI[key] ?? "\u2728"}
+      icon={SECTION_EMOJI[key] ?? "✨"}
       title={title}
       subtitle={subtitle}
       open={isOpen(key)}
@@ -323,13 +330,16 @@ export default function CustomizeForm({
           }}
         >
           <ProgressIndicator completed={completedCount} total={totalSections} />
-          <Button className="w-full" size="lg" disabled={saving} onClick={handleSave}>
+          <SaveStatusIndicator dirty={dirty} saving={saving} lastSavedAt={lastSavedAt} />
+          <Button className="w-full" size="lg" disabled={saving || !dirty} onClick={handleSave}>
             {saving ? (
               <>
                 <Spinner /> Saving…
               </>
+            ) : dirty ? (
+              "💾 Save changes"
             ) : (
-              "\ud83d\udcbe Save changes"
+              "✓ All changes saved"
             )}
           </Button>
         </div>
