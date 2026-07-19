@@ -12,6 +12,11 @@
 // Real human browsers are never intercepted: if the User-Agent is not a
 // known crawler we return early and the request flows to the normal SPA
 // (vercel.json rewrites everything to /index.html).
+//
+// NOTE: this file is plain JavaScript (not TypeScript) on purpose — the
+// .ts version repeatedly failed Vercel's separate "Emit skipped" build
+// step for reasons that couldn't be reproduced locally. Plain JS sidesteps
+// that build step entirely.
 
 export const config = {
   // Only run for public share links. Nothing else (/, /login, /dashboard,
@@ -36,14 +41,14 @@ const BOT_UA_FRAGMENTS = [
   "w3c_validator",
 ];
 
-function isCrawler(userAgent: string): boolean {
+function isCrawler(userAgent) {
   const ua = userAgent.toLowerCase();
   return BOT_UA_FRAGMENTS.some((frag) => ua.includes(frag));
 }
 
 // Minimal HTML-attribute/text escaping so a name can never break out of
 // the attribute context or inject markup.
-function escapeHtml(input: string): string {
+function escapeHtml(input) {
   return input
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -52,16 +57,9 @@ function escapeHtml(input: string): string {
     .replace(/'/g, "&#39;");
 }
 
-type SurpriseRow = {
-  config?: {
-    name?: string;
-    landing?: { subtitle?: string };
-  } | null;
-};
-
 // Fetch the recipient name via the SAME public RPC the app already uses.
 // Never throws — on any failure the caller uses the generic fallback.
-async function fetchName(slug: string): Promise<{ name: string | null; description: string | null }> {
+async function fetchName(slug) {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
   const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
   if (!supabaseUrl || !anonKey) return { name: null, description: null };
@@ -77,18 +75,18 @@ async function fetchName(slug: string): Promise<{ name: string | null; descripti
       body: JSON.stringify({ p_slug: slug }),
     });
     if (!res.ok) return { name: null, description: null };
-    const data = (await res.json()) as SurpriseRow | SurpriseRow[] | null;
+    const data = await res.json();
     const row = Array.isArray(data) ? data[0] : data;
-    const config = row?.config ?? null;
-    const name = config?.name?.trim() || null;
-    const description = config?.landing?.subtitle?.trim() || null;
+    const cfg = row?.config ?? null;
+    const name = cfg?.name?.trim() || null;
+    const description = cfg?.landing?.subtitle?.trim() || null;
     return { name, description };
   } catch {
     return { name: null, description: null };
   }
 }
 
-export default async function middleware(request: Request): Promise<Response | undefined> {
+export default async function middleware(request) {
   const userAgent = request.headers.get("user-agent") || "";
 
   // Real human browser → do nothing, let the SPA handle it as today.
