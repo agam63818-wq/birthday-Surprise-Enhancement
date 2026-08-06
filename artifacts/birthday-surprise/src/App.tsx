@@ -1,6 +1,6 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth/ProtectedRoute";
 import Background from "@/components/Background";
 import Login from "@/pages/auth/Login";
@@ -9,8 +9,8 @@ import ForgotPassword from "@/pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
 import Dashboard from "@/pages/auth/Dashboard";
 import PublicShare from "@/pages/PublicShare";
+import PublicHome from "@/pages/PublicHome";
 import NotFound from "@/pages/not-found";
-import { Spinner } from "@/components/ui/spinner";
 
 // Auth pages share a lightweight background + font-loading shell; the
 // full birthday experience (with its own ambient FX, music, confetti,
@@ -28,27 +28,6 @@ function AuthShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-// "/" is not the birthday experience itself — it's a router: logged-in
-// visitors go to their dashboard, logged-out visitors go to /login. The
-// actual experience is only ever reached via the dashboard's Preview tab
-// or a public /s/:slug link.
-function RootRedirect() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div
-        className="min-h-screen-dvh"
-        style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 5 }}
-      >
-        <Spinner className="size-8" style={{ color: "var(--violet)" }} />
-      </div>
-    );
-  }
-
-  return <Redirect to={user ? "/dashboard" : "/login"} />;
-}
-
 export default function App() {
   return (
     <AuthProvider>
@@ -56,7 +35,7 @@ export default function App() {
       <Switch>
         <Route path="/">
           <AuthShell>
-            <RootRedirect />
+            <PublicHome />
           </AuthShell>
         </Route>
         <Route path="/s/:slug">
