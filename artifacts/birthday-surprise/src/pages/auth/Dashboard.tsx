@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -88,6 +88,32 @@ export default function Dashboard() {
       toast.error(`Couldn't copy automatically. Here's your link: ${url}`);
     }
   };
+
+  // Handle the ?intent=... deep-link set by PublicHome after login/signup
+  // (or by a logged-in user clicking Customize/Share on "/").
+  //   intent=customize → open the Customize tab
+  //   intent=share     → trigger the share sheet / copy once (stays on Preview,
+  //                      since Share is an action, not a tab)
+  // Runs only once per mount (guarded by handledIntentRef) and only after the
+  // surprise has loaded. The URL is cleaned afterwards so refreshing
+  // /dashboard doesn't re-trigger the action.
+  const handledIntentRef = useRef(false);
+  useEffect(() => {
+    if (!surprise || handledIntentRef.current) return;
+    const intent = new URLSearchParams(window.location.search).get("intent");
+    if (!intent) return;
+    handledIntentRef.current = true;
+
+    if (intent === "customize") {
+      setTab("customize");
+    } else if (intent === "share") {
+      handleShare();
+    }
+
+    // Clean the URL (keep the path, drop the query) so a refresh is safe.
+    window.history.replaceState(null, "", window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [surprise]);
 
   if (loading) {
     return (

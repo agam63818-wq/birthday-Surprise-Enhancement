@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { X, Mail, Lock, Eye, EyeOff, Heart } from "lucide-react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { FieldLabel, FormError, FormSuccess } from "@/components/auth/AuthLayout";
 import { Input } from "@/components/ui/input";
@@ -31,13 +32,16 @@ function isValidEmail(value: string) {
 function LoginForm({
   onSuccess,
   onSwitchToSignup,
+  onClose,
   compact = false,
 }: {
   onSuccess: () => void;
   onSwitchToSignup: () => void;
+  onClose: () => void;
   compact?: boolean;
 }) {
   const { signIn } = useAuth();
+  const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -131,15 +135,20 @@ function LoginForm({
           </div>
         </div>
 
-        {/* Forgot password link */}
+        {/* Forgot password link — uses wouter navigation to avoid full reload */}
         <div style={{ textAlign: "right", marginBottom: "20px" }}>
-          <a
-            href="/forgot-password"
+          <button
+            type="button"
+            onClick={() => { onClose(); navigate("/forgot-password"); }}
             style={{
+              background: "none",
+              border: "none",
               color: "var(--pink)",
               fontSize: "0.78rem",
               textDecoration: "none",
               fontWeight: 500,
+              cursor: "pointer",
+              padding: 0,
             }}
             onMouseOver={(e) =>
               ((e.currentTarget as HTMLElement).style.textDecoration =
@@ -150,7 +159,7 @@ function LoginForm({
             }
           >
             Forgot password?
-          </a>
+          </button>
         </div>
 
         <button
@@ -210,6 +219,7 @@ function SignupForm({
   compact = false,
 }: {
   onSuccess: () => void;
+  /** Switches to login tab on mobile; on desktop both forms are visible so this is a no-op. */
   onSwitchToLogin: () => void;
   compact?: boolean;
 }) {
@@ -439,12 +449,29 @@ export default function AuthModal({
   onAuthSuccess,
 }: AuthModalProps) {
   // Mobile tab state — tracks which form is visible in single-column layout.
-  // Resets to initialMode whenever the modal opens.
   const [mobileMode, setMobileMode] = useState<Mode>(initialMode);
 
-  // Sync mobileMode when initialMode changes (e.g. gate → login vs signup)
-  // We do this via a key on the outer div instead of an effect to avoid
-  // stale-closure issues; see the `key` prop below.
+  // Fix A: sync mobileMode whenever the modal transitions from closed → open,
+  // or when initialMode changes while already open (e.g. gate → login vs signup).
+  useEffect(() => {
+    if (open) setMobileMode(initialMode);
+  }, [open, initialMode]);
+
+  // Fix E: lock body scroll while the modal is open.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  // Fix E: close on Escape key.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -472,7 +499,6 @@ export default function AuthModal({
     >
       {/* Modal card */}
       <div
-        key={initialMode} // reset mobileMode when initialMode changes
         onClick={(e) => e.stopPropagation()}
         className="glass-card-dark page-enter"
         style={{
@@ -534,6 +560,7 @@ export default function AuthModal({
             <LoginForm
               onSuccess={onAuthSuccess}
               onSwitchToSignup={() => setMobileMode("signup")}
+              onClose={onClose}
               compact={false}
             />
           </div>
@@ -642,6 +669,7 @@ export default function AuthModal({
             <LoginForm
               onSuccess={onAuthSuccess}
               onSwitchToSignup={() => setMobileMode("signup")}
+              onClose={onClose}
               compact
             />
           ) : (

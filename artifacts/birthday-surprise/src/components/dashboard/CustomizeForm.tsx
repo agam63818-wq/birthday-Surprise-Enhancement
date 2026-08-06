@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import AccordionEditorItem from "@/components/AccordionEditorItem";
 import ProgressIndicator from "@/components/ProgressIndicator";
@@ -32,6 +32,8 @@ const snip = (s: string, n = 36): string | undefined => {
   return t.length > n ? `${t.slice(0, n)}…` : t;
 };
 
+const DRAFT_KEY = (surpriseId: string) => `customize-draft:${surpriseId}`;
+
 export default function CustomizeForm({
   surprise,
   onSurpriseChange,
@@ -41,11 +43,58 @@ export default function CustomizeForm({
   onSurpriseChange: (updated: SurpriseRow) => void;
   onSaved: (updated: SurpriseRow) => void;
 }) {
-  const [config, setConfig] = useState<Config>(() => structuredClone(surprise.config));
+  // On mount, restore a saved draft if one exists and differs from the DB config.
+  const [config, setConfig] = useState<Config>(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY(surprise.id));
+      if (raw) {
+        const draft = JSON.parse(raw) as Config;
+        if (JSON.stringify(draft) !== JSON.stringify(surprise.config)) {
+          return draft; // will show the "restored" banner below
+        }
+      }
+    } catch { /* ignore corrupt draft */ }
+    return structuredClone(surprise.config);
+  });
+
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<string[]>(["name"]);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  // Show the "restored draft" notice only when we actually loaded a draft.
+  const [draftRestored, setDraftRestored] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY(surprise.id));
+      if (raw) {
+        const draft = JSON.parse(raw) as Config;
+        return JSON.stringify(draft) !== JSON.stringify(surprise.config);
+      }
+    } catch { /* ignore */ }
+    return false;
+  });
+
+  // Debounced autosave to localStorage (~500 ms after last change).
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(DRAFT_KEY(surprise.id), JSON.stringify(config));
+      } catch { /* storage full — ignore */ }
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [config, surprise.id]);
+
+  const clearDraft = () => {
+    try { localStorage.removeItem(DRAFT_KEY(surprise.id)); } catch { /* ignore */ }
+    setDraftRestored(false);
+  };
+
+  const discardDraft = () => {
+    clearDraft();
+    setConfig(structuredClone(surprise.config));
+  };
 
   // Local edits vs the saved row — drives the save-status pill and the
   // smart Save button (same comparison the beforeunload guard uses).
@@ -145,6 +194,7 @@ export default function CustomizeForm({
     }
 
     setLastSavedAt(new Date());
+    clearDraft();
     toast.success("Saved! Your surprise has been updated. ✨");
     onSaved(data as SurpriseRow);
   };
@@ -165,6 +215,43 @@ export default function CustomizeForm({
 
   return (
     <div className="customize-shell" style={{ maxWidth: "560px", width: "100%", margin: "0 auto", padding: "0 4px" }}>
+      {/* Draft-restored notice */}
+      {draftRestored && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            padding: "10px 14px",
+            marginBottom: "12px",
+            borderRadius: "var(--rad-md)",
+            background: "rgba(124,58,237,0.12)",
+            border: "1px solid rgba(124,58,237,0.3)",
+            fontSize: "0.8rem",
+            color: "var(--ink-soft)",
+          }}
+        >
+          <span>✏️ Restored your unsaved changes.</span>
+          <button
+            type="button"
+            onClick={discardDraft}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--pink)",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontSize: "inherit",
+              padding: 0,
+              flexShrink: 0,
+            }}
+          >
+            Discard
+          </button>
+        </div>
+      )}
+
       <FormError>{validationError}</FormError>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

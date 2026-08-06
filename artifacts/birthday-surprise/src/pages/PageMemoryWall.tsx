@@ -284,6 +284,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
               borderRadius: "var(--rad-md)",
               boxShadow: "var(--shadow-strong), var(--glow-subtle)",
             }}
+            onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = "0.15"; }}
           />
           <p style={{
             color: "rgba(252,231,243,0.95)", fontSize: "1.35rem",

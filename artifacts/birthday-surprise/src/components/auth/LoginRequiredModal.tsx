@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { X, Lock } from "lucide-react";
 
 // Small centered modal shown when a guest tries to use a feature that
@@ -21,6 +22,22 @@ export default function LoginRequiredModal({
   onLogin,
   onSignup,
 }: LoginRequiredModalProps) {
+  // Fix E: lock body scroll while the modal is open.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  // Fix E: close on Escape key.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (

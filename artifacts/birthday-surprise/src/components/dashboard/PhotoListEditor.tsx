@@ -78,7 +78,23 @@ export default function PhotoListEditor({
               {uploadingIndex === i ? (
                 <Spinner className="size-5" style={{ color: "var(--violet)" }} />
               ) : photo.src ? (
-                <img src={photo.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img
+                  src={photo.src}
+                  alt=""
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={e => {
+                    const el = e.currentTarget as HTMLImageElement;
+                    el.style.display = "none";
+                    const parent = el.parentElement;
+                    if (parent && !parent.querySelector(".img-err-label")) {
+                      const lbl = document.createElement("span");
+                      lbl.className = "img-err-label";
+                      lbl.textContent = "⚠️ Load error";
+                      lbl.style.cssText = "font-size:9px;color:var(--ink-soft);text-align:center;padding:4px;";
+                      parent.appendChild(lbl);
+                    }
+                  }}
+                />
               ) : (
                 <span style={{ fontSize: "10px", color: "var(--ink-soft)" }}>No photo</span>
               )}

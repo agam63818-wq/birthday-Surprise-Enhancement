@@ -222,6 +222,22 @@ export function useBackgroundMusic() {
   // Sync playing state on mount
   useEffect(() => { setPlaying(_bgPlaying); }, []);
 
+  // Fix H: recover music after the page is backgrounded and resumed.
+  // Mobile browsers may pause audio when the tab is hidden; resume it
+  // when the page becomes visible again (only if we were playing).
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && _bgPlaying && _bgAudio && _bgAudio.paused) {
+        _bgAudio.play().catch(() => {
+          // If resume fails (e.g. audio context suspended), fall back to tones
+          if (fallbackAllowed) playBgTones();
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [fallbackAllowed]);
+
   return { start, stop, playing, playCakeSong };
 }
 

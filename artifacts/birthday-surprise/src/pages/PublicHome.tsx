@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import BirthdayExperience from "@/BirthdayExperience";
 import PublicTopBar from "@/components/dashboard/PublicTopBar";
 import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
@@ -16,11 +17,20 @@ import defaultConfig from "@/config";
 //
 // Part 2: auth gate modals are wired here.
 //   • Guest clicks Customize/Share → LoginRequiredModal (auth gate)
-//   • Logged-in user clicks Customize/Share → no-op (Part 3 will navigate)
 //   • Navbar "Log In" → AuthModal in login mode (skip gate)
 //   • Navbar "Sign Up" → AuthModal in signup mode (skip gate)
+//
+// Part 3: after a successful login/signup the user lands exactly where they
+// intended — the reason the modal was opened is tracked in `authIntent` and
+// forwarded to the dashboard as a query param (?intent=customize|share).
+// Logged-in users clicking Customize/Share skip the modals entirely and go
+// straight to the same URLs.
+
+type AuthIntent = "customize" | "share" | "plain" | null;
+
 export default function PublicHome() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const [, navigate] = useLocation();
 
   // Auth gate modal (LoginRequiredModal)
   const [authGateOpen, setAuthGateOpen] = useState(false);
@@ -29,42 +39,67 @@ export default function PublicHome() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "signup">("login");
 
-  // Open the auth gate only for guests; logged-in users are a no-op for now
-  // (Part 3 will wire the actual Customize/Share actions for logged-in users).
-  const handleGatedAction = () => {
-    if (user) return; // already logged in — no-op until Part 3
+  // WHY the auth modal was opened — decides where the user lands after
+  // authentication succeeds.
+  //   "customize" / "share" → /dashboard?intent=...
+  //   "plain" (navbar Log In / Sign Up) → /dashboard
+  const [authIntent, setAuthIntent] = useState<AuthIntent>(null);
+
+  // Customize / Share from the top bar.
+  // Logged-in users go straight to the dashboard with the intent in the URL;
+  // guests see the auth gate first (intent is remembered for after auth).
+  const handleGatedAction = (intent: "customize" | "share") => {
+    if (user) {
+      navigate(`/dashboard?intent=${intent}`);
+      return;
+    }
+    setAuthIntent(intent);
     setAuthGateOpen(true);
   };
 
-  // Open AuthModal directly (navbar buttons bypass the gate)
-  const openAuthModal = (mode: "login" | "signup") => {
+  // Navbar Log In / Sign Up bypass the gate — plain intent (no deep-link).
+  const openAuthModalPlain = (mode: "login" | "signup") => {
+    setAuthIntent("plain");
     setAuthModalMode(mode);
     setAuthModalOpen(true);
   };
 
-  // Gate → AuthModal transitions
+  // Gate → AuthModal transitions keep the original customize/share intent.
   const handleGateLogin = () => {
     setAuthGateOpen(false);
-    openAuthModal("login");
+    setAuthModalMode("login");
+    setAuthModalOpen(true);
   };
   const handleGateSignup = () => {
     setAuthGateOpen(false);
-    openAuthModal("signup");
+    setAuthModalMode("signup");
+    setAuthModalOpen(true);
   };
 
-  // Called after a successful sign-in or sign-up — close the modal.
-  // Part 3 will add redirect / resume logic here.
+  // Called after a successful sign-in or sign-up — close both modals, then
+  // send the user exactly where they intended to go.
   const handleAuthSuccess = () => {
+    setAuthGateOpen(false);
     setAuthModalOpen(false);
+    if (authIntent === "customize") {
+      navigate("/dashboard?intent=customize");
+    } else if (authIntent === "share") {
+      navigate("/dashboard?intent=share");
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   return (
     <>
       <PublicTopBar
-        onCustomize={handleGatedAction}
-        onShare={handleGatedAction}
-        onLogin={() => openAuthModal("login")}
-        onSignup={() => openAuthModal("signup")}
+        onCustomize={() => handleGatedAction("customize")}
+        onShare={() => handleGatedAction("share")}
+        onLogin={() => openAuthModalPlain("login")}
+        onSignup={() => openAuthModalPlain("signup")}
+        onDashboard={() => navigate("/dashboard")}
+        onLogout={() => signOut()}
+        isLoggedIn={!!user}
       />
 
       {/* Render the full experience with the bundled default config.
