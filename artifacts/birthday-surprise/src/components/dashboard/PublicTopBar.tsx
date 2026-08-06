@@ -1,4 +1,15 @@
-import { Eye, Wand2, Share2, LogIn, UserPlus, LayoutDashboard, LogOut } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Eye,
+  Wand2,
+  Share2,
+  LogIn,
+  UserPlus,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
 
 // Fixed chrome bar shown on the public "/" route. Mirrors the visual style
 // of DashboardTopBar (same dash-topbar / tab-pill / chrome-btn CSS classes)
@@ -7,6 +18,14 @@ import { Eye, Wand2, Share2, LogIn, UserPlus, LayoutDashboard, LogOut } from "lu
 // When `isLoggedIn` is true the Log In / Sign Up buttons are replaced with
 // Dashboard and Log Out buttons — all navigation/modal logic is wired in
 // PublicHome so this component stays purely presentational.
+//
+// Responsive behaviour (see `.public-topbar` rules in index.css):
+//   • > 640px — unchanged: brand hidden by the shared rule, Preview pill on
+//     the left, the full action button row on the right.
+//   • ≤ 640px — the action row + Preview pill collapse into a hamburger menu
+//     so nothing overlaps at narrow widths (the old ~420px bug where
+//     "Customize" sat on top of the "Preview" pill). The brand mark is shown
+//     again next to the hamburger, matching the mobile reference design.
 export default function PublicTopBar({
   onCustomize,
   onShare,
@@ -28,13 +47,50 @@ export default function PublicTopBar({
   onLogout?: () => void;
   isLoggedIn?: boolean;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Wraps the hamburger button + dropdown panel so a single ref covers both
+  // and clicks inside the menu don't count as "outside".
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close the dropdown on any click/tap outside of it.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [menuOpen]);
+
+  // Close on Escape — same pattern used by the auth modals.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [menuOpen]);
+
+  // Every dropdown entry closes the menu, then runs its existing callback
+  // untouched — mobile only changes *how* these are triggered.
+  const runAndClose = (fn?: () => void) => () => {
+    setMenuOpen(false);
+    fn?.();
+  };
+
   return (
-    <div className="dash-topbar">
+    <div className="dash-topbar public-topbar">
       {/* ── Left: brand + active "Preview" pill ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
         <span className="dash-brand">✦ Birthday Surprise</span>
 
-        {/* Single non-interactive pill that shows the current view */}
+        {/* Single non-interactive pill that shows the current view.
+            Hidden ≤640px — the dropdown carries the "Preview" row instead. */}
         <div className="tab-group" role="tablist" aria-label="Current view">
           <button
             role="tab"
@@ -49,8 +105,11 @@ export default function PublicTopBar({
         </div>
       </div>
 
-      {/* ── Right: action buttons ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      {/* ── Right: action buttons (desktop) ──
+          Layout lives in CSS (.dash-desktop-actions) rather than an inline
+          style so the ≤640px media query can actually hide it — inline
+          `display: flex` would win over the stylesheet. */}
+      <div className="dash-desktop-actions">
         <button
           onClick={onCustomize}
           aria-label="Customize your surprise"
@@ -121,6 +180,102 @@ export default function PublicTopBar({
               <span className="label">Sign Up</span>
             </button>
           </>
+        )}
+      </div>
+
+      {/* ── Right: hamburger + dropdown (≤640px only) ── */}
+      <div className="dash-mobile-menu" ref={menuRef}>
+        <button
+          type="button"
+          className="dash-mobile-menu-btn"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-controls="public-topbar-mobile-menu"
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          {menuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
+        </button>
+
+        {menuOpen && (
+          <div
+            id="public-topbar-mobile-menu"
+            className="dash-mobile-dropdown"
+            role="menu"
+            aria-label="Menu"
+          >
+            {/* Current view — mirrors the desktop Preview pill, not clickable */}
+            <div className="dash-mobile-dropdown-item is-current" aria-current="page">
+              <Eye size={16} aria-hidden="true" />
+              <span>Preview</span>
+            </div>
+
+            <button
+              type="button"
+              role="menuitem"
+              className="dash-mobile-dropdown-item"
+              onClick={runAndClose(onCustomize)}
+            >
+              <Wand2 size={16} aria-hidden="true" />
+              <span>Customize</span>
+            </button>
+
+            <button
+              type="button"
+              role="menuitem"
+              className="dash-mobile-dropdown-item"
+              onClick={runAndClose(onShare)}
+            >
+              <Share2 size={16} aria-hidden="true" />
+              <span>Share</span>
+            </button>
+
+            {isLoggedIn ? (
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="dash-mobile-dropdown-item is-primary"
+                  onClick={runAndClose(onDashboard)}
+                >
+                  <LayoutDashboard size={16} aria-hidden="true" />
+                  <span>Dashboard</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="dash-mobile-dropdown-item is-danger"
+                  onClick={runAndClose(onLogout)}
+                >
+                  <LogOut size={16} aria-hidden="true" />
+                  <span>Log Out</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="dash-mobile-dropdown-item"
+                  onClick={runAndClose(onLogin)}
+                >
+                  <LogIn size={16} aria-hidden="true" />
+                  <span>Log In</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="dash-mobile-dropdown-item is-primary"
+                  onClick={runAndClose(onSignup)}
+                >
+                  <UserPlus size={16} aria-hidden="true" />
+                  <span>Sign Up</span>
+                </button>
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>
