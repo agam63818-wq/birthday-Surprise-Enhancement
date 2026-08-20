@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import BirthdayExperience from "@/BirthdayExperience";
 import DashboardTopBar, { type DashboardTab } from "@/components/dashboard/DashboardTopBar";
 import CustomizeForm from "@/components/dashboard/CustomizeForm";
+import AIAssistantChat from "@/components/dashboard/AIAssistantChat";
 import type { SurpriseRow } from "@/types/surprise";
 
 function FullScreenState({ children }: { children: React.ReactNode }) {
@@ -146,7 +147,7 @@ export default function Dashboard() {
       <div style={{ paddingTop: "calc(56px + env(safe-area-inset-top, 0px))" }}>
         {tab === "preview" ? (
           <BirthdayExperience config={surprise.config} />
-        ) : (
+        ) : tab === "customize" ? (
           <div
             style={{
               padding: "24px 16px 72px",
@@ -163,6 +164,22 @@ export default function Dashboard() {
                 setSurprise(updated);
                 setTab("preview");
               }}
+            />
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "24px 16px 72px",
+              position: "relative",
+              zIndex: 5,
+              maxWidth: "760px",
+              margin: "0 auto",
+            }}
+          >
+            <AIAssistantChat
+              surprise={surprise}
+              onSurpriseChange={setSurprise}
+              onSwitchToCustomize={() => setTab("customize")}
             />
           </div>
         )}

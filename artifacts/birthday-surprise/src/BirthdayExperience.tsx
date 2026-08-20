@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import Background from "@/components/Background";
 import MusicToggle, { useBackgroundMusic } from "@/components/MusicPlayer";
 import SurprisePopup from "@/components/SurprisePopup";
@@ -8,13 +8,17 @@ import PageIntro from "@/pages/PageIntro";
 import PageCutenessMeter from "@/pages/PageCutenessMeter";
 import PageCelebration from "@/pages/PageCelebration";
 import PageCake from "@/pages/PageCake";
+import PageRakhi from "@/pages/PageRakhi";
+import PageFamilyDay from "@/pages/PageFamilyDay";
+import PageLoveDay from "@/pages/PageLoveDay";
 import PageWhyYouMatter from "@/pages/PageWhyYouMatter";
 import PageOurStory from "@/pages/PageOurStory";
 import PageMemoryWall from "@/pages/PageMemoryWall";
 import PageBeforeYouLeave from "@/pages/PageBeforeYouLeave";
 import PageLastNote from "@/pages/PageLastNote";
 import defaultConfig, { type Config } from "@/config";
-import { ConfigProvider } from "@/contexts/ConfigContext";
+import { ConfigProvider, useConfig } from "@/contexts/ConfigContext";
+import { applyTheme } from "@/lib/themePresets";
 
 const PAGES = [
   "landing", "intro", "cuteness", "celebration",
@@ -89,10 +93,18 @@ export default function BirthdayExperience({ config = defaultConfig }: { config?
 }
 
 function BirthdayExperienceInner() {
+  const config = useConfig();
   const [page, setPage] = useState<Page>("landing");
   const [transitioning, setTransitioning] = useState(false);
   const { start, stop, playing, playCakeSong } = useBackgroundMusic();
   const [musicStarted, setMusicStarted] = useState(false);
+
+  // Apply the saved color theme once on mount and whenever themeId changes.
+  // "midnightPurple" is the default — identical to the current live CSS —
+  // so existing users see zero visual change.
+  useEffect(() => {
+    applyTheme(config.themeId ?? "midnightPurple");
+  }, [config.themeId]);
 
   const goTo = useCallback((next: Page) => {
     if (transitioning) return;
@@ -108,13 +120,32 @@ function BirthdayExperienceInner() {
 
   const toggleMusic = () => playing ? stop() : start();
 
+  // Selects the correct hero page for the "cake" step based on occasionType.
+  // Birthday (default) and custom both render PageCake — no behaviour change.
+  const renderHeroPage = (onNext: () => void, playCakeSongFn?: () => void) => {
+    switch (config.occasionType) {
+      case "rakshabandhan":
+        return <PageRakhi onNext={onNext} playCakeSong={playCakeSongFn} />;
+      case "fathersday":
+        return <PageFamilyDay occasion="fathersday" onNext={onNext} playCakeSong={playCakeSongFn} />;
+      case "mothersday":
+        return <PageFamilyDay occasion="mothersday" onNext={onNext} playCakeSong={playCakeSongFn} />;
+      case "loveday":
+        return <PageLoveDay onNext={onNext} playCakeSong={playCakeSongFn} />;
+      case "birthday":
+      case "custom":
+      default:
+        return <PageCake onNext={onNext} playCakeSong={playCakeSongFn} />;
+    }
+  };
+
   const renderPage = () => {
     switch (page) {
       case "landing":      return <PageLanding       onNext={() => goTo("intro")} />;
       case "intro":        return <PageIntro         onNext={() => goTo("cuteness")} />;
       case "cuteness":     return <PageCutenessMeter onNext={() => goTo("celebration")} />;
       case "celebration":  return <PageCelebration   onNext={() => goTo("cake")} />;
-      case "cake":         return <PageCake          onNext={() => goTo("whyYouMatter")} playCakeSong={playCakeSong} />;
+      case "cake":         return renderHeroPage(() => goTo("whyYouMatter"), playCakeSong);
       case "whyYouMatter": return <PageWhyYouMatter  onNext={() => goTo("ourStory")} />;
       case "ourStory":     return <PageOurStory      onNext={() => goTo("memoryWall")} />;
       case "memoryWall":   return <PageMemoryWall    onNext={() => goTo("beforeLeave")} />;

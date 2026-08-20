@@ -17,9 +17,205 @@ import { supabase } from "@/lib/supabase";
 import type { Config } from "@/config";
 import type { SurpriseRow } from "@/types/surprise";
 import type { FontPresetId } from "@/lib/fontPresets";
+import {
+  THEME_PRESETS,
+  DEFAULT_THEME_PRESET,
+  type ThemePresetId,
+} from "@/lib/themePresets";
+import { OCCASION_META, OCCASION_DEFAULTS } from "@/lib/occasions";
 
-// Romantic-theme section icons (kept from the existing emoji set)
+// ── Occasion options (UI-visible subset; "custom" is reserved for later) ──
+const OCCASION_OPTIONS: Array<{
+  value: NonNullable<Config["occasionType"]>;
+  label: string;
+  emoji: string;
+}> = [
+  { value: "birthday",      label: "Birthday",       emoji: "🎂" },
+  { value: "rakshabandhan", label: "Rakshabandhan",  emoji: "🪢" },
+  { value: "fathersday",    label: "Father's Day",   emoji: "👨" },
+  { value: "mothersday",    label: "Mother's Day",   emoji: "👩" },
+  { value: "loveday",       label: "Love Day",       emoji: "💕" },
+];
+
+// ── Sub-component: Occasion selector + Theme swatch picker ────────────────
+function OccasionAndThemeSection({
+  occasionType,
+  themeId,
+  onOccasionChange,
+  onThemeChange,
+}: {
+  occasionType: Config["occasionType"];
+  themeId: Config["themeId"];
+  onOccasionChange: (v: NonNullable<Config["occasionType"]>) => void;
+  onThemeChange: (v: ThemePresetId) => void;
+}) {
+  const selectedOccasion = occasionType ?? "birthday";
+  const selectedTheme: ThemePresetId = themeId ?? DEFAULT_THEME_PRESET;
+  const themeIds = Object.keys(THEME_PRESETS) as ThemePresetId[];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* ── Occasion selector ─────────────────────────────────── */}
+      <div>
+        <p style={{
+          fontSize: "0.78rem",
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "rgba(220,185,255,0.7)",
+          marginBottom: "10px",
+        }}>
+          Occasion
+        </p>
+        <div
+          role="radiogroup"
+          aria-label="Occasion type"
+          style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}
+        >
+          {OCCASION_OPTIONS.map(({ value, label, emoji }) => {
+            const isActive = value === selectedOccasion;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                onClick={() => onOccasionChange(value)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "8px 14px",
+                  borderRadius: "999px",
+                  fontSize: "0.82rem",
+                  fontWeight: isActive ? 600 : 500,
+                  cursor: "pointer",
+                  lineHeight: 1.2,
+                  border: isActive
+                    ? "1px solid rgba(236,72,153,0.65)"
+                    : "1px solid rgba(167,139,250,0.28)",
+                  background: isActive
+                    ? "linear-gradient(135deg, rgba(236,72,153,0.28), rgba(124,58,237,0.22))"
+                    : "rgba(167,139,250,0.08)",
+                  color: isActive ? "#fde68a" : "var(--ink)",
+                  boxShadow: isActive
+                    ? "0 6px 22px rgba(236,72,153,0.28), 0 0 0 1px rgba(255,255,255,0.04) inset"
+                    : "none",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  transition:
+                    "background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease",
+                }}
+              >
+                <span aria-hidden="true" style={{ fontSize: "0.95rem" }}>{emoji}</span>
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Color theme swatch picker ─────────────────────────── */}
+      <div>
+        <p style={{
+          fontSize: "0.78rem",
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "rgba(220,185,255,0.7)",
+          marginBottom: "10px",
+        }}>
+          Color theme
+        </p>
+        <div
+          role="radiogroup"
+          aria-label="Color theme"
+          style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}
+        >
+          {themeIds.map((id) => {
+            const preset = THEME_PRESETS[id];
+            const isActive = id === selectedTheme;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                onClick={() => onThemeChange(id)}
+                title={preset.label}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "10px 12px",
+                  borderRadius: "14px",
+                  cursor: "pointer",
+                  border: isActive
+                    ? "2px solid rgba(236,72,153,0.75)"
+                    : "2px solid rgba(167,139,250,0.22)",
+                  background: isActive
+                    ? "rgba(236,72,153,0.12)"
+                    : "rgba(167,139,250,0.06)",
+                  boxShadow: isActive
+                    ? "0 6px 22px rgba(236,72,153,0.28)"
+                    : "none",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  transition:
+                    "border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease",
+                  minWidth: "72px",
+                }}
+              >
+                {/* Gradient swatch circle */}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: "block",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "50%",
+                    background: preset.swatchGradient,
+                    boxShadow: isActive
+                      ? "0 0 14px rgba(236,72,153,0.5)"
+                      : "0 2px 8px rgba(0,0,0,0.4)",
+                    border: "2px solid rgba(255,255,255,0.12)",
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{
+                  fontSize: "0.72rem",
+                  fontWeight: isActive ? 600 : 500,
+                  color: isActive ? "#fde68a" : "var(--ink-soft)",
+                  textAlign: "center",
+                  lineHeight: 1.3,
+                  whiteSpace: "nowrap",
+                }}>
+                  {preset.emoji} {preset.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p style={{
+          marginTop: "8px",
+          fontSize: "0.75rem",
+          color: "rgba(220,185,255,0.6)",
+          lineHeight: 1.5,
+          fontStyle: "italic",
+        }}>
+          The theme applies to the public surprise page. Preview it in the Preview tab.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Romantic-theme section icons (kept from the existing emoji set).
+// The "cake" entry is a fallback — the accordion label is built dynamically
+// from OCCASION_META so it reads e.g. "🪢 Rakhi page" for rakshabandhan.
 const SECTION_EMOJI: Record<string, string> = {
+  occasionAndTheme: "🎊",
   name: "💖", landing: "🎁", intro: "💌", cutenessMeter: "🥰",
   celebration: "🎉", cake: "🎂", whyYouMatter: "🌟", ourStory: "📖",
   memoryWall: "📸", beforeLeave: "🥺", lastNote: "📝", audio: "🎵",
@@ -135,6 +331,33 @@ export default function CustomizeForm({
     }));
   };
 
+  // occasionType and themeId are also OPTIONAL top-level keys.
+  const setOccasionType = (value: NonNullable<Config["occasionType"]>) => {
+    setConfig((c) => ({ ...c, occasionType: value }));
+  };
+  const setThemeId = (value: ThemePresetId) => {
+    setConfig((c) => ({ ...c, themeId: value }));
+  };
+
+  // occasionContent is an OPTIONAL top-level key with nested occasion sub-keys.
+  // Each sub-key is also optional — only write what the user has filled in.
+  type OccasionKey = keyof NonNullable<Config["occasionContent"]>;
+  const setOccasionContent = <K extends OccasionKey>(
+    occasion: K,
+    patch: Partial<NonNullable<NonNullable<Config["occasionContent"]>[K]>>,
+  ) => {
+    setConfig((c) => ({
+      ...c,
+      occasionContent: {
+        ...(c.occasionContent ?? {}),
+        [occasion]: {
+          ...(c.occasionContent?.[occasion] ?? {}),
+          ...patch,
+        },
+      },
+    }));
+  };
+
   const toggleSection = (key: string) => (open: boolean) =>
     setOpenSections((prev) => (open ? [...prev, key] : prev.filter((k) => k !== key)));
 
@@ -143,6 +366,8 @@ export default function CustomizeForm({
   /* ── Per-section completion (required fields filled) ───────── */
   const filled = (s: string) => s.trim().length > 0;
   const completion: Record<string, boolean> = {
+    // occasionAndTheme is always "complete" — both fields have safe defaults.
+    occasionAndTheme: true,
     name: filled(config.name),
     landing: filled(config.landing.title) && filled(config.landing.subtitle) && filled(config.landing.buttonText),
     intro: filled(config.intro.heading) && filled(config.intro.message),
@@ -199,10 +424,10 @@ export default function CustomizeForm({
     onSaved(data as SurpriseRow);
   };
 
-  const item = (key: string, title: string, subtitle: string | undefined, children: React.ReactNode) => (
+  const item = (key: string, title: string, subtitle: string | undefined, children: React.ReactNode, emojiOverride?: string) => (
     <AccordionEditorItem
       key={key}
-      icon={SECTION_EMOJI[key] ?? "✨"}
+      icon={emojiOverride ?? SECTION_EMOJI[key] ?? "✨"}
       title={title}
       subtitle={subtitle}
       open={isOpen(key)}
@@ -255,6 +480,16 @@ export default function CustomizeForm({
       <FormError>{validationError}</FormError>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        {/* ── Occasion & Theme — always at the top ─────────────── */}
+        {item("occasionAndTheme", "Occasion & Theme", undefined, (
+          <OccasionAndThemeSection
+            occasionType={config.occasionType}
+            themeId={config.themeId}
+            onOccasionChange={setOccasionType}
+            onThemeChange={setThemeId}
+          />
+        ))}
+
         {item("name", "Name", snip(config.name), (
           <TextField label="Their name" value={config.name} onChange={(v) => setConfig((c) => ({ ...c, name: v }))} />
         ))}
@@ -303,21 +538,167 @@ export default function CustomizeForm({
           </>
         ))}
 
-        {item("cake", "Cake page", snip(config.cake.title), (
-          <>
-            <FontPicker value={config.textStyles?.cake} onChange={(id) => setFont("cake", id)} />
-            <TextField label="Title" value={config.cake.title} onChange={(v) => set("cake", { title: v })} />
-            <TextField label="Subtitle" value={config.cake.subtitle} onChange={(v) => set("cake", { subtitle: v })} />
-            <TextField label="Tap hint" value={config.cake.tapHint} onChange={(v) => set("cake", { tapHint: v })} />
-            <CheckboxField
-              label="Use my own cake photo instead of the drawn cake"
-              checked={config.cake.useImage}
-              onChange={(v) => set("cake", { useImage: v })}
-            />
-            <TextAreaField label="Message (shown after cutting)" value={config.cake.message} onChange={(v) => set("cake", { message: v })} />
-            <TextField label="Button text" value={config.cake.buttonText} onChange={(v) => set("cake", { buttonText: v })} />
-          </>
-        ))}
+        {/* ── Occasion-aware hero page section ─────────────────── */}
+        {(() => {
+          const occ = config.occasionType ?? "birthday";
+          const meta = OCCASION_META[occ];
+          const sectionEmoji = meta?.emoji ?? SECTION_EMOJI.cake;
+          const sectionLabel = occ === "birthday" || occ === "custom"
+            ? "Cake page"
+            : `${meta?.heroLabel ?? meta?.label ?? "Hero"} page`;
+          const sectionSubtitle = occ === "birthday" || occ === "custom"
+            ? snip(config.cake.title)
+            : snip(config.occasionContent?.[occ as keyof NonNullable<Config["occasionContent"]>]?.title ?? "");
+
+          const el = item("cake", sectionLabel, sectionSubtitle, (() => {
+            if (occ === "birthday" || occ === "custom") {
+              // ── Birthday / Custom: existing fields unchanged ──────
+              return (
+                <>
+                  <FontPicker value={config.textStyles?.cake} onChange={(id) => setFont("cake", id)} />
+                  <TextField label="Title" value={config.cake.title} onChange={(v) => set("cake", { title: v })} />
+                  <TextField label="Subtitle" value={config.cake.subtitle} onChange={(v) => set("cake", { subtitle: v })} />
+                  <TextField label="Tap hint" value={config.cake.tapHint} onChange={(v) => set("cake", { tapHint: v })} />
+                  <CheckboxField
+                    label="Use my own cake photo instead of the drawn cake"
+                    checked={config.cake.useImage}
+                    onChange={(v) => set("cake", { useImage: v })}
+                  />
+                  <TextAreaField label="Message (shown after cutting)" value={config.cake.message} onChange={(v) => set("cake", { message: v })} />
+                  <TextField label="Button text" value={config.cake.buttonText} onChange={(v) => set("cake", { buttonText: v })} />
+                </>
+              );
+            }
+
+            if (occ === "rakshabandhan") {
+              const saved = config.occasionContent?.rakshabandhan ?? {};
+              const defs = OCCASION_DEFAULTS.rakshabandhan;
+              return (
+                <>
+                  <FontPicker value={config.textStyles?.cake} onChange={(id) => setFont("cake", id)} />
+                  <TextField
+                    label="Title"
+                    value={saved.title ?? ""}
+                    onChange={(v) => setOccasionContent("rakshabandhan", { title: v })}
+                    placeholder={defs.title}
+                  />
+                  <TextField
+                    label="Sibling's name (optional — woven into the title)"
+                    value={saved.siblingName ?? ""}
+                    onChange={(v) => setOccasionContent("rakshabandhan", { siblingName: v })}
+                    placeholder="e.g. Bhai, Didi…"
+                  />
+                  <TextAreaField
+                    label="Message (shown after tying the rakhi)"
+                    value={saved.message ?? ""}
+                    onChange={(v) => setOccasionContent("rakshabandhan", { message: v })}
+                    placeholder={defs.message}
+                  />
+                  <TextField
+                    label="Button text"
+                    value={saved.buttonText ?? ""}
+                    onChange={(v) => setOccasionContent("rakshabandhan", { buttonText: v })}
+                    placeholder={defs.buttonText}
+                  />
+                </>
+              );
+            }
+
+            if (occ === "fathersday") {
+              const saved = config.occasionContent?.fathersday ?? {};
+              const defs = OCCASION_DEFAULTS.fathersday;
+              return (
+                <>
+                  <FontPicker value={config.textStyles?.cake} onChange={(id) => setFont("cake", id)} />
+                  <TextField
+                    label="Title"
+                    value={saved.title ?? ""}
+                    onChange={(v) => setOccasionContent("fathersday", { title: v })}
+                    placeholder={defs.title}
+                  />
+                  <TextAreaField
+                    label="Message (shown after the reveal)"
+                    value={saved.message ?? ""}
+                    onChange={(v) => setOccasionContent("fathersday", { message: v })}
+                    placeholder={defs.message}
+                  />
+                  <TextField
+                    label="Button text"
+                    value={saved.buttonText ?? ""}
+                    onChange={(v) => setOccasionContent("fathersday", { buttonText: v })}
+                    placeholder={defs.buttonText}
+                  />
+                  <p style={{ fontSize: "0.75rem", color: "rgba(220,185,255,0.6)", marginTop: "4px", fontStyle: "italic" }}>
+                    Tip: Add a photo in the Memory Wall section — it will appear in the Father's Day frame.
+                  </p>
+                </>
+              );
+            }
+
+            if (occ === "mothersday") {
+              const saved = config.occasionContent?.mothersday ?? {};
+              const defs = OCCASION_DEFAULTS.mothersday;
+              return (
+                <>
+                  <FontPicker value={config.textStyles?.cake} onChange={(id) => setFont("cake", id)} />
+                  <TextField
+                    label="Title"
+                    value={saved.title ?? ""}
+                    onChange={(v) => setOccasionContent("mothersday", { title: v })}
+                    placeholder={defs.title}
+                  />
+                  <TextAreaField
+                    label="Message (shown after the bloom)"
+                    value={saved.message ?? ""}
+                    onChange={(v) => setOccasionContent("mothersday", { message: v })}
+                    placeholder={defs.message}
+                  />
+                  <TextField
+                    label="Button text"
+                    value={saved.buttonText ?? ""}
+                    onChange={(v) => setOccasionContent("mothersday", { buttonText: v })}
+                    placeholder={defs.buttonText}
+                  />
+                  <p style={{ fontSize: "0.75rem", color: "rgba(220,185,255,0.6)", marginTop: "4px", fontStyle: "italic" }}>
+                    Tip: Add a photo in the Memory Wall section — it will appear in the Mother's Day frame.
+                  </p>
+                </>
+              );
+            }
+
+            if (occ === "loveday") {
+              const saved = config.occasionContent?.loveday ?? {};
+              const defs = OCCASION_DEFAULTS.loveday;
+              return (
+                <>
+                  <FontPicker value={config.textStyles?.cake} onChange={(id) => setFont("cake", id)} />
+                  <TextField
+                    label="Title"
+                    value={saved.title ?? ""}
+                    onChange={(v) => setOccasionContent("loveday", { title: v })}
+                    placeholder={defs.title}
+                  />
+                  <TextAreaField
+                    label="Message (shown after unlocking the heart)"
+                    value={saved.message ?? ""}
+                    onChange={(v) => setOccasionContent("loveday", { message: v })}
+                    placeholder={defs.message}
+                  />
+                  <TextField
+                    label="Button text"
+                    value={saved.buttonText ?? ""}
+                    onChange={(v) => setOccasionContent("loveday", { buttonText: v })}
+                    placeholder={defs.buttonText}
+                  />
+                </>
+              );
+            }
+
+            return null;
+          })(), sectionEmoji);
+
+          return el;
+        })()}
 
         {item("whyYouMatter", "Why you matter", `${config.whyYouMatter.cards.length} cards`, (
           <>

@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { FontPresetId } from "@/lib/fontPresets";
+import type { ThemePresetId } from "@/lib/themePresets";
 
 const config = {
   // ── Person's name ──────────────────────────────────────────
@@ -159,15 +160,51 @@ export default config;
 // Base type derived from the config literal above.
 type BaseConfig = typeof config;
 
-// Public Config type. Adds an OPTIONAL top-level `textStyles` field
-// used by Part 1's per-page Font Picker. It is optional (with `?`)
-// so existing saved surprises (which don't have this field yet) keep
-// working without a database migration — this is stored inside the
+// Public Config type. Adds OPTIONAL top-level fields that are absent from
+// older saved rows — all are optional (with `?`) so existing surprises keep
+// working without a database migration. Everything is stored inside the
 // existing `config` jsonb column.
 export type Config = BaseConfig & {
+  // Per-page font-style overrides (Part 1 — Font Picker).
   textStyles?: Partial<Record<
     "landing" | "intro" | "cutenessMeter" | "celebration" | "cake" |
     "whyYouMatter" | "ourStory" | "memoryWall" | "beforeLeave" | "lastNote",
     FontPresetId
   >>;
+
+  // Occasion type — determines which occasion-specific pages/copy to show.
+  // Defaults to "birthday" when absent so every existing row keeps working.
+  // "custom" is reserved for future use and is not exposed in the UI yet.
+  occasionType?: "birthday" | "rakshabandhan" | "fathersday" | "mothersday" | "loveday" | "custom";
+
+  // Color theme — maps to a ThemePresetId defined in src/lib/themePresets.ts.
+  // Defaults to "midnightPurple" (= the current live look) when absent.
+  themeId?: ThemePresetId;
+
+  // Per-occasion hero page content. Every field is optional — the page
+  // falls back to warm Hinglish defaults from src/lib/occasions.ts when
+  // a field is absent or blank. No database migration needed.
+  occasionContent?: {
+    rakshabandhan?: {
+      title?: string;
+      message?: string;
+      siblingName?: string;
+      buttonText?: string;
+    };
+    fathersday?: {
+      title?: string;
+      message?: string;
+      buttonText?: string;
+    };
+    mothersday?: {
+      title?: string;
+      message?: string;
+      buttonText?: string;
+    };
+    loveday?: {
+      title?: string;
+      message?: string;
+      buttonText?: string;
+    };
+  };
 };

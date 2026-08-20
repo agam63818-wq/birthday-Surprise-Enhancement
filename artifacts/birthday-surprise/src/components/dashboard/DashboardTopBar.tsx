@@ -1,10 +1,11 @@
-import { Eye, Wand2, Share2, LogOut } from "lucide-react";
+import { Eye, Wand2, Share2, LogOut, Sparkles } from "lucide-react";
 
-export type DashboardTab = "preview" | "customize";
+export type DashboardTab = "preview" | "customize" | "assistant";
 
 const TAB_META: Record<DashboardTab, { label: string; Icon: typeof Eye }> = {
-  preview: { label: "Preview", Icon: Eye },
-  customize: { label: "Customize", Icon: Wand2 },
+  preview:   { label: "Preview",       Icon: Eye },
+  customize: { label: "Customize",     Icon: Wand2 },
+  assistant: { label: "AI Assistant",  Icon: Sparkles },
 };
 
 // Fixed chrome bar for the dashboard: brand mark, Preview/Customize tabs,
@@ -38,7 +39,7 @@ export default function DashboardTopBar({
                 className={`tab-pill${tab === t ? " active" : ""}`}
               >
                 <Icon size={14} aria-hidden="true" />
-                {label}
+                <span className="tab-label">{label}</span>
               </button>
             );
           })}

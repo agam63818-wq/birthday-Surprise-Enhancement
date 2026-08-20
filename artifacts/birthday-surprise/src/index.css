@@ -882,7 +882,15 @@ button { user-select: none; -webkit-user-select: none; touch-action: manipulatio
      the hamburger below 640px. DashboardTopBar still shares .chrome-btn and
      relies on this rule, so keep it for every other top bar. */
   .dash-topbar:not(.public-topbar) .chrome-btn .label { display: none; }
-  .tab-pill { padding: 7px 12px; }
+  /* Three-tab bar: hide text labels at narrow widths so pills stay icon-only */
+  .tab-pill { padding: 7px 10px; }
+  .tab-pill .tab-label { display: none; }
+}
+
+@media (max-width: 360px) {
+  /* Extreme narrow: also hide brand text so the three pills + chrome buttons fit */
+  .dash-topbar:not(.public-topbar) .dash-brand { display: none; }
+  .tab-pill { padding: 7px 8px; }
 }
 
 /* ── FUN LAYER: peeking teddy, bubbles, rising emojis, cake rays ── */
