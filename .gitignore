@@ -1,11 +1,26 @@
 ```
 # Dependencies
 node_modules/
+.pnpm-store/
 
-# Build artifacts
+# Build outputs
 dist/
 build/
 target/
+
+# Environment variables
+.env
+.env.local
+*.env.*
+
+# IDE specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
 
 # Python
 __pycache__/
@@ -13,26 +28,9 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-env/
 venv/
 .venv/
-.ENV
-.ENV.*
-.env
-.env.*
-
-# Logs
-*.log
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+.env/
 
 # Coverage
 coverage/
@@ -42,6 +40,10 @@ htmlcov/
 # Temporary files
 *.tmp
 *.temp
+
+# OS generated
+.DS_Store
+Thumbs.db
 
 # Compressed files
 *.zip
@@ -62,25 +64,8 @@ htmlcov/
 *.Z
 *.lz
 *.lzo
-
-# MyPy
-.mypy_cache/
-__pycache__/
-
-# PyTest
-.pytest_cache/
-
-# Gradle
-.gradle/
-
-# Julia
-.julia/
-
-# Zig
-.zig-cache/
-zig-cache/
-
-# Supabase
-supabase/.temp/
-supabase/storage/
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```

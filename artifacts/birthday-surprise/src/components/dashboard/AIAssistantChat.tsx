@@ -314,6 +314,9 @@ export default function AIAssistantChat({
   const [showKey, setShowKey] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
 
+  // Extraction state (for name field)
+  const [extracting, setExtracting] = useState(false);
+
   // Generation state
   const [generating, setGenerating] = useState(false);
   const [generatingPhase, setGeneratingPhase] = useState(0);
@@ -390,16 +393,62 @@ export default function AIAssistantChat({
 
   // ── Step handlers ──────────────────────────────────────────────────────
 
-  const handleNameSubmit = () => {
-    const name = inputValue.trim();
-    if (!name) return;
-    setAnswers((a) => ({ ...a, name }));
-    advanceStep(
-      "name",
-      name,
-      "occasion",
-      `Lovely! 🌸 What's the occasion for ${name}?`,
-    );
+  const handleNameSubmit = async () => {
+    const rawName = inputValue.trim();
+    if (!rawName) return;
+
+    // Push user's raw message immediately
+    addMessage("user", rawName);
+
+    // Show typing indicator and set extracting state
+    setExtracting(true);
+    setMessages((prev) => [...prev, { role: "assistant", text: "..." }]);
+
+    try {
+      // Call extract-chat-field edge function
+      const { data, error } = await supabase.functions.invoke(
+        "extract-chat-field",
+        { body: { rawText: rawName, fieldType: "name" } },
+      );
+
+      // Remove the "..." typing indicator
+      setMessages((prev) => prev.slice(0, -1));
+
+      let cleanName: string;
+
+      if (error || !data?.value) {
+        // Fallback: use raw trimmed input if extraction fails
+        cleanName = rawName;
+      } else {
+        cleanName = data.value;
+      }
+
+      // Store the clean name (not raw text) in answers
+      setAnswers((a) => ({ ...a, name: cleanName }));
+
+      // Assistant response with extracted name and edit affordance
+      addMessage(
+        "assistant",
+        `Lovely! 🌸 Creating this for **${cleanName}** — got it right? If not, just type the correct name below. Otherwise, what's the occasion?`,
+      );
+
+      setStep("occasion");
+      setInputValue("");
+    } catch (err) {
+      // Remove the "..." typing indicator on error too
+      setMessages((prev) => prev.slice(0, -1));
+
+      // Graceful fallback: use raw trimmed input
+      setAnswers((a) => ({ ...a, name: rawName }));
+      addMessage(
+        "assistant",
+        `Lovely! 🌸 Creating this for **${rawName}** — got it right? If not, just type the correct name below. Otherwise, what's the occasion?`,
+      );
+      setStep("occasion");
+      setInputValue("");
+    } finally {
+      setExtracting(false);
+    }
   };
 
   const handleOccasionSelect = (occ: OccasionId) => {
@@ -759,8 +808,8 @@ export default function AIAssistantChat({
               aria-label="Recipient's name"
             />
             <div style={{ display: "flex", gap: "8px" }}>
-              <ActionButton onClick={handleNameSubmit} disabled={!inputValue.trim()}>
-                Next →
+              <ActionButton onClick={handleNameSubmit} disabled={!inputValue.trim() || extracting}>
+                {extracting ? "..." : "Next →"}
               </ActionButton>
             </div>
           </div>
@@ -769,6 +818,55 @@ export default function AIAssistantChat({
         {/* ── Occasion step ── */}
         {step === "occasion" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {/* Show extracted name with edit affordance */}
+            <div
+              style={{
+                padding: "10px 14px",
+                borderRadius: "12px",
+                background: "rgba(167,139,250,0.08)",
+                border: "1px solid rgba(167,139,250,0.2)",
+                fontSize: "0.85rem",
+                color: "var(--ink)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "10px",
+              }}
+            >
+              <span>
+                👤 Creating for <strong>{answers.name}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("name");
+                  setInputValue(answers.name);
+                  // Remove the last assistant message (the one showing the extracted name)
+                  setMessages((prev) => {
+                    const lastAssistantIdx = [...prev].reverse().findIndex((m) => m.role === "assistant" && m.text.includes("Creating this for"));
+                    if (lastAssistantIdx === -1) return prev;
+                    return prev.slice(0, prev.length - 1 - lastAssistantIdx);
+                  });
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 8px",
+                  borderRadius: "8px",
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  border: "1px solid rgba(167,139,250,0.25)",
+                  background: "rgba(167,139,250,0.08)",
+                  color: "var(--ink-soft)",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                ✏️ Edit name
+              </button>
+            </div>
+
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
               {OCCASION_IDS.map((occ) => (
                 <OptionButton
