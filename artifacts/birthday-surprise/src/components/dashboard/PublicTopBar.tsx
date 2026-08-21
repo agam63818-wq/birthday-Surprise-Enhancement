@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import {
   Eye,
   Wand2,
@@ -10,6 +9,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { useTopBarMenu } from "./useTopBarMenu";
 
 // Fixed chrome bar shown on the public "/" route. Mirrors the visual style
 // of DashboardTopBar (same dash-topbar / tab-pill / chrome-btn CSS classes)
@@ -26,6 +26,9 @@ import {
 //     so nothing overlaps at narrow widths (the old ~420px bug where
 //     "Customize" sat on top of the "Preview" pill). The brand mark is shown
 //     again next to the hamburger, matching the mobile reference design.
+//
+// The open/close behaviour lives in useTopBarMenu so DashboardTopBar
+// collapses through exactly the same mechanism.
 export default function PublicTopBar({
   onCustomize,
   onShare,
@@ -47,41 +50,10 @@ export default function PublicTopBar({
   onLogout?: () => void;
   isLoggedIn?: boolean;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
   // Wraps the hamburger button + dropdown panel so a single ref covers both
   // and clicks inside the menu don't count as "outside".
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  // Close the dropdown on any click/tap outside of it.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e: MouseEvent | TouchEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("touchstart", handler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("touchstart", handler);
-    };
-  }, [menuOpen]);
-
-  // Close on Escape — same pattern used by the auth modals.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [menuOpen]);
-
-  // Every dropdown entry closes the menu, then runs its existing callback
-  // untouched — mobile only changes *how* these are triggered.
-  const runAndClose = (fn?: () => void) => () => {
-    setMenuOpen(false);
-    fn?.();
-  };
+  const { open: menuOpen, setOpen: setMenuOpen, menuRef, runAndClose } =
+    useTopBarMenu();
 
   return (
     <div className="dash-topbar public-topbar">

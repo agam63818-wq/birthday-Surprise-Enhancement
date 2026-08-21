@@ -22,6 +22,19 @@ const GOLD_LIGHT = "#F5D07A";
 const MAROON = "#8C1D28";
 const MAROON_LIGHT = "#C0394A";
 
+// ── Hero photography ─────────────────────────────────────────────────────
+// Two real reference images drive the whole interaction — the thali (rakhi
+// resting on the puja plate) and the tied state (hands tying it onto the
+// wrist). Both are 768×440 and already match the app's purple/gold look, so
+// they are used as-is instead of being redrawn in SVG.
+const THALI_SRC = "/assets/rakhi-thali.jpg";
+const TIED_SRC = "/assets/rakhi-tied.jpg";
+const HERO_RATIO = "768 / 440";
+
+// Where the rakhi sits on the wrist in rakhi-tied.jpg (fraction of the
+// image box) — the golden glow pulse is centred here on the final tap.
+const WRIST_GLOW = { x: "52%", y: "26%", size: "46%" };
+
 /* ── Web Audio — module-level context (same pattern as PageCake) ─────── */
 let sfxCtx: AudioContext | null = null;
 function getCtx(): AudioContext | null {
@@ -37,6 +50,34 @@ function getCtx(): AudioContext | null {
     return sfxCtx;
   } catch {
     return null;
+  }
+}
+
+// Soft "pick up" chime — a single light, short bell for lifting the rakhi
+// off the thali. Deliberately quieter/shorter than playTieSfx so the second
+// tap still feels like the bigger moment.
+function playPickupSfx() {
+  const c = getCtx();
+  if (!c) return;
+  try {
+    const t = c.currentTime + 0.01;
+    // Airy two-note lift (G5 → C6), sine, gain <= 0.14
+    [783.99, 1046.5].forEach((freq, i) => {
+      const start = t + i * 0.09;
+      const o = c.createOscillator();
+      const og = c.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      og.gain.setValueAtTime(0.0001, start);
+      og.gain.exponentialRampToValueAtTime(0.13, start + 0.02);
+      og.gain.exponentialRampToValueAtTime(0.001, start + 0.34);
+      o.connect(og);
+      og.connect(c.destination);
+      o.start(start);
+      o.stop(start + 0.4);
+    });
+  } catch {
+    /* blocked AudioContext — silently ignore */
   }
 }
 
@@ -89,169 +130,26 @@ function playTieSfx() {
 /* ── Local keyframes ─────────────────────────────────────────────────── */
 const LOCAL_KEYFRAMES = `
 @keyframes rakhi-pulse {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px ${GOLD}88); }
-  50%       { transform: scale(1.06); filter: drop-shadow(0 0 24px ${GOLD}cc); }
-}
-@keyframes rakhi-slide-on {
-  0%   { transform: translateX(60px) rotate(-8deg); opacity: 0.4; }
-  60%  { transform: translateX(-4px) rotate(2deg); opacity: 1; }
-  80%  { transform: translateX(3px) rotate(-1deg); }
-  100% { transform: translateX(0) rotate(0deg); }
-}
-@keyframes knot-pop {
-  0%   { transform: scale(0.5); opacity: 0; }
-  60%  { transform: scale(1.18); }
-  80%  { transform: scale(0.94); }
-  100% { transform: scale(1); opacity: 1; }
-}
-@keyframes flower-settle {
-  0%   { transform: scale(0.3) rotate(-30deg); opacity: 0; }
-  70%  { transform: scale(1.12) rotate(5deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0deg); opacity: 1; }
-}
-@keyframes thread-tighten {
-  0%   { stroke-dashoffset: 120; }
-  100% { stroke-dashoffset: 0; }
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50%       { transform: scale(1.06); opacity: 1; }
 }
 @keyframes rakhi-shimmer {
   0%, 100% { opacity: 0.6; }
   50%       { opacity: 1; }
 }
+/* Golden glow over the wrist at the moment the rakhi is tied */
+@keyframes rakhi-wrist-glow {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  45%  { opacity: 0.6; transform: translate(-50%, -50%) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.3); }
+}
 `;
 
-/* ── Rakhi SVG art ───────────────────────────────────────────────────── */
-type RakhiPhase = "idle" | "animating" | "revealed";
-
-function RakhiArt({ phase }: { phase: RakhiPhase }) {
-  const tied = phase === "animating" || phase === "revealed";
-  const reduced = prefersReducedMotion();
-
-  return (
-    <svg
-      viewBox="0 0 280 200"
-      width="100%"
-      height="100%"
-      aria-hidden="true"
-      style={{ display: "block", overflow: "visible" }}
-    >
-      <defs>
-        <linearGradient id="rk-skin" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f5c5a3" />
-          <stop offset="100%" stopColor="#e8a882" />
-        </linearGradient>
-        <linearGradient id="rk-gold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={GOLD_LIGHT} />
-          <stop offset="100%" stopColor={GOLD} />
-        </linearGradient>
-        <linearGradient id="rk-maroon" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={MAROON_LIGHT} />
-          <stop offset="100%" stopColor={MAROON} />
-        </linearGradient>
-        <filter id="rk-glow">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      {/* ── Forearm / wrist ─────────────────────────────────── */}
-      {/* Forearm — soft rounded rectangle */}
-      <rect x="60" y="90" width="160" height="68" rx="34" fill="url(#rk-skin)" />
-      {/* Wrist highlight */}
-      <ellipse cx="140" cy="90" rx="80" ry="10" fill="rgba(255,255,255,0.18)" />
-      {/* Knuckle hint */}
-      <ellipse cx="218" cy="124" rx="12" ry="9" fill="#e8a882" />
-      <ellipse cx="218" cy="124" rx="7" ry="5" fill="rgba(255,255,255,0.12)" />
-
-      {/* ── Thread on wrist (animates in when tied) ──────────── */}
-      {tied && (
-        <path
-          d="M 90 108 Q 140 96 190 108 Q 200 116 190 124 Q 140 136 90 124 Q 80 116 90 108 Z"
-          fill="none"
-          stroke={GOLD}
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          strokeDasharray="120"
-          strokeDashoffset="0"
-          style={{
-            animation: reduced
-              ? "none"
-              : "thread-tighten 0.5s cubic-bezier(0.22,1,0.36,1) forwards",
-          }}
-          filter="url(#rk-glow)"
-        />
-      )}
-
-      {/* ── Rakhi charm (slides on when tied, pulses when idle) ─ */}
-      <g
-        style={{
-          animation:
-            !tied && !reduced
-              ? "rakhi-pulse 2.2s ease-in-out infinite"
-              : tied && !reduced
-              ? "rakhi-slide-on 0.7s cubic-bezier(0.22,1,0.36,1) forwards"
-              : "none",
-          transformOrigin: "140px 116px",
-        }}
-      >
-        {/* Charm disc */}
-        <circle cx="140" cy="116" r="22" fill="url(#rk-maroon)" filter="url(#rk-glow)" />
-        <circle cx="140" cy="116" r="18" fill="url(#rk-gold)" />
-        <circle cx="140" cy="116" r="12" fill={MAROON} />
-        <circle cx="140" cy="116" r="7" fill={GOLD_LIGHT} />
-        {/* Om / decorative centre dot */}
-        <circle cx="140" cy="116" r="3" fill={MAROON} />
-
-        {/* Flower petals around the charm */}
-        {[0, 60, 120, 180, 240, 300].map((deg, i) => {
-          const rad = (deg * Math.PI) / 180;
-          const px = 140 + Math.cos(rad) * 14;
-          const py = 116 + Math.sin(rad) * 14;
-          return (
-            <ellipse
-              key={i}
-              cx={px}
-              cy={py}
-              rx="5"
-              ry="3"
-              fill={i % 2 === 0 ? GOLD_LIGHT : MAROON_LIGHT}
-              transform={`rotate(${deg}, ${px}, ${py})`}
-              style={{
-                animation:
-                  tied && !reduced
-                    ? `flower-settle 0.6s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.04}s both`
-                    : "none",
-              }}
-            />
-          );
-        })}
-      </g>
-
-      {/* ── Knot (appears after slide) ───────────────────────── */}
-      {tied && (
-        <g
-          style={{
-            animation: reduced
-              ? "none"
-              : "knot-pop 0.45s cubic-bezier(0.22,1,0.36,1) 0.55s both",
-          }}
-        >
-          <ellipse cx="162" cy="108" rx="7" ry="5" fill={GOLD} opacity="0.9" />
-          <ellipse cx="162" cy="124" rx="7" ry="5" fill={GOLD} opacity="0.9" />
-          <path
-            d="M 162 108 Q 168 116 162 124"
-            fill="none"
-            stroke={GOLD_LIGHT}
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
-        </g>
-      )}
-    </svg>
-  );
-}
+/* ── Interaction phases ──────────────────────────────────────────────── */
+// "thali"     — rakhi-thali.jpg, waiting for the first tap
+// "tied"      — crossfaded to rakhi-tied.jpg, waiting for the second tap
+// "celebrated"— rakhi-tied.jpg + burst / glow / message reveal
+type RakhiPhase = "thali" | "tied" | "celebrated";
 
 /* ── Main page component ─────────────────────────────────────────────── */
 export default function PageRakhi({ onNext, playCakeSong }: RakhiPageProps) {
@@ -260,11 +158,25 @@ export default function PageRakhi({ onNext, playCakeSong }: RakhiPageProps) {
   const content = getOccasionContent(config, "rakshabandhan");
   const reduced = prefersReducedMotion();
 
-  const [phase, setPhase] = useState<RakhiPhase>("idle");
+  const [phase, setPhase] = useState<RakhiPhase>("thali");
   const [burst, setBurst] = useState(false);
+  const [glow, setGlow] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [showButton, setShowButton] = useState(false);
+  // Both images failing to load must not leave an empty hero — fall back to
+  // a warm gold panel with the rakhi emoji.
+  const [imgError, setImgError] = useState(false);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Preload both frames on mount so the crossfade on the first tap has no
+  // loading delay (the hidden <img> pair below is the belt-and-braces path
+  // for browsers that ignore detached Image() requests).
+  useEffect(() => {
+    [THALI_SRC, TIED_SRC].forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
 
   // Cleanup all timers on unmount to prevent setState-after-unmount
   useEffect(() => {
@@ -279,11 +191,19 @@ export default function PageRakhi({ onNext, playCakeSong }: RakhiPageProps) {
     return id;
   };
 
-  const handleTap = () => {
-    if (phase !== "idle") return;
-    setPhase("animating");
+  // First tap — pick the rakhi up off the thali (crossfade to the tied art)
+  const pickUpRakhi = () => {
+    try {
+      navigator.vibrate?.(20);
+    } catch {
+      /* haptics unsupported */
+    }
+    playPickupSfx();
+    setPhase("tied");
+  };
 
-    // Start audio inside the user-gesture handler
+  // Second tap — tie it: sound, confetti burst, wrist glow, then the message
+  const tieRakhi = () => {
     try {
       navigator.vibrate?.([20, 30, 20]);
     } catch {
@@ -292,23 +212,45 @@ export default function PageRakhi({ onNext, playCakeSong }: RakhiPageProps) {
     playTieSfx();
     playCakeSong?.();
 
+    setPhase("celebrated");
+    setBurst(true);
+    setGlow(true);
+
     if (reduced) {
-      // Skip animation, go straight to revealed
-      setPhase("revealed");
-      setBurst(true);
       setShowMessage(true);
       schedule(() => setShowButton(true), 400);
       return;
     }
 
-    // ~1.2s animation then reveal
-    schedule(() => {
-      setPhase("revealed");
-      setBurst(true);
-    }, 1200);
-    schedule(() => setShowMessage(true), 1400);
-    schedule(() => setShowButton(true), 2200);
+    schedule(() => setGlow(false), 1100);
+    schedule(() => setShowMessage(true), 800);
+    schedule(() => setShowButton(true), 1600);
   };
+
+  const handleTap = () => {
+    if (phase === "thali") {
+      pickUpRakhi();
+      return;
+    }
+    if (phase === "tied") {
+      tieRakhi();
+    }
+    // "celebrated" — sequence finished, further taps are ignored
+  };
+
+  const hint =
+    phase === "thali"
+      ? "✨ Tap the rakhi to pick it up 👉"
+      : phase === "tied"
+      ? "✨ Tap again to tie the rakhi 👉"
+      : null;
+
+  const ariaLabel =
+    phase === "thali"
+      ? "Tap to pick up the rakhi"
+      : phase === "tied"
+      ? "Tap again to tie the rakhi"
+      : "Rakhi tied";
 
   // Build title — weave siblingName in naturally if set
   const siblingName = content.siblingName;
@@ -316,6 +258,21 @@ export default function PageRakhi({ onNext, playCakeSong }: RakhiPageProps) {
     siblingName && siblingName.trim().length > 0
       ? content.title.replace(/!/, `, ${siblingName.trim()}!`)
       : content.title;
+
+  const showTied = phase === "tied" || phase === "celebrated";
+  // Both frames stack exactly on top of each other and are clipped by the
+  // button's rounded overflow, so the crossfade never shows a seam.
+  const frameStyle: React.CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    objectPosition: "center",
+    display: "block",
+    // 300–400ms crossfade, not a hard cut
+    transition: reduced ? "none" : "opacity 360ms ease-in-out",
+  };
 
   return (
     <div
@@ -367,25 +324,25 @@ export default function PageRakhi({ onNext, playCakeSong }: RakhiPageProps) {
           }}
         />
 
-        {/* Tap target — the rakhi art */}
+        {/* Tap target — the real rakhi photography */}
         <div
           style={{
             position: "relative",
             display: "flex",
             justifyContent: "center",
-            marginBottom: "20px",
-            marginTop: "12px",
+            marginBottom: "16px",
+            marginTop: "14px",
           }}
         >
-          {/* Invite glow behind the art */}
-          {phase === "idle" && !reduced && (
+          {/* Invite glow behind the frame while a tap is still pending */}
+          {phase !== "celebrated" && !reduced && (
             <div
               aria-hidden="true"
               style={{
                 position: "absolute",
-                inset: "10%",
+                inset: "-6%",
                 borderRadius: "50%",
-                background: `radial-gradient(circle, ${GOLD}22 0%, transparent 70%)`,
+                background: `radial-gradient(circle, ${GOLD}26 0%, transparent 70%)`,
                 animation: "rakhi-pulse 2.2s ease-in-out infinite",
                 pointerEvents: "none",
               }}
@@ -395,48 +352,102 @@ export default function PageRakhi({ onNext, playCakeSong }: RakhiPageProps) {
           <button
             type="button"
             onClick={handleTap}
-            disabled={phase !== "idle"}
-            aria-label={
-              phase === "idle"
-                ? "Tap to tie the rakhi"
-                : "Rakhi is being tied"
-            }
+            disabled={phase === "celebrated"}
+            aria-label={ariaLabel}
             style={{
+              position: "relative",
               background: "none",
+              // The gold rim is an inset ring rather than a real border so it
+              // sits ON the image edge instead of insetting it by 1px (which
+              // left a hairline seam at the frame corners).
               border: "none",
-              cursor: phase === "idle" ? "pointer" : "default",
+              borderRadius: "var(--rad-lg)",
+              cursor: phase === "celebrated" ? "default" : "pointer",
               padding: 0,
-              width: "min(72vw, 280px)",
-              aspectRatio: "280 / 200",
-              display: "block",
-              // Ensure tap target >= 44px (the SVG is much larger)
+              width: "100%",
+              maxWidth: "360px",
+              aspectRatio: HERO_RATIO,
+              // Tap target stays comfortably above 44px at every width
               minHeight: "44px",
+              overflow: "hidden",
+              display: "block",
+              WebkitTapHighlightColor: "transparent",
+              boxShadow: `inset 0 0 0 1px ${GOLD}3d, 0 12px 34px rgba(0,0,0,0.42), 0 0 26px ${GOLD}22`,
+              transition: "box-shadow 0.5s ease",
             }}
           >
-            <RakhiArt phase={phase} />
+            {imgError ? (
+              <span
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "3.4rem",
+                  background: `linear-gradient(165deg, ${GOLD}22, ${MAROON}1f)`,
+                }}
+              >
+                🪢
+              </span>
+            ) : (
+              <>
+                {/* State 1 — rakhi resting on the thali */}
+                <img
+                  src={THALI_SRC}
+                  alt="A golden puja thali with a diya, kumkum, rice and the rakhi"
+                  onError={() => setImgError(true)}
+                  draggable={false}
+                  style={{ ...frameStyle, opacity: showTied ? 0 : 1 }}
+                />
+                {/* State 2 — the rakhi being tied onto the wrist */}
+                <img
+                  src={TIED_SRC}
+                  alt={showTied ? "The rakhi tied onto a wrist" : ""}
+                  aria-hidden={showTied ? undefined : true}
+                  onError={() => setImgError(true)}
+                  draggable={false}
+                  style={{ ...frameStyle, opacity: showTied ? 1 : 0 }}
+                />
+              </>
+            )}
+
+            {/* Golden glow pulse over the wrist on the tying tap */}
+            {glow && !reduced && (
+              <span
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  left: WRIST_GLOW.x,
+                  top: WRIST_GLOW.y,
+                  width: WRIST_GLOW.size,
+                  aspectRatio: "1",
+                  transform: "translate(-50%, -50%)",
+                  borderRadius: "50%",
+                  background: `radial-gradient(circle, ${GOLD_LIGHT}cc 0%, ${GOLD}66 42%, transparent 72%)`,
+                  mixBlendMode: "screen",
+                  pointerEvents: "none",
+                  animation: "rakhi-wrist-glow 1s ease-out forwards",
+                }}
+              />
+            )}
           </button>
         </div>
 
-        {/* Tap hint */}
-        {phase === "idle" && (
-          <div
+        {/* Tap hint — same pill badge style as the "Rakhi Wishes" chip */}
+        {hint && (
+          <p
+            className="chip"
             style={{
               marginBottom: "18px",
-              padding: "9px 22px",
-              borderRadius: "var(--rad-pill)",
-              display: "inline-block",
-              background: `rgba(232,180,74,0.08)`,
-              border: `1px solid ${GOLD}44`,
-              color: `${GOLD_LIGHT}cc`,
-              fontSize: "12.5px",
-              letterSpacing: "0.05em",
               animation: reduced
                 ? "none"
                 : "rakhi-shimmer 2.4s ease-in-out infinite",
             }}
           >
-            Tap to tie the rakhi 🪢
-          </div>
+            {hint}
+          </p>
         )}
 
         {/* Message reveal */}
@@ -487,16 +498,18 @@ export default function PageRakhi({ onNext, playCakeSong }: RakhiPageProps) {
                 💛
               </span>
             </div>
-            <p
+            <StaggeredText
+              as="p"
+              text={content.message}
+              delay={0.15}
+              stagger={0.045}
               style={{
                 color: "rgba(249,168,212,0.92)",
                 fontSize: "1.05rem",
                 lineHeight: "var(--leading-relaxed)",
                 fontFamily: bodyFont,
               }}
-            >
-              {content.message}
-            </p>
+            />
           </div>
         )}
 
