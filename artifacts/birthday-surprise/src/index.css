@@ -745,7 +745,7 @@ button { user-select: none; -webkit-user-select: none; touch-action: manipulatio
   background: rgba(244, 63, 94, 0.1);
 }
 
-/* Desktop action row on the public top bar. Kept in CSS (not an inline
+/* Desktop action row shared by both top bars. Kept in CSS (not an inline
    style) so the ≤640px media query below can hide it. */
 .dash-desktop-actions {
   display: flex;
@@ -753,9 +753,9 @@ button { user-select: none; -webkit-user-select: none; touch-action: manipulatio
   gap: 8px;
 }
 
-/* ── Public top bar: mobile hamburger menu ──
-   The hamburger + dropdown are rendered by PublicTopBar but stay hidden on
-   desktop, so >640px is pixel-identical to before. */
+/* ── Top bars: mobile hamburger menu ──
+   The hamburger + dropdown are rendered by PublicTopBar and DashboardTopBar
+   but stay hidden on desktop, so >640px is pixel-identical to before. */
 .dash-mobile-menu { display: none; }
 
 .dash-mobile-menu-btn {
@@ -830,12 +830,20 @@ button { user-select: none; -webkit-user-select: none; touch-action: manipulatio
 }
 .dash-mobile-dropdown-item:active { transform: scale(0.985); }
 
-/* "Preview" row — mirrors the active desktop pill, non-interactive */
+/* Active-view row — mirrors the active desktop pill. Non-interactive on the
+   public bar (a plain <div>); on the dashboard bar it is a real tab button,
+   so it keeps a pointer cursor. */
 .dash-mobile-dropdown-item.is-current {
   background: linear-gradient(135deg, #7c3aed, #be185d);
   color: #fff;
   box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
   cursor: default;
+}
+button.dash-mobile-dropdown-item.is-current { cursor: pointer; }
+button.dash-mobile-dropdown-item.is-current:hover {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #7c3aed, #be185d);
 }
 
 /* Sign Up / Dashboard — keeps the gradient highlight from the desktop button */
@@ -855,42 +863,37 @@ button { user-select: none; -webkit-user-select: none; touch-action: manipulatio
   background: rgba(244, 63, 94, 0.1);
 }
 
-@media (max-width: 640px) {
-  .dash-brand { display: none; }
-
-  /* Mobile look: brand + hamburger only. The Preview pill and the full
-     action row are swapped out for the dropdown so nothing can overlap.
-     Scoped to .public-topbar so DashboardTopBar keeps its current layout. */
-  .public-topbar .dash-brand {
+/* Collapse threshold. Measured against the widest real layout — brand +
+   3 tab pills (Preview / Customize / AI Assistant) + Share + Log out — which
+   needs ~754px to sit inline without wrapping. The old 640px value predated
+   the "AI Assistant" tab and was ~115px too low, which is exactly why Share
+   ended up on top of the AI Assistant label between 640px and 760px. */
+@media (max-width: 760px) {
+  /* Mobile look for BOTH top bars: brand + hamburger only. The tab pills and
+     the full action row are swapped out for the dropdown so nothing can
+     overlap — this is what keeps the dashboard's five items (Preview /
+     Customize / AI Assistant / Share / Log out) from colliding once they no
+     longer fit inline. */
+  .dash-topbar .dash-brand {
     display: flex;
     font-size: 1.1rem;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .public-topbar .tab-group,
-  .public-topbar .dash-desktop-actions { display: none; }
-  .public-topbar .dash-mobile-menu {
+  .dash-topbar .tab-group,
+  .dash-topbar .dash-desktop-actions { display: none; }
+  .dash-topbar .dash-mobile-menu {
     display: block;
     position: relative;
     flex: 0 0 auto;
   }
 }
 
-@media (max-width: 420px) {
-  /* The public bar no longer needs icon-only buttons — its actions live in
-     the hamburger below 640px. DashboardTopBar still shares .chrome-btn and
-     relies on this rule, so keep it for every other top bar. */
-  .dash-topbar:not(.public-topbar) .chrome-btn .label { display: none; }
-  /* Three-tab bar: hide text labels at narrow widths so pills stay icon-only */
-  .tab-pill { padding: 7px 10px; }
-  .tab-pill .tab-label { display: none; }
-}
-
-@media (max-width: 360px) {
-  /* Extreme narrow: also hide brand text so the three pills + chrome buttons fit */
-  .dash-topbar:not(.public-topbar) .dash-brand { display: none; }
-  .tab-pill { padding: 7px 8px; }
+@media (max-width: 380px) {
+  /* Extreme narrow: drop the brand text so the hamburger never gets pushed
+     off-screen. Both bars behave identically here. */
+  .dash-topbar .dash-brand { display: none; }
 }
 
 /* ── FUN LAYER: peeking teddy, bubbles, rising emojis, cake rays ── */
