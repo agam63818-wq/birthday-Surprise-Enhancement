@@ -43,21 +43,28 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadSurprise = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
+    if (!user?.id) return;
+    
+    // Only set loading on initial load (when surprise is still null).
+    // Subsequent calls update data in-place without remounting content.
+    if (surprise === null) {
+      setLoading(true);
+    }
     setLoadError(null);
+    
     const { data, error } = await supabase
       .from("surprises")
       .select("*")
       .eq("user_id", user.id)
       .single();
+    
     setLoading(false);
     if (error) {
       setLoadError("Couldn't load your surprise. Please try again.");
       return;
     }
     setSurprise(data as SurpriseRow);
-  }, [user]);
+  }, [user?.id, surprise]);
 
   useEffect(() => {
     loadSurprise();

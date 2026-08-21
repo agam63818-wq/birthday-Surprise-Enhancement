@@ -61,8 +61,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
+      
+      // Only update state if something meaningful actually changed.
+      // Skip updates for token refresh events where user and token are identical.
+      const currentUserId = user?.id;
+      const newUserId = newSession?.user?.id;
+      const currentToken = session?.access_token;
+      const newToken = newSession?.access_token;
+      
+      if (currentUserId === newUserId && currentToken === newToken) {
+        // No actual change - skip state update to avoid unnecessary re-renders
+        return;
+      }
+      
       setSession(newSession);
       setUser(newSession?.user ?? null);
       setLoading(false);
