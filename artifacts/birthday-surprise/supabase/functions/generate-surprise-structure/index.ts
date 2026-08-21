@@ -21,7 +21,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 // ── Model IDs — bump here when you want to upgrade ──────────────────────
 const MODEL_IDS: Record<string, string> = {
   openai:    "gpt-4o-mini",
-  gemini:    "gemini-1.5-flash",
+  gemini:    "gemini-3.1-flash-lite",
   anthropic: "claude-3-haiku-20240307",
 };
 
