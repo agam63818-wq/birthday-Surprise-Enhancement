@@ -41,13 +41,14 @@ export default function Dashboard() {
   const [surprise, setSurprise] = useState<SurpriseRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const hasLoadedOnce = useRef(false);
 
   const loadSurprise = useCallback(async () => {
     if (!user?.id) return;
     
-    // Only set loading on initial load (when surprise is still null).
+    // Only set loading on initial load.
     // Subsequent calls update data in-place without remounting content.
-    if (surprise === null) {
+    if (!hasLoadedOnce.current) {
       setLoading(true);
     }
     setLoadError(null);
@@ -58,13 +59,14 @@ export default function Dashboard() {
       .eq("user_id", user.id)
       .single();
     
+    hasLoadedOnce.current = true;
     setLoading(false);
     if (error) {
       setLoadError("Couldn't load your surprise. Please try again.");
       return;
     }
     setSurprise(data as SurpriseRow);
-  }, [user?.id, surprise]);
+  }, [user?.id]);
 
   useEffect(() => {
     loadSurprise();

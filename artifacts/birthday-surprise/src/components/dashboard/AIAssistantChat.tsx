@@ -642,6 +642,9 @@ export default function AIAssistantChat({
       }
 
       onSurpriseChange(saved as SurpriseRow);
+      try {
+        localStorage.removeItem(`customize-draft:${surprise.id}`);
+      } catch { /* ignore storage errors */ }
       setShowUndo(true);
       setStep("done");
       toast.success("✨ Your surprise has been personalised! Check the Customize tab to review.");
