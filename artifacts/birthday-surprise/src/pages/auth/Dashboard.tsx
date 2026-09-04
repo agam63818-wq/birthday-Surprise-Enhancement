@@ -9,6 +9,7 @@ import DashboardTopBar, { type DashboardTab } from "@/components/dashboard/Dashb
 import CustomizeForm from "@/components/dashboard/CustomizeForm";
 import AIAssistantChat from "@/components/dashboard/AIAssistantChat";
 import type { SurpriseRow } from "@/types/surprise";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 function FullScreenState({ children }: { children: React.ReactNode }) {
   return (
@@ -36,6 +37,9 @@ function FullScreenState({ children }: { children: React.ReactNode }) {
 // and switches between a live Preview of their surprise and a Customize
 // form gated behind the ₹20 paywall stub.
 export default function Dashboard() {
+  // Private/auth route: never indexed (also X-Robots-Tag via vercel.json).
+  usePageMeta({ title: "Dashboard — Birthday Surprise", noindex: true });
+
   const { user, signOut } = useAuth();
   const [tab, setTab] = useState<DashboardTab>("preview");
   const [surprise, setSurprise] = useState<SurpriseRow | null>(null);

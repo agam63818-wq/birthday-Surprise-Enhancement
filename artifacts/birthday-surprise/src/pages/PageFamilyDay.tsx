@@ -421,6 +421,8 @@ function PhotoFrame({
                 : "Mother's Day photo"
             }
             onError={() => setImgError(true)}
+            loading="lazy"
+            decoding="async"
             style={{
               width: "100%",
               height: "100%",

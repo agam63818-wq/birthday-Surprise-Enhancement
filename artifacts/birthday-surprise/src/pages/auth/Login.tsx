@@ -5,8 +5,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AuthLayout, FieldLabel, FormError, AuthLink } from "@/components/auth/AuthLayout";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function Login() {
+  // Private/auth route: never indexed (also X-Robots-Tag via vercel.json).
+  usePageMeta({ title: "Log in — Birthday Surprise", noindex: true });
+
   const { signIn } = useAuth();
   const [, navigate] = useLocation();
   const [email, setEmail] = useState("");

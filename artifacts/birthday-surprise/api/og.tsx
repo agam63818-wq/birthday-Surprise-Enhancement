@@ -56,7 +56,10 @@ async function loadScriptFont(): Promise<ArrayBuffer | null> {
 
 export default async function handler(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
-  const slug = searchParams.get("slug") || "";
+  const rawSlug = searchParams.get("slug") || "";
+  // Slugs are URL-safe tokens; anything else skips the DB lookup and gets
+  // the generic card (same as an unknown slug).
+  const slug = /^[A-Za-z0-9_-]{1,120}$/.test(rawSlug) ? rawSlug : "";
 
   const [name, scriptFont] = await Promise.all([fetchName(slug), loadScriptFont()]);
   const heading = name ? `Birthday Surprise for ${name}` : "A Birthday Surprise";
