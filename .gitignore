@@ -56,8 +56,12 @@ npm/
 .cache/
 .yarn/
 
-# Compiled JavaScript
-lib/
+# Compiled JavaScript output.
+# NOTE: intentionally NOT a bare "lib/" pattern — that also matched
+# artifacts/*/src/lib/ and silently dropped source files from commits
+# (caused a Vercel build failure: Could not resolve "./src/lib/siteContent").
+# The workspace's /lib/* packages (api-spec, db, ...) are tracked source, so
+# nothing under lib/ is ignored here at all.
 .eslintcache
 
 # OS generated files

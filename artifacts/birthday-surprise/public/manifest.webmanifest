@@ -1,7 +1,7 @@
 {
   "name": "Birthday Surprise",
   "short_name": "Surprise",
-  "description": "A magical, personalized birthday surprise made with love.",
+  "description": "Create a personalized, animated birthday surprise website with a tap-to-cut cake, photo memory wall, music and a private share link.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#07011a",

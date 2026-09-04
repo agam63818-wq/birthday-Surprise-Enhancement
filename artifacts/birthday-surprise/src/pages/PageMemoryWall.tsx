@@ -122,7 +122,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
           <div style={{ borderRadius: "var(--rad-lg)", overflow: "hidden", position: "relative" }}>
             <img
               src={photo.src}
-              alt={photo.caption}
+              alt={photo.caption ? `Memory photo: ${photo.caption}` : "Memory photo"}
               decoding="async"
               style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover", display: "block" }}
               onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = "0.15"; }}
@@ -277,7 +277,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
         >
           <img
             src={photo.src}
-            alt={photo.caption}
+            alt={photo.caption ? `Memory photo: ${photo.caption}` : "Memory photo"}
             decoding="async"
             style={{
               maxWidth: "94vw", maxHeight: "72vh", objectFit: "contain",

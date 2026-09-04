@@ -4,7 +4,10 @@ import BirthdayExperience from "@/BirthdayExperience";
 import PublicTopBar from "@/components/dashboard/PublicTopBar";
 import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
 import AuthModal from "@/components/auth/AuthModal";
+import PublicAbout from "@/components/PublicAbout";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePageMeta } from "@/hooks/use-page-meta";
+import { SITE_TITLE, SITE_DESCRIPTION } from "@/lib/siteContent";
 import defaultConfig from "@/config";
 
 // Public landing page rendered at "/" for all visitors — logged-in or guest.
@@ -31,6 +34,11 @@ type AuthIntent = "customize" | "share" | "plain" | null;
 export default function PublicHome() {
   const { user, signOut } = useAuth();
   const [, navigate] = useLocation();
+
+  // "/" is the only indexable route — keep the landing metadata/canonical
+  // exactly as shipped in index.html (this restores them after visiting a
+  // noindex route client-side).
+  usePageMeta({ title: SITE_TITLE, description: SITE_DESCRIPTION });
 
   // Auth gate modal (LoginRequiredModal)
   const [authGateOpen, setAuthGateOpen] = useState(false);
@@ -105,7 +113,7 @@ export default function PublicHome() {
       {/* Render the full experience with the bundled default config.
           Passing it explicitly is equivalent to omitting the prop (the
           component defaults to it), but being explicit makes the intent clear. */}
-      <BirthdayExperience config={defaultConfig} />
+      <BirthdayExperience config={defaultConfig} landingFooter={<PublicAbout />} />
 
       {/* Auth gate — shown when a guest tries a protected action */}
       <LoginRequiredModal

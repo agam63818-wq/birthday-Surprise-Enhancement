@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, supabaseConfigError } from "@/lib/supabase";
 import BirthdayExperience from "@/BirthdayExperience";
 import LoadingPrelude from "@/components/LoadingPrelude";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import type { Config } from "@/config";
 
 // Public, unauthenticated share page. Renders the full birthday
@@ -30,6 +31,19 @@ export default function PublicShare({ slug }: { slug: string }) {
   const [revealed, setRevealed] = useState(false);
   const mountedRef = useRef(true);
   const attemptRef = useRef(0);
+
+  // Share pages are private, per-person content: noindex, no canonical.
+  // Social previews are unaffected — link-preview bots are served by
+  // middleware.js and never reach this component. The title becomes
+  // personalized once the config loads (matches the middleware's OG title).
+  const name = state.status === "found" ? state.config.name?.trim() : "";
+  usePageMeta({
+    title: name ? `${name}'s Birthday Surprise \uD83C\uDF82` : "A Birthday Surprise \uD83C\uDF82",
+    description: name
+      ? `Someone made something special for ${name}\u2026 open it!`
+      : "Someone made something special for you\u2026 open it!",
+    noindex: true,
+  });
 
   const load = useCallback(async () => {
     if (!mountedRef.current) return;

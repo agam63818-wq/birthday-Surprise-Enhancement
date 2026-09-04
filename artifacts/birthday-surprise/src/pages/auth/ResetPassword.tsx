@@ -5,11 +5,15 @@ import { AuthLayout, FieldLabel, FormError, FormSuccess, AuthLink } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 // Handles the redirect link from the password-reset email. Supabase's
 // detectSessionInUrl (enabled in src/lib/supabase.ts) exchanges the URL's
 // recovery token for a session automatically before this page mounts.
 export default function ResetPassword() {
+  // Private/auth route: never indexed (also X-Robots-Tag via vercel.json).
+  usePageMeta({ title: "Reset password — Birthday Surprise", noindex: true });
+
   const [, navigate] = useLocation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

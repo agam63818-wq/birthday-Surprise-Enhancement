@@ -1,0 +1,14 @@
+# Birthday Surprise — https://birthday-surprise-enhancement.vercel.app
+#
+# The only indexable page is "/". Private routes (/s/:slug share links,
+# /login, /signup, /forgot-password, /reset-password, /dashboard, /api/*)
+# are excluded from search with `noindex` (X-Robots-Tag header via
+# vercel.json + <meta name="robots"> in the rendered page) rather than
+# with Disallow, because a crawler must be able to fetch a URL to see its
+# noindex directive. Blocking /api/ would also break the dynamic Open Graph
+# image (/api/og) for social crawlers that honour robots.txt.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://birthday-surprise-enhancement.vercel.app/sitemap.xml

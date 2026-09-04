@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, type ReactNode } from "react";
 import Background from "@/components/Background";
 import MusicToggle, { useBackgroundMusic } from "@/components/MusicPlayer";
 import SurprisePopup from "@/components/SurprisePopup";
@@ -84,15 +84,26 @@ function AmbientFX() {
 // config via the `get_surprise_by_slug` RPC (public share page). Every
 // page/component below reads config via `useConfig()` from context instead
 // of importing the static config.ts module directly.
-export default function BirthdayExperience({ config = defaultConfig }: { config?: Config }) {
+//
+// `landingFooter` (optional) is rendered BELOW the landing hero only — it is
+// used by the public "/" route to show the crawlable About/FAQ section. It is
+// never passed for share links or the dashboard preview, so those are
+// pixel-identical to before.
+export default function BirthdayExperience({
+  config = defaultConfig,
+  landingFooter,
+}: {
+  config?: Config;
+  landingFooter?: ReactNode;
+}) {
   return (
     <ConfigProvider config={config}>
-      <BirthdayExperienceInner />
+      <BirthdayExperienceInner landingFooter={landingFooter} />
     </ConfigProvider>
   );
 }
 
-function BirthdayExperienceInner() {
+function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode }) {
   const config = useConfig();
   const [page, setPage] = useState<Page>("landing");
   const [transitioning, setTransitioning] = useState(false);
@@ -214,6 +225,7 @@ function BirthdayExperienceInner() {
         willChange: "opacity, transform",
       }}>
         {renderPage()}
+        {page === "landing" && landingFooter}
       </div>
     </>
   );

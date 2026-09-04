@@ -24,22 +24,56 @@ export const config = {
   matcher: "/s/:path*",
 };
 
-// Case-insensitive fragments of known social / link-preview crawler UAs.
+// Case-insensitive fragments of known crawler UAs.
+//
+// INDEXING DECISION: /s/:slug pages are private, per-person surprises
+// (names, photos, personal letters). They must remain shareable with rich
+// previews, but are NOT meant to appear in Google or be ingested by AI
+// crawlers. So search / AI bots are ALSO intercepted here and receive the
+// same tiny document, which carries `noindex` both as a meta tag and as an
+// X-Robots-Tag header. Real browsers are never intercepted.
 const BOT_UA_FRAGMENTS = [
+  // Social / link-preview crawlers (need OG tags)
   "facebookexternalhit",
+  "facebot",
   "whatsapp",
   "twitterbot",
   "telegrambot",
   "slackbot",
   "linkedinbot",
   "discordbot",
-  "google-inspectiontool",
   "skypeuripreview",
   "redditbot",
   "pinterest",
   "vkshare",
+  "snapchat",
+  "iframely",
+  "embedly",
   "w3c_validator",
+  // Search engine crawlers (need the noindex signal)
+  "googlebot",
+  "google-inspectiontool",
+  "bingbot",
+  "duckduckbot",
+  "yandex",
+  "baiduspider",
+  "applebot",
+  // AI / answer-engine crawlers
+  "gptbot",
+  "chatgpt-user",
+  "oai-searchbot",
+  "claudebot",
+  "anthropic-ai",
+  "perplexitybot",
+  "ccbot",
+  "google-extended",
+  "bytespider",
+  "amazonbot",
 ];
+
+// Slugs are generated server-side (Supabase trigger) and are URL-safe. Reject
+// anything else before spending a database round-trip on it.
+const SLUG_RE = /^[A-Za-z0-9_-]{1,120}$/;
 
 function isCrawler(userAgent) {
   const ua = userAgent.toLowerCase();
@@ -95,11 +129,18 @@ export default async function middleware(request) {
   const url = new URL(request.url);
   // matcher guarantees /s/... — grab the slug segment.
   const segments = url.pathname.split("/").filter(Boolean); // ["s", "<slug>"]
-  const slug = segments[1] ? decodeURIComponent(segments[1]) : "";
+  let slug = "";
+  try {
+    slug = segments[1] ? decodeURIComponent(segments[1]) : "";
+  } catch {
+    slug = "";
+  }
+  if (!SLUG_RE.test(slug)) slug = "";
 
   const { name, description } = slug
     ? await fetchName(slug)
     : { name: null, description: null };
+  const found = Boolean(name);
 
   const safeName = name ? escapeHtml(name) : null;
   const title = safeName ? `${safeName}'s Birthday Surprise \uD83C\uDF82` : "A Birthday Surprise \uD83C\uDF82";
@@ -108,7 +149,10 @@ export default async function middleware(request) {
     : "Someone made something special for you\u2026 open it! \uD83D\uDC9D";
 
   // Absolute URLs using the request's own host so preview deployments work.
-  const origin = `${url.protocol}//${url.host}`;
+  // Vercel terminates TLS at the edge; trust x-forwarded-proto over url.protocol
+  // so we never emit http:// on production.
+  const proto = request.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
+  const origin = `${proto}://${url.host}`;
   const pageUrl = `${origin}/s/${encodeURIComponent(slug)}`;
   const ogImage = `${origin}/api/og?slug=${encodeURIComponent(slug)}`;
 
@@ -118,10 +162,16 @@ export default async function middleware(request) {
     <meta charset="UTF-8" />
     <title>${title}</title>
     <meta name="description" content="${desc}" />
+    <meta name="robots" content="noindex" />
     <meta property="og:title" content="${title}" />
     <meta property="og:description" content="${desc}" />
     <meta property="og:image" content="${ogImage}" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="${title}" />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Birthday Surprise" />
     <meta property="og:url" content="${pageUrl}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${title}" />
@@ -132,11 +182,21 @@ export default async function middleware(request) {
   <body>Redirecting to the surprise\u2026</body>
 </html>`;
 
+  // Personalized previews cache at the edge for an hour; unknown / invalid
+  // slugs (or a transient Supabase failure) fall back to the generic card
+  // and are cached only briefly so a freshly created surprise is not stuck
+  // showing the generic preview.
+  const cacheControl = found
+    ? "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400"
+    : "public, max-age=0, s-maxage=60";
+
   return new Response(html, {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+      "Cache-Control": cacheControl,
+      "X-Robots-Tag": "noindex",
+      Vary: "User-Agent",
     },
   });
 }

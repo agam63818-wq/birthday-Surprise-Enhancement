@@ -3,24 +3,61 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>Birthday Surprise 🎂</title>
-    <meta name="description" content="A magical, personalized birthday surprise made with love — cake cutting, memories, music and more." />
+
+    <!-- Core metadata. Absolute URLs below are filled in at build time by the
+         seoHtml plugin in vite.config.ts from a single source (src/lib/siteContent.ts)
+         so canonical/og:url can never point at localhost or a preview deployment. -->
+    <title>__SEO_TITLE__</title>
+    <meta name="description" content="__SEO_DESCRIPTION__" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="__SITE_URL__/" />
     <meta name="theme-color" content="#07011a" />
+    <meta name="application-name" content="Birthday Surprise" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/assets/teddy.png" type="image/png" />
     <link rel="apple-touch-icon" href="/assets/teddy.png" />
-    <meta property="og:title" content="A Birthday Surprise 🎂" />
-    <meta property="og:description" content="Someone made something special for you… open it! 💝" />
-    <meta property="og:image" content="/opengraph.jpg" />
+
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Birthday Surprise" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="__SITE_URL__/" />
+    <meta property="og:title" content="__SEO_TITLE__" />
+    <meta property="og:description" content="__SEO_DESCRIPTION__" />
+    <meta property="og:image" content="__SITE_URL__/opengraph.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1536" />
+    <meta property="og:image:height" content="1024" />
+    <meta property="og:image:alt" content="A Birthday Surprise — a glowing purple card with a pink heart and an Open It button" />
+
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="__SEO_TITLE__" />
+    <meta name="twitter:description" content="__SEO_DESCRIPTION__" />
+    <meta name="twitter:image" content="__SITE_URL__/opengraph.jpg" />
+    <meta name="twitter:image:alt" content="A Birthday Surprise — a glowing purple card with a pink heart and an Open It button" />
+
+    <!-- Fonts: preconnect + non-blocking stylesheet (print → all swap) so text
+         renders immediately with system fallbacks instead of waiting on Google Fonts. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Dancing+Script:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Dancing+Script:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Dancing+Script:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet"></noscript>
+
+    <!-- Razorpay Checkout. `defer` keeps it off the critical rendering path; the
+         script is only used inside the authenticated dashboard (PaywallLock), long
+         after page load, so window.Razorpay is always ready by then. -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
+
+    <!-- Structured data (WebSite / WebPage / WebApplication / FAQPage), generated
+         from src/lib/siteContent.ts so it mirrors the visible content exactly. -->
+    <script type="application/ld+json">__JSON_LD__</script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Static, crawlable description of the product. React replaces this on
+         mount (createRoot().render), so real visitors see the app; crawlers that
+         do not run JavaScript still get meaningful HTML. Same copy as PublicAbout. -->
+    <div id="root">__STATIC_CONTENT__</div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
