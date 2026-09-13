@@ -1,138 +1,67 @@
 /**
- * NotebookScene — 3D page-turn notebook with letters, memories, and quotes.
+ * NotebookScene — 3D page-turn notebook.
  *
- * Adapted from animation_code.zip/notebook/
- * Original character preserved: 3D CSS page-turn, desk atmosphere,
- * paper texture, margin lines, handwritten font aesthetic.
- *
- * Changes from original:
- * - Converted from standalone HTML to React component
- * - Demo portfolio content removed (no "Code With Anurag", contact form, etc.)
- * - Pages driven by config.notebook.pages (letter/memory/quote/cover/ending)
- * - Zero/one/many pages handled gracefully
- * - Keyboard navigation (← →) and touch-friendly buttons
- * - Missing referenced memories graceful (image fails silently)
- * - Reduced motion: flat page view without 3D transforms
- * - Proper cleanup on unmount
- * - No global DOM mutations or CSS leakage (scoped styles)
+ * Adapted from animation_code.zip/notebook/: paper texture, ruled lines,
+ * margin, and a CSS 3D leaf flip. Scaled to fit mobile without clipping.
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SceneComponentProps } from "@/lib/v2/registry";
 import { useNormalizedConfig } from "@/contexts/ConfigContext";
 import type { NotebookPage } from "@/lib/v2/schema";
 
-// ── Page renderer ────────────────────────────────────────────────────────
 function renderPageContent(page: NotebookPage) {
   switch (page.type) {
     case "cover":
       return (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "16px", textAlign: "center" }}>
-          <div style={{ fontSize: "2.5rem" }}>📓</div>
-          <h2 style={{ fontFamily: "'Kalam', cursive, 'Dancing Script', cursive", fontSize: "clamp(1.4rem, 4vw, 2rem)", color: "#2c2c2c", lineHeight: 1.3 }}>
-            {page.title || "A Letter For You"}
-          </h2>
-          {page.subtitle && (
-            <p style={{ fontFamily: "'Lora', serif", fontSize: "clamp(0.85rem, 2.5vw, 1rem)", color: "#666", fontStyle: "italic", lineHeight: 1.6 }}>
-              {page.subtitle}
-            </p>
-          )}
+        <div className="nb-cover">
+          <div className="nb-cover-mark" aria-hidden="true">✦</div>
+          <h2>{page.title || "A Letter For You"}</h2>
+          {page.subtitle && <p>{page.subtitle}</p>}
+          <span className="nb-cover-hint">turn the page →</span>
         </div>
       );
-
     case "letter":
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {page.title && (
-            <h3 style={{ fontFamily: "'Kalam', cursive, 'Dancing Script', cursive", fontSize: "clamp(1.1rem, 3vw, 1.4rem)", color: "#2c2c2c", borderBottom: "1px solid #d4c5a9", paddingBottom: "8px" }}>
-              {page.title}
-            </h3>
-          )}
-          <p style={{ fontFamily: "'Lora', serif", fontSize: "clamp(0.82rem, 2.2vw, 0.95rem)", color: "#3a3a3a", lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
-            {page.content || ""}
-          </p>
+        <div className="nb-letter">
+          {page.title && <h3>{page.title}</h3>}
+          <p>{page.content || ""}</p>
         </div>
       );
-
     case "memory":
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
-          {page.title && (
-            <h3 style={{ fontFamily: "'Kalam', cursive, 'Dancing Script', cursive", fontSize: "clamp(1rem, 3vw, 1.3rem)", color: "#2c2c2c", alignSelf: "flex-start" }}>
-              {page.title}
-            </h3>
-          )}
+        <div className="nb-memory">
+          {page.title && <h3>{page.title}</h3>}
           {page.image && (
-            <div style={{
-              width: "min(180px, 70%)",
-              aspectRatio: "1",
-              borderRadius: "4px",
-              overflow: "hidden",
-              border: "3px solid #fff",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.05)",
-              transform: "rotate(-1deg)",
-              background: "#f0ebe0",
-            }}>
-              <span role="img" aria-label="Memory photo" style={{ position: "absolute", opacity: 0.3 }}>Photo unavailable</span>
+            <div className="nb-photo">
               <img
                 src={page.image}
                 alt={page.caption ?? page.title ?? "Memory"}
-                style={{ width: "100%", height: "100%", objectFit: "cover", position: "relative" }}
                 onError={(e) => { e.currentTarget.hidden = true; }}
               />
             </div>
           )}
-          {page.caption && (
-            <p style={{ fontFamily: "'Kalam', cursive", fontSize: "clamp(0.8rem, 2vw, 0.9rem)", color: "#666", fontStyle: "italic", textAlign: "center" }}>
-              {page.caption}
-            </p>
-          )}
+          {page.caption && <p>{page.caption}</p>}
         </div>
       );
-
     case "quote":
       return (
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", gap: "16px", padding: "8px 0" }}>
-          {page.title && (
-            <p style={{ fontFamily: "'Kalam', cursive", fontSize: "0.8rem", color: "#999", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-              {page.title}
-            </p>
-          )}
-          <blockquote style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: "clamp(1rem, 3vw, 1.3rem)",
-            color: "#2c2c2c",
-            lineHeight: 1.6,
-            fontStyle: "italic",
-            borderLeft: "3px solid #c94040",
-            paddingLeft: "16px",
-            margin: 0,
-          }}>
-            "{page.text}"
-          </blockquote>
+        <div className="nb-quote">
+          {page.title && <p className="nb-kicker">{page.title}</p>}
+          <blockquote>“{page.text}”</blockquote>
         </div>
       );
-
     case "ending":
       return (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "16px", textAlign: "center" }}>
-          <div style={{ fontSize: "2rem" }}>🕊️</div>
-          {page.title && (
-            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(1.1rem, 3vw, 1.4rem)", color: "#2c2c2c" }}>
-              {page.title}
-            </h3>
-          )}
-          {page.text && (
-            <p style={{ fontFamily: "'Lora', serif", fontSize: "clamp(0.82rem, 2.2vw, 0.95rem)", color: "#555", lineHeight: 1.7, fontStyle: "italic" }}>
-              {page.text}
-            </p>
-          )}
+        <div className="nb-ending">
+          <div aria-hidden="true">✦</div>
+          {page.title && <h3>{page.title}</h3>}
+          {page.text && <p>{page.text}</p>}
         </div>
       );
   }
 }
 
-// ── Default pages when notebook is empty ─────────────────────────────────
 function getDefaultPages(recipientName: string): NotebookPage[] {
   return [
     {
@@ -147,7 +76,7 @@ function getDefaultPages(recipientName: string): NotebookPage[] {
       type: "letter",
       enabled: true,
       title: "Dear You,",
-      content: "There are so many things I want to say, but words never quite capture it all. So I wrote this — just for you. ❤️",
+      content: "There are so many things I want to say, but words never quite capture it all. So I wrote this — just for you.",
     },
     {
       id: "default-ending",
@@ -159,21 +88,22 @@ function getDefaultPages(recipientName: string): NotebookPage[] {
   ];
 }
 
-export default function NotebookScene({ onNext, isActive, reducedMotion }: SceneComponentProps) {
+export default function NotebookScene({ onNext, reducedMotion }: SceneComponentProps) {
   const normalized = useNormalizedConfig();
   const [currentPage, setCurrentPage] = useState(0);
   const [flipping, setFlipping] = useState(false);
   const [flipDir, setFlipDir] = useState<"forward" | "backward">("forward");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
+  const theme = normalized.theme.preset;
 
   const rawPages = normalized.notebook.pages ?? [];
   const enabledPages = rawPages.filter((p: NotebookPage) => p.enabled !== false);
   const pages = rawPages.length > 0 ? enabledPages : getDefaultPages(normalized.recipient.name ?? "");
-
   const totalPages = pages.length;
   const isFirst = currentPage === 0;
   const isLast = currentPage === totalPages - 1;
+  const duration = reducedMotion ? 0 : 720;
 
   const goNext = useCallback(() => {
     if (flipping || isLast) return;
@@ -183,8 +113,8 @@ export default function NotebookScene({ onNext, isActive, reducedMotion }: Scene
       if (!mountedRef.current) return;
       setCurrentPage((p) => Math.min(p + 1, totalPages - 1));
       setFlipping(false);
-    }, reducedMotion ? 0 : 400);
-  }, [flipping, isLast, totalPages, reducedMotion]);
+    }, duration);
+  }, [flipping, isLast, totalPages, duration]);
 
   const goPrev = useCallback(() => {
     if (flipping || isFirst) return;
@@ -194,10 +124,9 @@ export default function NotebookScene({ onNext, isActive, reducedMotion }: Scene
       if (!mountedRef.current) return;
       setCurrentPage((p) => Math.max(p - 1, 0));
       setFlipping(false);
-    }, reducedMotion ? 0 : 400);
-  }, [flipping, isFirst, reducedMotion]);
+    }, duration);
+  }, [flipping, isFirst, duration]);
 
-  // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === "ArrowDown") goNext();
@@ -209,280 +138,297 @@ export default function NotebookScene({ onNext, isActive, reducedMotion }: Scene
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, []);
 
   const page = pages[Math.min(currentPage, Math.max(0, totalPages - 1))];
-  if (!page) return <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}><p>No enabled notebook pages.</p><button onClick={onNext}>Continue</button></div>;
+  const peekPage = flipDir === "forward"
+    ? pages[Math.min(currentPage + 1, totalPages - 1)]
+    : pages[Math.max(currentPage - 1, 0)];
 
-  if (reducedMotion) {
+  if (!page) {
     return (
-      <div style={{
-        minHeight: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "32px 24px",
-        background: "linear-gradient(180deg, #3d2214 0%, #6b4226 50%, #8b5a2b 100%)",
-        gap: "24px",
-      }}>
-        <div style={{
-          maxWidth: "480px",
-          width: "100%",
-          background: "#faf6ed",
-          borderRadius: "8px",
-          padding: "32px 28px",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-          minHeight: "300px",
-          position: "relative",
-        }}>
-          <div style={{ position: "absolute", left: "48px", top: 0, bottom: 0, width: "1px", background: "#c94040", opacity: 0.3 }} />
-          {renderPageContent(page)}
-        </div>
-
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <button onClick={goPrev} disabled={isFirst} aria-label="Previous page" style={{
-            padding: "10px 20px", borderRadius: "999px",
-            border: "1px solid rgba(255,255,255,0.3)",
-            background: "rgba(255,255,255,0.1)",
-            color: "#fff", cursor: isFirst ? "not-allowed" : "pointer",
-            opacity: isFirst ? 0.4 : 1,
-          }}>← Prev</button>
-          <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.85rem" }}>
-            {currentPage + 1} / {totalPages}
-          </span>
-          {isLast ? (
-            <button onClick={onNext} style={{
-              padding: "10px 20px", borderRadius: "999px",
-              border: "1px solid rgba(255,255,255,0.5)",
-              background: "rgba(255,255,255,0.15)",
-              color: "#fff", cursor: "pointer",
-            }}>Continue ✨</button>
-          ) : (
-            <button onClick={goNext} aria-label="Next page" style={{
-              padding: "10px 20px", borderRadius: "999px",
-              border: "1px solid rgba(255,255,255,0.3)",
-              background: "rgba(255,255,255,0.1)",
-              color: "#fff", cursor: "pointer",
-            }}>Next →</button>
-          )}
-        </div>
+      <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>
+        <p>No enabled notebook pages.</p>
+        <button onClick={onNext}>Continue</button>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: "100dvh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "24px 16px",
-      background: `
-        repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(0,0,0,0.03) 80px, rgba(0,0,0,0.03) 82px),
-        repeating-linear-gradient(0deg, transparent, transparent 200px, rgba(0,0,0,0.015) 200px, rgba(0,0,0,0.015) 202px),
-        linear-gradient(180deg, #3d2214 0%, #6b4226 25%, #8b5a2b 50%, #a0703c 70%, #6b4226 100%)
-      `,
-      gap: "20px",
-      position: "relative",
-    }}>
-      {/* Desk spotlight */}
-      <div style={{
-        position: "fixed",
-        top: "30%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: "60vw",
-        height: "60vh",
-        background: "radial-gradient(ellipse, rgba(255,220,150,0.08) 0%, transparent 70%)",
-        filter: "blur(40px)",
-        pointerEvents: "none",
-      }} />
+    <section className={`nb-scene nb-theme-${theme}`} data-notebook-scene>
+      <style>{NOTEBOOK_CSS}</style>
+      <div className="nb-spot" aria-hidden="true" />
 
-      {/* Page indicator */}
-      <div style={{
-        display: "flex",
-        gap: "6px",
-        alignItems: "center",
-        zIndex: 10,
-      }}>
+      <div className="nb-progress" aria-hidden="true">
         {pages.map((_, i) => (
-          <div key={i} style={{
-            width: i === currentPage ? "20px" : "6px",
-            height: "6px",
-            borderRadius: "999px",
-            background: i === currentPage ? "#c9a84c" : "rgba(255,255,255,0.3)",
-            transition: "all 0.3s ease",
-          }} />
+          <span key={i} className={i === currentPage ? "is-current" : i < currentPage ? "is-done" : ""} />
         ))}
       </div>
 
-      {/* Book */}
-      <div style={{
-        perspective: "1800px",
-        width: "min(680px, 95vw)",
-        position: "relative",
-        zIndex: 10,
-      }}>
-        <div style={{
-          width: "100%",
-          position: "relative",
-          transformStyle: "preserve-3d",
-          transform: "rotateX(6deg)",
-          transition: "transform 0.3s ease",
-        }}>
-          {/* Page */}
-          <div style={{
-            background: "#faf6ed",
-            borderRadius: "4px 12px 12px 4px",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.5), 4px 0 12px rgba(0,0,0,0.15)",
-            padding: "clamp(20px, 5vw, 40px) clamp(24px, 6vw, 48px)",
-            minHeight: "clamp(280px, 50vh, 420px)",
-            position: "relative",
-            overflow: "hidden",
-            opacity: flipping ? 0 : 1,
-            transform: flipping
-              ? `rotateY(${flipDir === "forward" ? "-15deg" : "15deg"}) scale(0.97)`
-              : "rotateY(0deg) scale(1)",
-            transition: "opacity 0.35s ease, transform 0.35s ease",
-          }}>
-            {/* Margin line */}
-            <div style={{
-              position: "absolute",
-              left: "clamp(36px, 8vw, 56px)",
-              top: 0,
-              bottom: 0,
-              width: "1px",
-              background: "#c94040",
-              opacity: 0.35,
-            }} />
-
-            {/* Ruled lines */}
-            {Array.from({ length: 18 }, (_: unknown, i: number) => (
-              <div key={i} style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: `${(i + 1) * 28 + 20}px`,
-                height: "1px",
-                background: "#d4c5a9",
-                opacity: 0.5,
-              }} />
-            ))}
-
-            {/* Content */}
-            <div style={{
-              position: "relative",
-              zIndex: 2,
-              paddingLeft: "clamp(20px, 5vw, 32px)",
-              minHeight: "clamp(240px, 40vh, 360px)",
-            }}>
+      <div className="nb-book" aria-live="polite">
+        <div className="nb-stack">
+          {flipping && peekPage && (
+            <article className="nb-leaf nb-under" aria-hidden="true">
+              <div className="nb-paper">
+                <span className="nb-margin" />
+                {renderPageContent(peekPage)}
+              </div>
+            </article>
+          )}
+          <article className={`nb-leaf nb-front ${flipping ? `is-flip-${flipDir}` : ""} ${page.type === "cover" ? "is-cover" : ""}`}>
+            <div className="nb-paper">
+              <span className="nb-margin" />
               {renderPageContent(page)}
+              <span className="nb-num">{currentPage + 1}</span>
+              <span className="nb-fold" aria-hidden="true" />
             </div>
-
-            {/* Page number */}
-            <div style={{
-              position: "absolute",
-              bottom: "12px",
-              right: "16px",
-              fontFamily: "'Kalam', cursive",
-              fontSize: "0.75rem",
-              color: "#999",
-            }}>
-              {currentPage + 1}
-            </div>
-
-            {/* Corner fold */}
-            <div style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: "24px",
-              height: "24px",
-              background: "linear-gradient(225deg, #e8dfd0 50%, transparent 50%)",
-            }} />
-          </div>
+          </article>
         </div>
       </div>
 
-      {/* Navigation */}
-      <div style={{
-        display: "flex",
-        gap: "12px",
-        alignItems: "center",
-        zIndex: 10,
-      }}>
-        <button
-          onClick={goPrev}
-          disabled={isFirst || flipping}
-          aria-label="Previous page"
-          style={{
-            padding: "10px 20px",
-            borderRadius: "999px",
-            border: "1px solid rgba(201,168,76,0.4)",
-            background: "rgba(201,168,76,0.1)",
-            color: "#c9a84c",
-            cursor: isFirst ? "not-allowed" : "pointer",
-            opacity: isFirst ? 0.4 : 1,
-            fontSize: "0.9rem",
-            transition: "all 0.2s ease",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-          }}
-        >
+      <div className="nb-nav">
+        <button type="button" onClick={goPrev} disabled={isFirst || flipping} aria-label="Previous page">
           ← Prev
         </button>
-
-        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.8rem", minWidth: "60px", textAlign: "center" }}>
-          {currentPage + 1} / {totalPages}
-        </span>
-
         {isLast ? (
-          <button
-            onClick={onNext}
-            style={{
-              padding: "10px 24px",
-              borderRadius: "999px",
-              border: "1px solid rgba(201,168,76,0.6)",
-              background: "linear-gradient(135deg, rgba(201,168,76,0.25), rgba(163,132,50,0.2))",
-              color: "#fde68a",
-              cursor: "pointer",
-              fontSize: "0.9rem",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              boxShadow: "0 0 20px rgba(201,168,76,0.2)",
-            }}
-          >
-            Continue ✨
+          <button type="button" className="nb-continue" onClick={onNext}>
+            Continue ✦
           </button>
         ) : (
-          <button
-            onClick={goNext}
-            disabled={flipping}
-            aria-label="Next page"
-            style={{
-              padding: "10px 20px",
-              borderRadius: "999px",
-              border: "1px solid rgba(201,168,76,0.4)",
-              background: "rgba(201,168,76,0.1)",
-              color: "#c9a84c",
-              cursor: flipping ? "not-allowed" : "pointer",
-              fontSize: "0.9rem",
-              transition: "all 0.2s ease",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-            }}
-          >
+          <button type="button" onClick={goNext} disabled={flipping} aria-label="Next page">
             Next →
           </button>
         )}
       </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Lora:ital,wght@0,500;1,400&display=swap');
-      `}</style>
-    </div>
+    </section>
   );
 }
+
+const NOTEBOOK_CSS = `
+  .nb-scene {
+    --desk-dark: #3d2214;
+    --desk-mid: #6b4226;
+    --desk-light: #8b5a2b;
+    --gold: #c9a84c;
+    --paper: #faf6ed;
+    --line: #d4c5a9;
+    --margin: #c94040;
+    --ink: #2c2c2c;
+    position: relative;
+    isolation: isolate;
+    min-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: calc(56px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    background:
+      repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(0,0,0,.03) 80px, rgba(0,0,0,.03) 82px),
+      linear-gradient(180deg, var(--desk-dark) 0%, var(--desk-mid) 30%, var(--desk-light) 58%, var(--desk-mid) 100%);
+  }
+  .nb-theme-midnightRose, .nb-theme-champagne, .nb-theme-roseGold {
+    --desk-dark: #241016;
+    --desk-mid: #4a1c28;
+    --desk-light: #6b4226;
+    --gold: #e8c99a;
+  }
+  .nb-theme-oceanNight {
+    --desk-dark: #0b1c28;
+    --desk-mid: #16384a;
+    --desk-light: #2a5a6b;
+    --gold: #abd5dd;
+  }
+  .nb-spot {
+    position: absolute;
+    top: 28%;
+    left: 50%;
+    width: 70vw;
+    height: 50vh;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse, rgba(255,220,150,.1), transparent 70%);
+    filter: blur(36px);
+    pointer-events: none;
+  }
+  .nb-progress {
+    display: flex;
+    gap: 6px;
+    z-index: 2;
+  }
+  .nb-progress span {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.28);
+    transition: width .3s ease, background .3s ease;
+  }
+  .nb-progress span.is-current { width: 18px; background: var(--gold); }
+  .nb-progress span.is-done { background: color-mix(in srgb, var(--gold) 70%, white); }
+  .nb-book {
+    width: min(680px, 94vw);
+    perspective: 1800px;
+    z-index: 2;
+  }
+  .nb-stack {
+    position: relative;
+    min-height: clamp(280px, 52vh, 430px);
+    transform-style: preserve-3d;
+    transform: rotateX(6deg);
+  }
+  .nb-leaf {
+    position: absolute;
+    inset: 0;
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+  }
+  .nb-under { z-index: 1; }
+  .nb-front { z-index: 2; }
+  .nb-front.is-flip-forward { animation: nb-flip-fwd .72s cubic-bezier(.645,.045,.355,1) both; }
+  .nb-front.is-flip-backward { animation: nb-flip-back .72s cubic-bezier(.645,.045,.355,1) both; }
+  .nb-paper {
+    height: 100%;
+    box-sizing: border-box;
+    padding: clamp(22px, 5vw, 40px) clamp(22px, 6vw, 44px) 28px clamp(36px, 9vw, 58px);
+    border-radius: 4px 12px 12px 4px;
+    background:
+      repeating-linear-gradient(transparent, transparent 27px, var(--line) 27px, var(--line) 28px),
+      var(--paper);
+    box-shadow: 0 20px 60px rgba(0,0,0,.45), 4px 0 12px rgba(0,0,0,.12);
+    color: var(--ink);
+    overflow: hidden;
+  }
+  .nb-margin {
+    position: absolute;
+    left: clamp(22px, 6vw, 38px);
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--margin);
+    opacity: .35;
+  }
+  .nb-num {
+    position: absolute;
+    right: 16px;
+    bottom: 10px;
+    font: 400 .75rem/1 Kalam, cursive, Georgia, serif;
+    color: #999;
+  }
+  .nb-fold {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(225deg, #e8dfd0 50%, transparent 50%);
+  }
+  .nb-cover, .nb-ending, .nb-quote, .nb-letter, .nb-memory {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .nb-cover, .nb-ending { align-items: center; justify-content: center; text-align: center; }
+  .nb-cover h2, .nb-letter h3, .nb-memory h3, .nb-ending h3 {
+    margin: 0;
+    font-family: Kalam, "Dancing Script", cursive, Georgia, serif;
+    font-size: clamp(1.2rem, 4vw, 1.9rem);
+    color: #2c2c2c;
+  }
+  .nb-cover p, .nb-letter p, .nb-memory p, .nb-ending p {
+    margin: 0;
+    font-family: Lora, Georgia, serif;
+    font-size: clamp(.84rem, 2.2vw, .98rem);
+    line-height: 1.75;
+    color: #555;
+    white-space: pre-wrap;
+  }
+  .nb-cover-mark, .nb-ending div { font-size: 1.6rem; color: var(--gold); }
+  .nb-cover-hint {
+    margin-top: 10px;
+    font: 600 .68rem/1 Inter, sans-serif;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: #a38432;
+  }
+  .nb-front.is-cover .nb-paper {
+    background:
+      radial-gradient(circle at 30% 30%, rgba(255,255,255,.04), transparent 60%),
+      linear-gradient(135deg, #1a0e08, #2c1810 40%, #3d2618);
+    color: var(--gold);
+  }
+  .nb-front.is-cover h2 {
+    background: linear-gradient(135deg, #ffe082, #c9a84c 45%, #fff2cc 55%, #a38432);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-family: "Playfair Display", Georgia, serif;
+  }
+  .nb-front.is-cover p, .nb-front.is-cover .nb-cover-hint { color: #ffe082; }
+  .nb-front.is-cover .nb-margin, .nb-front.is-cover .nb-fold { display: none; }
+  .nb-photo {
+    width: min(180px, 70%);
+    aspect-ratio: 1;
+    margin: 0 auto;
+    border: 3px solid #fff;
+    box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    transform: rotate(-1deg);
+    overflow: hidden;
+    background: #f0ebe0;
+  }
+  .nb-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .nb-quote { justify-content: center; }
+  .nb-kicker {
+    margin: 0;
+    font: 600 .72rem/1 Kalam, cursive, sans-serif;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #999;
+  }
+  .nb-quote blockquote {
+    margin: 0;
+    font: italic clamp(1rem, 3vw, 1.3rem)/1.6 "Playfair Display", Georgia, serif;
+    border-left: 3px solid #c94040;
+    padding-left: 16px;
+  }
+  .nb-nav {
+    display: flex;
+    gap: 12px;
+    z-index: 3;
+  }
+  .nb-nav button {
+    min-height: 44px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(201,168,76,.4);
+    background: rgba(201,168,76,.12);
+    color: var(--gold);
+    cursor: pointer;
+    font-size: .88rem;
+    backdrop-filter: blur(8px);
+  }
+  .nb-nav button:disabled { opacity: .4; cursor: not-allowed; }
+  .nb-continue {
+    border-color: rgba(201,168,76,.7) !important;
+    background: linear-gradient(135deg, rgba(201,168,76,.28), rgba(163,132,50,.2)) !important;
+    color: #fde68a !important;
+  }
+  @keyframes nb-flip-fwd {
+    0% { transform: rotateY(0); }
+    100% { transform: rotateY(-180deg); }
+  }
+  @keyframes nb-flip-back {
+    0% { transform: rotateY(0); }
+    100% { transform: rotateY(18deg) scale(.97); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nb-front.is-flip-forward, .nb-front.is-flip-backward { animation: none; }
+  }
+`;

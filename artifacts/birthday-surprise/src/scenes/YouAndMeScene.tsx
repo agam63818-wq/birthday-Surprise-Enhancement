@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SceneComponentProps } from "@/lib/v2/registry";
 import { useNormalizedConfig } from "@/contexts/ConfigContext";
+import { youAndMeCaption } from "@/lib/v2/cinematicCopy";
 
 function heartX(t: number, s: number) { return s * 16 * Math.pow(Math.sin(t), 3) / 17; }
 function heartY(t: number, s: number) { return -s * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 17; }
@@ -48,6 +49,7 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
   const rawName2 = normalized.youAndMe.name2 ?? normalized.recipient.name ?? "";
   const name1 = (rawName1.trim().slice(0, 14) || "YOU").toUpperCase();
   const name2 = (rawName2.trim().slice(0, 14) || "ME").toUpperCase();
+  const caption = youAndMeCaption(normalized.occasion);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -264,10 +266,6 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
       drawStars();
 
       if (phase === 0) {
-        ctx.fillStyle = "rgba(255,255,255,0.12)";
-        ctx.font = "13px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText("♥  LOVE IS IN THE CODE  ♥", W / 2, H / 2 - H * 0.2);
         drawECG();
       }
 
@@ -331,7 +329,7 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
           {name1} & {name2}
         </h2>
         <p style={{ color: "rgba(255,180,180,0.8)", letterSpacing: "0.2em", fontSize: "0.85rem" }}>
-          WRITTEN IN THE STARS
+          {caption}
         </p>
         <button onClick={onNext} style={{
           marginTop: "16px", padding: "14px 32px", borderRadius: "999px",
@@ -385,7 +383,7 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
             letterSpacing: "8px",
             color: `rgba(255,180,180,${textAlpha})`,
           }}>
-            WRITTEN IN THE STARS
+            {caption}
           </span>
         </div>
       </div>

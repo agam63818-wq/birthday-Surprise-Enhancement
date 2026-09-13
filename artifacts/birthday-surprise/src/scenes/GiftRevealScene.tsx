@@ -17,8 +17,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { SceneComponentProps } from "@/lib/v2/registry";
-import { OCCASION_DEFAULTS } from "@/lib/occasions";
 import { useNormalizedConfig } from "@/contexts/ConfigContext";
+import { giftRevealLine } from "@/lib/v2/cinematicCopy";
 
 interface Balloon {
   x: number; y: number; vx: number; vy: number;
@@ -48,7 +48,8 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
 
   const recipientName = normalized.giftReveal.recipientName ?? normalized.recipient.name ?? "You";
   const senderName = normalized.giftReveal.senderName ?? "";
-  const occasionText = normalized.giftReveal.occasionText ?? OCCASION_DEFAULTS[normalized.occasion].title;
+  const occasionText = normalized.giftReveal.occasionText?.trim()
+    || giftRevealLine(normalized.occasion, normalized.giftReveal.message);
   const message = normalized.giftReveal.message ?? normalized.raw.cake?.message ?? "Wishing you all the happiness in the world. ❤️";
   const photoUrl = normalized.giftReveal.photoUrl ?? (normalized.raw.memoryWall?.photos?.[0]?.src ?? "");
 
@@ -360,7 +361,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
             letterSpacing: "0.05em",
             animation: "gift-pulse 2s ease-in-out infinite",
           }}>
-            Tap to open your surprise... 🎁
+            Tap to open
           </p>
         </div>
       )}

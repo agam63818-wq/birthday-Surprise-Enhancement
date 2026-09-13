@@ -1,47 +1,108 @@
 /**
- * RoseBloomScene
+ * RoseBloomScene — cinematic 3D rose bloom.
  *
- * A single responsive flower composition:
- * bloom -> calyx -> stem -> leaves.
- *
- * The previous implementation rendered the stem before the flower head and
- * used a dynamically-mutated petal tree with viewport-fixed text. That made
- * the flower read as disconnected parts on small screens. This version keeps
- * the visual relationship in the DOM and lets CSS stage each layer cleanly.
+ * Ported from animation_code.zip/rose (coordinate system, petal layers,
+ * stem, leaves, calyx, perspective and bloom timing). React only owns
+ * lifecycle, config, reduced-motion and navigation.
  */
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SceneComponentProps } from "@/lib/v2/registry";
 import { useNormalizedConfig } from "@/contexts/ConfigContext";
 
-type PetalLayer = {
-  count: number;
+type PetalTone = "bud" | "core" | "inner" | "midInner" | "mid" | "outer" | "blush";
+
+type PetalSpec = {
+  id: string;
+  tone: PetalTone;
   width: number;
   height: number;
-  radius: number;
-  depth: number;
-  tone: "inner" | "mid" | "outer";
+  angle: number;
+  curl: number;
+  scale: number;
   delay: number;
+  tz: number;
+  duration: number;
 };
 
-const PETAL_LAYERS: PetalLayer[] = [
-  { count: 5, width: 34, height: 58, radius: 9, depth: 34, tone: "inner", delay: 0.05 },
-  { count: 7, width: 50, height: 82, radius: 17, depth: 26, tone: "mid", delay: 0.35 },
-  { count: 9, width: 68, height: 104, radius: 24, depth: 18, tone: "mid", delay: 0.7 },
-  { count: 11, width: 84, height: 118, radius: 30, depth: 8, tone: "outer", delay: 1.05 },
+type FallingPetal = {
+  id: number;
+  left: number;
+  top: number;
+  w: number;
+  h: number;
+  c1: string;
+  c2: string;
+  dur: number;
+  delay: number;
+  s1: number;
+  s2: number;
+  s3: number;
+  s4: number;
+};
+
+const PETAL_LAYERS: Array<{
+  count: number;
+  w: number;
+  h: number;
+  curl: number;
+  delayBase: number;
+  tz: number;
+  tone: PetalTone;
+}> = [
+  { count: 4, w: 24, h: 46, curl: 78, delayBase: 0, tz: 2, tone: "bud" },
+  { count: 5, w: 34, h: 58, curl: 65, delayBase: 0.25, tz: 9, tone: "core" },
+  { count: 6, w: 46, h: 72, curl: 48, delayBase: 0.55, tz: 18, tone: "inner" },
+  { count: 7, w: 58, h: 88, curl: 22, delayBase: 0.9, tz: 30, tone: "midInner" },
+  { count: 8, w: 72, h: 104, curl: -5, delayBase: 1.3, tz: 44, tone: "mid" },
+  { count: 9, w: 86, h: 118, curl: -25, delayBase: 1.75, tz: 60, tone: "outer" },
+  { count: 10, w: 98, h: 130, curl: -48, delayBase: 2.25, tz: 76, tone: "blush" },
 ];
 
-const FALLING_PETALS = Array.from({ length: 12 }, (_, index) => ({
-  left: `${8 + ((index * 17) % 84)}%`,
-  delay: `${(index * 0.72) % 5.5}s`,
-  duration: `${7.5 + (index % 4) * 1.2}s`,
-  size: `${8 + (index % 4) * 2}px`,
-  height: `${(8 + (index % 4) * 2) * 1.35}px`,
-  drift: `${index % 2 === 0 ? 1 : -1}`,
-}));
+const FALLING_COLORS: Array<[string, string]> = [
+  ["#9a001d", "#3d0008"],
+  ["#850018", "#2b0005"],
+  ["#ad0022", "#480008"],
+  ["#bf0028", "#52000c"],
+];
 
-const cssVar = (name: string, value: string | number): CSSProperties =>
-  ({ [name]: typeof value === "number" ? String(value) : value }) as CSSProperties;
+function hash(n: number) {
+  const x = Math.sin(n * 127.1) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function jitter(n: number, spread: number) {
+  return (hash(n) - 0.5) * spread;
+}
+
+function buildPetals(intensity: "subtle" | "normal" | "dramatic"): PetalSpec[] {
+  const layers = intensity === "subtle" ? PETAL_LAYERS.slice(0, 5) : PETAL_LAYERS;
+  return layers.flatMap((layer, li) => {
+    const step = 360 / layer.count;
+    const offset = li * 24 + jitter(li + 3, 8);
+    return Array.from({ length: layer.count }, (_, i) => {
+      const n = li * 20 + i;
+      return {
+        id: `${layer.tone}-${i}`,
+        tone: layer.tone,
+        width: layer.w,
+        height: layer.h,
+        angle: offset + i * step + jitter(n, 5),
+        curl: layer.curl + jitter(n + 40, 6),
+        scale: 0.94 + hash(n + 80) * 0.12,
+        delay: layer.delayBase + i * 0.05,
+        tz: layer.tz,
+        duration: 2.1 + hash(n + 12) * 0.4,
+      };
+    });
+  });
+}
+
+const SEPALS = Array.from({ length: 5 }, (_, i) => ({
+  angle: i * 72 + jitter(i + 2, 5),
+  delay: 0.3 + i * 0.06,
+  curl: 18 + hash(i + 9) * 8,
+}));
 
 export default function RoseBloomScene({
   onNext,
@@ -50,62 +111,87 @@ export default function RoseBloomScene({
   globalMuted,
 }: SceneComponentProps) {
   const normalized = useNormalizedConfig();
-  const [started, setStarted] = useState(false);
-  const [showText, setShowText] = useState(false);
-  const [showNext, setShowNext] = useState(false);
-  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-
   const rose = normalized.roseBloom;
   const roseText = rose.text?.trim() || "Made with love, just for you.";
-  const speedMultiplier = rose.speed === "slow" ? 1.25 : rose.speed === "fast" ? 0.78 : 1;
+  const speed = rose.speed === "slow" ? 1.25 : rose.speed === "fast" ? 0.72 : 1;
   const intensity = rose.intensity ?? "normal";
-  const layers = intensity === "subtle" ? PETAL_LAYERS.slice(0, 3) : PETAL_LAYERS;
+  const petals = useMemo(() => buildPetals(intensity), [intensity]);
 
-  const petals = useMemo(() => {
-    let serial = 0;
-    return layers.flatMap((layer) =>
-      Array.from({ length: layer.count }, (_, index) => {
-        const angle = (360 / layer.count) * index + (serial % 2 === 0 ? -4 : 4);
-        const item = {
-          id: serial++,
-          angle,
-          width: layer.width,
-          height: layer.height,
-          radius: layer.radius,
-          depth: layer.depth,
-          tone: layer.tone,
-          delay: layer.delay + index * 0.045,
-        };
-        return item;
-      }),
-    );
-  }, [layers]);
+  const [overlay, setOverlay] = useState(!reducedMotion);
+  const [stemGrown, setStemGrown] = useState(reducedMotion);
+  const [leafLeft, setLeafLeft] = useState(reducedMotion);
+  const [leafRight, setLeafRight] = useState(reducedMotion);
+  const [blooming, setBlooming] = useState(reducedMotion);
+  const [rotating, setRotating] = useState(false);
+  const [showText, setShowText] = useState(reducedMotion);
+  const [showNext, setShowNext] = useState(reducedMotion);
+  const [falling, setFalling] = useState<FallingPetal[]>([]);
+  const startedRef = useRef(reducedMotion);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const petalId = useRef(0);
+
+  const later = (fn: () => void, ms: number) => {
+    const timer = setTimeout(fn, ms * speed);
+    timersRef.current.push(timer);
+    return timer;
+  };
+
+  const spawnFalling = () => {
+    if (falling.length > 10 && petalId.current > 14) return;
+    const id = ++petalId.current;
+    const w = 10 + hash(id) * 12;
+    const sign = (n: number) => (hash(n) > 0.5 ? 1 : -1);
+    const colors = FALLING_COLORS[id % FALLING_COLORS.length];
+    const petal: FallingPetal = {
+      id,
+      left: 18 + hash(id + 4) * 64,
+      top: 4 + hash(id + 7) * 10,
+      w,
+      h: w * (1.25 + hash(id + 2) * 0.15),
+      c1: colors[0],
+      c2: colors[1],
+      dur: 5.5 + hash(id + 11) * 3.5,
+      delay: hash(id + 13) * 0.4,
+      s1: sign(id) * (15 + hash(id + 21) * 25),
+      s2: sign(id + 1) * (10 + hash(id + 22) * 20),
+      s3: sign(id + 2) * (20 + hash(id + 23) * 30),
+      s4: sign(id + 3) * (10 + hash(id + 24) * 15),
+    };
+    setFalling((prev) => [...prev.slice(-9), petal]);
+    later(() => setFalling((prev) => prev.filter((p) => p.id !== id)), (petal.dur + petal.delay) * 1000 + 400);
+  };
+
+  const begin = () => {
+    if (startedRef.current || !isActive) return;
+    startedRef.current = true;
+    setOverlay(false);
+
+    later(() => setStemGrown(true), 720);
+    later(() => setLeafLeft(true), 1480);
+    later(() => setLeafRight(true), 1820);
+    later(() => setBlooming(true), 2920);
+    later(() => setRotating(true), 5400);
+    later(() => {
+      if (rose.fallingPetals === false) return;
+      spawnFalling();
+      spawnFalling();
+      intervalRef.current = setInterval(spawnFalling, 2200);
+    }, 6200);
+    later(() => setShowText(true), 7400);
+    later(() => setShowNext(true), 8600);
+  };
 
   useEffect(() => {
-    if (!reducedMotion || !isActive) return;
-    setStarted(true);
-    setShowText(true);
-    setShowNext(true);
+    if (!isActive || reducedMotion) return;
+    const timer = later(begin, 650);
+    return () => clearTimeout(timer);
+    // begin is stable for a given mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, reducedMotion]);
 
   useEffect(() => {
-    return () => timersRef.current.forEach(clearTimeout);
-  }, []);
-
-  const later = (fn: () => void, delay: number) => {
-    const timer = setTimeout(fn, delay * speedMultiplier);
-    timersRef.current.push(timer);
-  };
-
-  const startBloom = () => {
-    if (started || !isActive) return;
-    setStarted(true);
-    later(() => setShowText(true), 5200);
-    later(() => setShowNext(true), 6500);
-  };
-
-  useEffect(() => {
-    if (!started || reducedMotion || globalMuted || rose.soundEnabled === false) return;
+    if (!blooming || reducedMotion || globalMuted || rose.soundEnabled === false) return;
     let audio: AudioContext | undefined;
     try {
       audio = new AudioContext();
@@ -126,521 +212,540 @@ export default function RoseBloomScene({
         if (audio && audio.state !== "closed") void audio.close();
       };
     } catch {
-      // Audio is an enhancement. The visual reveal remains fully functional.
       return undefined;
     }
-  }, [globalMuted, reducedMotion, rose.soundEnabled, started]);
+  }, [blooming, globalMuted, reducedMotion, rose.soundEnabled]);
 
-  if (reducedMotion) {
-    return (
-      <RoseShell>
-        <RoseComposition petals={petals} started reducedMotion />
-        <RoseCopy text={roseText} visible />
-        <RoseButton onClick={onNext} visible />
-      </RoseShell>
-    );
-  }
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach(clearTimeout);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  const classes = [
+    "rose-bloom-root",
+    overlay ? "" : "is-live",
+    stemGrown ? "is-stem" : "",
+    blooming ? "is-blooming" : "",
+    rotating ? "is-rotating" : "",
+    reducedMotion ? "is-static" : "",
+  ].filter(Boolean).join(" ");
 
   return (
-    <RoseShell>
-      <div className={`rose-bloom-scene ${started ? "is-started" : ""}`}>
-        <div className="rose-scene-kicker">A quiet little moment</div>
-        <div className="rose-stage">
-          <div className="rose-atmosphere" aria-hidden="true" />
-          <RoseComposition petals={petals} started={started} />
-          {rose.fallingPetals !== false && started && (
-            <div className="rose-falling-petals" aria-hidden="true">
-              {FALLING_PETALS.map((petal, index) => (
-                <span
-                  key={index}
-                  className="rose-falling-petal"
-                  style={{
-                    left: petal.left,
-                    animationDelay: petal.delay,
-                    animationDuration: petal.duration,
-                    width: petal.size,
-                    height: petal.height,
-                    ...cssVar("--petal-drift", petal.drift),
-                  }}
-                />
-              ))}
+    <section className={classes} aria-label="A blooming rose">
+      <style>{ROSE_CSS}</style>
+      <div className="rb-vignette" aria-hidden="true" />
+      <div className="rb-spotlight" aria-hidden="true" />
+      <div className={`rb-ambient ${blooming ? "is-on" : ""}`} aria-hidden="true" />
+
+      {overlay && (
+        <button type="button" className="rb-overlay" onClick={begin} aria-label="Begin the bloom">
+          <span className="rb-card">
+            <span className="rb-card-glow" aria-hidden="true" />
+            <span className="rb-icon" aria-hidden="true">🌹</span>
+            <span className="rb-card-kicker">For you</span>
+            <strong>Let it bloom slowly.</strong>
+            <em>Some things are more beautiful when they take their time.</em>
+            <span className="rb-card-cta">Tap to bloom</span>
+          </span>
+        </button>
+      )}
+
+      <div className="rb-layout">
+        <div className="rb-stage">
+          <div className="rb-scaler">
+            <div className={`rb-scene ${rotating ? "is-turning" : ""}`}>
+              <div className="rb-wrapper">
+                <div className="rb-stem-group" data-rose-stem>
+                  <div className={`rb-stem ${stemGrown ? "is-grown" : ""}`}>
+                    <span className="rb-stem-shine" />
+                  </div>
+                  <span className={`rb-thorn rb-thorn-a ${stemGrown ? "is-on" : ""}`} />
+                  <span className={`rb-thorn rb-thorn-b ${stemGrown ? "is-on" : ""}`} />
+                  <div className={`rb-leaf rb-leaf-left ${leafLeft ? "is-on" : ""}`}>
+                    <span className="rb-vein" />
+                  </div>
+                  <div className={`rb-leaf rb-leaf-right ${leafRight ? "is-on" : ""}`}>
+                    <span className="rb-vein" />
+                  </div>
+                </div>
+
+                <div className={`rb-calyx ${blooming ? "is-on" : ""}`} aria-hidden="true">
+                  {SEPALS.map((sepal, index) => (
+                    <span
+                      key={index}
+                      className="rb-sepal"
+                      style={{
+                        ["--sepal-angle" as string]: `${sepal.angle}deg`,
+                        ["--sepal-curl" as string]: `${sepal.curl}deg`,
+                        ["--sepal-delay" as string]: `${sepal.delay}s`,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                <div className={`rb-head ${blooming ? "is-on" : ""}`} data-rose-head>
+                  <span className="rb-glow" />
+                  <span className="rb-glow-inner" />
+                  {petals.map((petal) => (
+                    <span
+                      key={petal.id}
+                      className={`rb-petal rb-petal-${petal.tone}`}
+                      style={{
+                        width: petal.width,
+                        height: petal.height,
+                        ["--angle" as string]: `${petal.angle}deg`,
+                        ["--curl" as string]: `${petal.curl}deg`,
+                        ["--scale" as string]: String(petal.scale),
+                        ["--delay" as string]: `${petal.delay}s`,
+                        ["--tz" as string]: `${petal.tz}px`,
+                        ["--bloom-dur" as string]: `${petal.duration}s`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
-        {!started && (
-          <div className="rose-start-card">
-            <span className="rose-start-mark" aria-hidden="true">✦</span>
-            <p className="rose-start-eyebrow">For you</p>
-            <h1>Let it bloom slowly.</h1>
-            <p>Some things are more beautiful when they take their time.</p>
-            <button type="button" onClick={startBloom}>
-              Begin the bloom
-              <span aria-hidden="true"> →</span>
-            </button>
-          </div>
-        )}
+        <div className={`rb-copy ${showText ? "is-on" : ""}`} aria-live="polite">
+          <p>{roseText}</p>
+        </div>
 
-        <RoseCopy text={roseText} visible={showText} />
-        <RoseButton onClick={onNext} visible={showNext} />
+        <div className={`rb-next ${showNext ? "is-on" : ""}`}>
+          <button type="button" onClick={onNext} tabIndex={showNext ? 0 : -1}>
+            Continue <span aria-hidden="true">✦</span>
+          </button>
+        </div>
       </div>
-    </RoseShell>
-  );
-}
 
-function RoseShell({ children }: { children: ReactNode }) {
-  return (
-    <section className="rose-shell">
-      <style>{`
-        .rose-shell {
-          --rose-ink: #f8e9ec;
-          --rose-muted: rgba(248, 233, 236, 0.66);
-          --rose-line: rgba(236, 174, 192, 0.22);
-          --rose-red: #b51f45;
-          --rose-deep: #4c071b;
-          --rose-pink: #f58aa7;
-          min-height: 100dvh;
-          position: relative;
-          isolation: isolate;
-          overflow: hidden;
-          display: grid;
-          place-items: center;
-          padding: calc(38px + env(safe-area-inset-top, 0px)) 20px calc(30px + env(safe-area-inset-bottom, 0px));
-          color: var(--rose-ink);
-          background:
-            radial-gradient(circle at 50% 39%, rgba(146, 18, 55, 0.18), transparent 25%),
-            radial-gradient(circle at 50% 80%, rgba(103, 18, 47, 0.24), transparent 35%),
-            linear-gradient(180deg, #09030b 0%, #15030b 52%, #060207 100%);
-        }
-        .rose-shell::before,
-        .rose-shell::after {
-          content: "";
-          position: absolute;
-          pointer-events: none;
-          inset: 0;
-          z-index: -1;
-        }
-        .rose-shell::before {
-          opacity: 0.5;
-          background-image:
-            radial-gradient(circle at 18% 22%, rgba(255,255,255,.72) 0 1px, transparent 1.5px),
-            radial-gradient(circle at 82% 28%, rgba(251,177,196,.62) 0 1px, transparent 1.5px),
-            radial-gradient(circle at 74% 78%, rgba(255,255,255,.45) 0 1px, transparent 1.5px);
-          background-size: 240px 220px, 310px 280px, 190px 260px;
-        }
-        .rose-shell::after {
-          background: radial-gradient(ellipse at center, transparent 32%, rgba(0,0,0,.72) 100%);
-        }
-        .rose-bloom-scene {
-          width: min(100%, 540px);
-          min-height: min(760px, calc(100dvh - 22px));
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          text-align: center;
-        }
-        .rose-scene-kicker {
-          position: absolute;
-          top: 0;
-          left: 50%;
-          transform: translateX(-50%);
-          color: rgba(248,233,236,.42);
-          font: 500 .64rem/1.2 Inter, system-ui, sans-serif;
-          letter-spacing: .24em;
-          text-transform: uppercase;
-          white-space: nowrap;
-        }
-        .rose-stage {
-          width: min(100%, 440px);
-          height: clamp(370px, 58dvh, 510px);
-          position: relative;
-          display: grid;
-          place-items: center;
-        }
-        .rose-atmosphere {
-          position: absolute;
-          width: min(72vw, 340px);
-          aspect-ratio: 1;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(205,33,78,.2), transparent 68%);
-          filter: blur(24px);
-          opacity: 0;
-          transition: opacity 2s ease;
-        }
-        .is-started .rose-atmosphere { opacity: 1; }
-        .rose-composition {
-          --rose-ease: cubic-bezier(.16,1,.3,1);
-          position: relative;
-          width: clamp(190px, 58vw, 270px);
-          height: clamp(330px, 52dvh, 420px);
-          display: flex;
-          align-items: center;
-          flex-direction: column;
-          z-index: 2;
-          transform: translateY(10px);
-        }
-        .rose-bloom {
-          position: relative;
-          width: clamp(156px, 46vw, 224px);
-          aspect-ratio: 1;
-          z-index: 4;
-          filter: drop-shadow(0 22px 24px rgba(53,0,14,.5));
-        }
-        .rose-petal {
-          position: absolute;
-          left: 50%;
-          top: 53%;
-          width: var(--petal-width);
-          height: var(--petal-height);
-          transform-origin: 50% 100%;
-          transform: translate(-50%, -100%) rotate(var(--petal-angle)) translateY(calc(var(--petal-radius) * -1)) rotateX(54deg) scale(.08);
-          opacity: 0;
-          border-radius: 50% 50% 39% 39%;
-          border: 1px solid rgba(255,218,226,.16);
-          box-shadow: inset 8px 9px 18px rgba(255,205,219,.16), inset -10px -16px 20px rgba(50,0,12,.3), 0 4px 14px rgba(63,0,16,.25);
-          animation: none;
-          z-index: var(--petal-depth);
-        }
-        .rose-composition.is-blooming .rose-petal {
-          animation: rose-petal-open 1.9s var(--rose-ease) var(--petal-delay) forwards;
-        }
-        .rose-petal--inner { background: radial-gradient(ellipse at 28% 19%, #ffd3df 0%, #ec7394 31%, #8c0f32 82%); }
-        .rose-petal--mid { background: radial-gradient(ellipse at 26% 16%, #ffc1d1 0%, #d8446c 34%, #710a28 84%); }
-        .rose-petal--outer { background: radial-gradient(ellipse at 24% 15%, #f6a3b7 0%, #bb234d 34%, #4b061b 84%); }
-        .rose-petal:nth-child(3n) { animation-duration: 2.15s; }
-        .rose-petal:nth-child(4n) { filter: brightness(.88); }
-        .rose-bud-core {
-          position: absolute;
-          z-index: 40;
-          left: 50%;
-          top: 51%;
-          width: 30%;
-          aspect-ratio: .78;
-          transform: translate(-50%, -50%) scale(.35);
-          opacity: 0;
-          border-radius: 52% 52% 42% 42%;
-          background: linear-gradient(135deg, #ffd8e3, #d7476d 42%, #650923 90%);
-          box-shadow: 0 0 22px rgba(255,103,144,.38), inset -8px -10px 12px rgba(50,0,12,.3);
-          opacity: .74;
-        }
-        .rose-composition.is-blooming .rose-bud-core {
-          animation: rose-core-open 1.5s ease .25s forwards;
-        }
-        .rose-bud-core::after {
-          content: "";
-          position: absolute;
-          top: 10%;
-          left: 28%;
-          width: 26%;
-          height: 40%;
-          border-radius: 50%;
-          background: rgba(255,244,247,.58);
-          filter: blur(2px);
-        }
-        .rose-calyx {
-          position: relative;
-          width: clamp(54px, 15vw, 72px);
-          height: 34px;
-          margin-top: -19px;
-          z-index: 6;
-        }
-        .rose-sepal {
-          position: absolute;
-          left: 50%;
-          top: 0;
-          width: 18px;
-          height: 42px;
-          transform-origin: 50% 100%;
-          transform: translateX(-50%) rotate(var(--sepal-angle)) scaleY(.15);
-          opacity: 0;
-          border-radius: 50% 50% 18% 18%;
-          background: linear-gradient(160deg, #98b46d, #355a2f 58%, #162d1c);
-          animation: none;
-        }
-        .rose-composition.is-blooming .rose-sepal {
-          animation: rose-sepal-open .8s ease var(--sepal-delay) forwards;
-        }
-        .rose-stem {
-          position: relative;
-          width: 13px;
-          height: clamp(190px, 31dvh, 250px);
-          margin-top: -4px;
-          transform-origin: 50% 0;
-          transform: scaleY(0);
-          border-radius: 999px;
-          background: linear-gradient(90deg, #162f1e, #699357 42%, #254c2b 68%, #102218);
-          box-shadow: 5px 0 10px rgba(10,0,2,.25);
-          transform: scaleY(.04);
-        }
-        .rose-composition.is-blooming .rose-stem {
-          animation: rose-stem-grow 1.8s var(--rose-ease) .05s forwards;
-        }
-        .rose-stem::after {
-          content: "";
-          position: absolute;
-          inset: 0 3px 0 4px;
-          border-radius: inherit;
-          background: linear-gradient(180deg, rgba(209,239,181,.4), transparent 40%);
-        }
-        .rose-leaf {
-          position: absolute;
-          width: clamp(60px, 17vw, 82px);
-          height: clamp(27px, 7vw, 36px);
-          top: 34%;
-          opacity: 0;
-          background: linear-gradient(145deg, #8eb26b 0%, #3d713d 46%, #162d1c 100%);
-          box-shadow: inset -10px -6px 10px rgba(10,22,10,.28), 0 4px 8px rgba(8,0,2,.22);
-          transform: rotate(var(--leaf-angle)) scale(0);
-        }
-        .rose-composition.is-blooming .rose-leaf {
-          animation: rose-leaf-open .95s var(--rose-ease) 1.08s forwards;
-        }
-        .rose-leaf::after {
-          content: "";
-          position: absolute;
-          width: 80%;
-          height: 1px;
-          top: 50%;
-          left: 10%;
-          background: rgba(219,238,186,.4);
-          transform: rotate(-5deg);
-        }
-        .rose-leaf--left {
-          right: 50%;
-          transform-origin: 100% 50%;
-          border-radius: 100% 0 100% 0;
-        }
-        .rose-leaf--right {
-          left: 50%;
-          top: 54%;
-          transform-origin: 0 50%;
-          border-radius: 0 100% 0 100%;
-          animation-delay: 1.35s;
-        }
-        .rose-copy {
-          max-width: min(390px, 90vw);
-          min-height: 82px;
-          margin: -2px auto 0;
-          opacity: 0;
-          transform: translateY(16px);
-          transition: opacity 1.1s ease, transform 1.1s var(--rose-ease);
-          position: relative;
-          z-index: 5;
-        }
-        .rose-copy.is-visible { opacity: 1; transform: translateY(0); }
-        .rose-copy p {
-          margin: 0;
-          color: var(--rose-ink);
-          font: 500 clamp(1rem, 3.8vw, 1.25rem)/1.65 "Playfair Display", Georgia, serif;
-          text-wrap: balance;
-          text-shadow: 0 4px 24px rgba(196,31,76,.32);
-        }
-        .rose-copy span {
-          display: block;
-          margin-top: 10px;
-          color: rgba(247,171,191,.74);
-          font-size: .9rem;
-        }
-        .rose-button {
-          opacity: 0;
-          transform: translateY(12px);
-          transition: opacity .7s ease .15s, transform .7s var(--rose-ease) .15s;
-          margin-top: 18px;
-        }
-        .rose-button.is-visible { opacity: 1; transform: translateY(0); }
-        .rose-button button,
-        .rose-start-card button {
-          min-height: 46px;
-          padding: 12px 23px;
-          border: 1px solid rgba(242,157,181,.34);
-          border-radius: 999px;
-          color: #ffeef2;
-          background: rgba(114, 13, 42, .42);
-          box-shadow: 0 8px 24px rgba(28,0,11,.35), inset 0 0 20px rgba(246,115,151,.06);
-          font: 600 .78rem/1 Inter, system-ui, sans-serif;
-          letter-spacing: .06em;
-          cursor: pointer;
-          backdrop-filter: blur(12px);
-          transition: border-color .2s ease, background .2s ease, transform .2s ease;
-        }
-        .rose-button button:hover,
-        .rose-start-card button:hover { border-color: rgba(255,190,207,.7); background: rgba(155,25,61,.5); transform: translateY(-2px); }
-        .rose-start-card {
-          position: absolute;
-          left: 50%;
-          bottom: 7%;
-          transform: translateX(-50%);
-          width: min(330px, calc(100vw - 42px));
-          padding: 18px 22px 20px;
-          border: 1px solid rgba(238,165,185,.18);
-          border-radius: 22px;
-          background: linear-gradient(145deg, rgba(43,9,22,.9), rgba(18,3,12,.82));
-          box-shadow: 0 18px 60px rgba(0,0,0,.32);
-          z-index: 10;
-          animation: rose-card-in .8s var(--rose-ease) both;
-        }
-        .rose-start-mark {
-          display: block;
-          color: #f49bb4;
-          font-size: 1.25rem;
-          margin-bottom: 4px;
-        }
-        .rose-start-eyebrow {
-          margin: 0 0 7px;
-          color: rgba(249,181,199,.62);
-          font: 600 .62rem/1 Inter, system-ui, sans-serif;
-          letter-spacing: .2em;
-          text-transform: uppercase;
-        }
-        .rose-start-card h1 {
-          margin: 0;
-          color: #fff3f6;
-          font: 500 clamp(1.25rem, 5vw, 1.65rem)/1.2 "Playfair Display", Georgia, serif;
-        }
-        .rose-start-card > p:not(.rose-start-eyebrow) {
-          margin: 8px 0 16px;
-          color: var(--rose-muted);
-          font: .78rem/1.55 Inter, system-ui, sans-serif;
-        }
-        .rose-start-card button { background: linear-gradient(135deg, rgba(165,28,68,.78), rgba(90,11,37,.78)); }
-        .rose-falling-petals {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          overflow: hidden;
-          z-index: 7;
-        }
-        .rose-falling-petal {
-          position: absolute;
-          top: -22px;
-          border-radius: 80% 10% 80% 10%;
-          background: linear-gradient(135deg, #f7a4ba, #941436 72%);
-          opacity: 0;
-          filter: drop-shadow(0 3px 5px rgba(80,0,20,.4));
-          animation: rose-fall var(--fall-duration, 8s) linear var(--fall-delay, 0s) infinite;
-        }
-        @keyframes rose-petal-open {
-          0% { opacity: 0; transform: translate(-50%, -100%) rotate(var(--petal-angle)) translateY(calc(var(--petal-radius) * -.42)) rotateX(65deg) scale(.08); }
-          58% { opacity: .94; }
-          100% { opacity: 1; transform: translate(-50%, -100%) rotate(var(--petal-angle)) translateY(calc(var(--petal-radius) * -1)) rotateX(10deg) scale(1); }
-        }
-        @keyframes rose-core-open {
-          0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(-12deg); }
-          70% { opacity: 1; transform: translate(-50%, -50%) scale(1.08) rotate(3deg); }
-          100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
-        }
-        @keyframes rose-sepal-open {
-          0% { opacity: 0; transform: translateX(-50%) rotate(var(--sepal-angle)) scaleY(.15); }
-          100% { opacity: 1; transform: translateX(-50%) rotate(var(--sepal-angle)) scaleY(1); }
-        }
-        @keyframes rose-stem-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-        @keyframes rose-leaf-open {
-          0% { opacity: 0; transform: rotate(var(--leaf-angle)) scale(0); }
-          65% { opacity: 1; transform: rotate(var(--leaf-angle)) scale(1.08); }
-          100% { opacity: 1; transform: rotate(var(--leaf-angle)) scale(1); }
-        }
-        @keyframes rose-fall {
-          0% { opacity: 0; transform: translate3d(0, -16px, 0) rotate(0); }
-          10% { opacity: .75; }
-          82% { opacity: .54; }
-          100% { opacity: 0; transform: translate3d(calc(var(--petal-drift) * 60px), 560px, 0) rotate(330deg); }
-        }
-        @keyframes rose-card-in { from { opacity: 0; transform: translate(-50%, 18px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        @media (max-height: 700px) {
-          .rose-bloom-scene { min-height: calc(100dvh - 12px); }
-          .rose-stage { height: 340px; }
-          .rose-composition { height: 300px; }
-          .rose-stem { height: 170px; }
-          .rose-start-card { bottom: 2%; padding-block: 13px 15px; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .rose-shell * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
-        }
-      `}</style>
-      {children}
+      {rose.fallingPetals !== false && (
+        <div className="rb-fall" aria-hidden="true">
+          {falling.map((petal) => (
+            <span
+              key={petal.id}
+              className="rb-fall-petal"
+              style={{
+                left: `${petal.left}vw`,
+                top: `${petal.top}vh`,
+                width: petal.w,
+                height: petal.h,
+                ["--fp-c1" as string]: petal.c1,
+                ["--fp-c2" as string]: petal.c2,
+                ["--f-dur" as string]: `${petal.dur}s`,
+                ["--f-delay" as string]: `${petal.delay}s`,
+                ["--s1" as string]: `${petal.s1}px`,
+                ["--s2" as string]: `${petal.s2}px`,
+                ["--s3" as string]: `${petal.s3}px`,
+                ["--s4" as string]: `${petal.s4}px`,
+              }}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
-function RoseComposition({
-  petals,
-  started,
-  reducedMotion = false,
-}: {
-  petals: Array<{
-    id: number;
-    angle: number;
-    width: number;
-    height: number;
-    radius: number;
-    depth: number;
-    tone: string;
-    delay: number;
-  }>;
-  started: boolean;
-  reducedMotion?: boolean;
-}) {
-  return (
-    <div
-      className={`rose-composition ${started ? "is-blooming" : "is-bud"} ${reducedMotion ? "is-static" : ""}`}
-      aria-label="A blooming rose"
-      role="img"
-    >
-      <div className="rose-bloom">
-        {petals.map((petal) => (
-          <span
-            key={petal.id}
-            className={`rose-petal rose-petal--${petal.tone}`}
-            style={{
-              ...cssVar("--petal-angle", `${petal.angle}deg`),
-              ...cssVar("--petal-width", `${petal.width}px`),
-              ...cssVar("--petal-height", `${petal.height}px`),
-              ...cssVar("--petal-radius", `${petal.radius}px`),
-              ...cssVar("--petal-depth", petal.depth),
-              ...cssVar("--petal-delay", `${started ? petal.delay : 9999}s`),
-              ...cssVar("--rose-ease", "cubic-bezier(.16,1,.3,1)"),
-            }}
-          />
-        ))}
-        <span className="rose-bud-core" />
-      </div>
-      <div className="rose-calyx" aria-hidden="true">
-        {[0, 1, 2, 3, 4].map((index) => (
-          <span
-            className="rose-sepal"
-            key={index}
-            style={{
-              ...cssVar("--sepal-angle", `${index * 72 - 144}deg`),
-              ...cssVar("--sepal-delay", `${0.22 + index * 0.07}s`),
-            }}
-          />
-        ))}
-      </div>
-      <div className="rose-stem" aria-hidden="true">
-        <span className="rose-leaf rose-leaf--left" style={cssVar("--leaf-angle", "-28deg")} />
-        <span className="rose-leaf rose-leaf--right" style={cssVar("--leaf-angle", "28deg")} />
-      </div>
-    </div>
-  );
-}
-
-function RoseCopy({ text, visible }: { text: string; visible: boolean }) {
-  return (
-    <div className={`rose-copy ${visible ? "is-visible" : ""}`} aria-live="polite">
-      <p>{text}</p>
-      {visible && <span>Some feelings grow quietly.</span>}
-    </div>
-  );
-}
-
-function RoseButton({ onClick, visible }: { onClick: () => void; visible: boolean }) {
-  return (
-    <div className={`rose-button ${visible ? "is-visible" : ""}`}>
-      <button type="button" onClick={onClick} tabIndex={visible ? 0 : -1}>
-        Continue <span aria-hidden="true">✦</span>
-      </button>
-    </div>
-  );
-}
+const ROSE_CSS = `
+  .rose-bloom-root {
+    --rb-ink: rgba(255, 195, 215, 0.95);
+    position: relative;
+    isolation: isolate;
+    min-height: 100dvh;
+    overflow: hidden;
+    color: var(--rb-ink);
+    background:
+      radial-gradient(ellipse at 50% 75%, #120105 0%, #050002 55%, #000 100%);
+  }
+  .rb-vignette, .rb-spotlight, .rb-ambient {
+    position: absolute;
+    pointer-events: none;
+  }
+  .rb-vignette {
+    inset: 0;
+    z-index: 8;
+    background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,.9) 100%);
+  }
+  .rb-spotlight {
+    top: 32%;
+    left: 50%;
+    z-index: 1;
+    width: 85vw;
+    height: 70vh;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255,30,80,.06) 0%, transparent 70%);
+    filter: blur(50px);
+  }
+  .rb-ambient {
+    width: min(500px, 90vw);
+    height: min(500px, 70vh);
+    top: 34%;
+    left: 50%;
+    z-index: 5;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255,30,60,.1) 0%, rgba(255,20,50,.04) 40%, transparent 65%);
+    opacity: 0;
+    transition: opacity 3s ease;
+  }
+  .rb-ambient.is-on { opacity: 1; }
+  .rb-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    border: 0;
+    cursor: pointer;
+    background: rgba(0,0,0,.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: inherit;
+    animation: rb-overlay-in .6s ease both;
+  }
+  .is-live .rb-overlay { display: none; }
+  .rb-card {
+    position: relative;
+    width: min(85vw, 340px);
+    padding: 34px 24px 28px;
+    border-radius: 24px;
+    border: 1px solid rgba(255,40,100,.2);
+    background: rgba(22,10,15,.55);
+    box-shadow: 0 25px 60px rgba(0,0,0,.6), 0 0 40px rgba(255,30,80,.1);
+    display: grid;
+    justify-items: center;
+    text-align: center;
+    gap: 8px;
+  }
+  .rb-card-glow {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    top: -40px;
+    left: -40px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,30,80,.15), transparent 70%);
+    filter: blur(15px);
+  }
+  .rb-icon { font-size: 52px; filter: drop-shadow(0 4px 12px rgba(255,30,80,.4)); }
+  .rb-card-kicker {
+    color: rgba(255,195,215,.62);
+    font: 600 .62rem/1 Inter, system-ui, sans-serif;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+  }
+  .rb-card strong {
+    font: 700 1.55rem/1.15 "Playfair Display", Georgia, serif;
+    color: #fff;
+  }
+  .rb-card em {
+    font: 400 .82rem/1.55 Inter, system-ui, sans-serif;
+    color: #b5a2b0;
+    font-style: normal;
+    max-width: 28ch;
+  }
+  .rb-card-cta {
+    margin-top: 12px;
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ff2e5e, #ff0044);
+    color: #fff;
+    font: 700 .78rem/1 Inter, system-ui, sans-serif;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    box-shadow: 0 5px 20px rgba(255,0,68,.3);
+  }
+  .rb-layout {
+    position: relative;
+    z-index: 20;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: calc(52px + env(safe-area-inset-top, 0px)) 16px calc(22px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+  }
+  .rb-stage {
+    flex: 1 1 auto;
+    width: 100%;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+  }
+  .rb-scaler {
+    width: 300px;
+    height: 480px;
+    transform: scale(min(1, 86vw / 300px, 56dvh / 480px));
+    transform-origin: center center;
+  }
+  .rb-scene {
+    width: 300px;
+    height: 480px;
+    perspective: 1200px;
+    perspective-origin: 50% 35%;
+    display: grid;
+    place-items: center;
+  }
+  .rb-wrapper {
+    position: relative;
+    width: 300px;
+    height: 480px;
+    transform: rotateX(-22deg);
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .rb-scene.is-turning .rb-wrapper {
+    animation: rb-spin 28s linear infinite;
+  }
+  .rb-stem-group {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 10px;
+    height: 250px;
+    transform: translateX(-50%);
+    transform-style: preserve-3d;
+  }
+  .rb-stem {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    overflow: hidden;
+    border-radius: 5px;
+    background: linear-gradient(to top, #092e12 0%, #114c23 30%, #1a6f35 70%, #114c23 100%);
+    transition: height 2.2s cubic-bezier(.22, 1, .36, 1);
+  }
+  .rb-stem.is-grown, .is-static .rb-stem { height: 100%; }
+  .rb-stem-shine {
+    position: absolute;
+    top: 0;
+    left: 1px;
+    width: 2.5px;
+    height: 100%;
+    background: linear-gradient(to bottom, transparent, rgba(150,255,180,.15), transparent);
+  }
+  .rb-thorn {
+    position: absolute;
+    width: 11px;
+    height: 6px;
+    opacity: 0;
+    z-index: 2;
+    transition: opacity .5s ease .4s;
+  }
+  .rb-thorn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #1a6f35, #092e12);
+    clip-path: polygon(0% 85%, 100% 50%, 30% 0%);
+  }
+  .rb-thorn-a { right: -9px; bottom: 65%; transform: scaleX(-1); }
+  .rb-thorn-b { left: -9px; bottom: 42%; }
+  .rb-thorn.is-on, .is-static .rb-thorn { opacity: .75; }
+  .rb-leaf {
+    position: absolute;
+    width: 52px;
+    height: 25px;
+    opacity: 0;
+    z-index: 2;
+    will-change: transform, opacity;
+    transition: opacity .6s ease, transform 1.1s cubic-bezier(.34, 1.45, .64, 1);
+  }
+  .rb-leaf::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, #2a944e 0%, #1a6f35 40%, #092e12 100%);
+  }
+  .rb-vein {
+    position: absolute;
+    width: 60%;
+    height: 1px;
+    top: 48%;
+    left: 20%;
+    z-index: 1;
+    background: rgba(150,255,180,.12);
+  }
+  .rb-leaf-left {
+    left: -52px;
+    bottom: 56%;
+    transform-origin: right center;
+    transform: rotate(35deg) scale(0);
+  }
+  .rb-leaf-left::before { border-radius: 65% 2px 65% 2px; }
+  .rb-leaf-right {
+    left: 10px;
+    bottom: 38%;
+    transform-origin: left center;
+    transform: rotate(-35deg) scale(0);
+  }
+  .rb-leaf-right::before { border-radius: 2px 65% 2px 65%; }
+  .rb-leaf-left.is-on { opacity: 1; transform: rotate(15deg) scale(1); }
+  .rb-leaf-right.is-on { opacity: 1; transform: rotate(-15deg) scale(1); }
+  .is-static .rb-leaf-left { opacity: 1; transform: rotate(15deg) scale(1); }
+  .is-static .rb-leaf-right { opacity: 1; transform: rotate(-15deg) scale(1); }
+  .rb-calyx {
+    position: absolute;
+    bottom: 242px;
+    left: 50%;
+    width: 0;
+    height: 0;
+    transform: translateX(-50%);
+    transform-style: preserve-3d;
+    z-index: 1;
+  }
+  .rb-sepal {
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    width: 14px;
+    height: 32px;
+    transform-origin: 50% 100%;
+    background: linear-gradient(to top, #092e12 0%, #15582b 40%, #299c4c 100%);
+    border-radius: 50% 50% 10% 10% / 80% 80% 20% 20%;
+    clip-path: polygon(10% 100%, 0% 30%, 50% 0%, 100% 30%, 90% 100%);
+    opacity: 0;
+    transform: translateX(-50%) rotateY(var(--sepal-angle, 0deg)) rotateX(60deg) scale(.5);
+    transition: transform 1.3s cubic-bezier(.25,1,.5,1) var(--sepal-delay, 0s),
+                opacity .5s ease var(--sepal-delay, 0s);
+  }
+  .rb-calyx.is-on .rb-sepal,
+  .is-static .rb-sepal {
+    opacity: .95;
+    transform: translateX(-50%) rotateY(var(--sepal-angle, 0deg)) rotateX(var(--sepal-curl, 22deg)) scale(1);
+  }
+  .rb-head {
+    position: absolute;
+    bottom: 245px;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin-left: -12px;
+    transform-style: preserve-3d;
+    z-index: 10;
+  }
+  .rb-glow, .rb-glow-inner {
+    position: absolute;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .rb-glow {
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(160,5,30,.18) 0%, rgba(100,0,20,.05) 45%, transparent 65%);
+    transition: opacity 3.5s ease;
+  }
+  .rb-glow-inner {
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(180,40,60,.15) 0%, transparent 65%);
+    transition: opacity 2s ease .8s;
+  }
+  .rb-head.is-on .rb-glow,
+  .rb-head.is-on .rb-glow-inner,
+  .is-static .rb-glow,
+  .is-static .rb-glow-inner { opacity: 1; }
+  .rb-petal {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform-origin: 50% 100%;
+    opacity: .002;
+    will-change: transform, opacity;
+    border-radius: 50% 50% 35% 35% / 45% 45% 55% 55%;
+    transform: translateX(-50%) rotateY(var(--angle, 0deg)) translateZ(0px) rotateX(90deg) scale(.1);
+    transition: transform var(--bloom-dur, 2.4s) ease-in-out var(--delay, 0s),
+                opacity .7s ease var(--delay, 0s);
+  }
+  .rb-head.is-on .rb-petal,
+  .is-static .rb-petal {
+    opacity: 1;
+    transform: translateX(-50%) rotateY(var(--angle, 0deg)) translateZ(var(--tz, 0px)) rotateX(var(--curl, 30deg)) scale(var(--scale, 1));
+  }
+  .rb-petal-bud { background: linear-gradient(to bottom, #3d0008 0%, #220003 40%, #100001 75%, #040000 100%); }
+  .rb-petal-core { background: linear-gradient(to bottom, #52000c 0%, #350005 40%, #1a0002 75%, #080000 100%); }
+  .rb-petal-inner { background: linear-gradient(to bottom, #6d0012 0%, #480008 40%, #250003 75%, #0c0000 100%); }
+  .rb-petal-midInner { background: linear-gradient(to bottom, #850018 0%, #5c000d 40%, #310004 75%, #120000 100%); }
+  .rb-petal-mid { background: linear-gradient(to bottom, #9a001d 0%, #6e0011 40%, #3b0005 75%, #160000 100%); }
+  .rb-petal-outer { background: linear-gradient(to bottom, #ad0022 0%, #7e0014 40%, #440007 75%, #1a0001 100%); }
+  .rb-petal-blush { background: linear-gradient(to bottom, #bf0028 0%, #8e0018 40%, #4e0008 75%, #1e0001 100%); }
+  .rb-copy {
+    position: relative;
+    z-index: 30;
+    max-width: min(390px, 90vw);
+    min-height: 2.4em;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 2s ease, transform 1.2s ease;
+  }
+  .rb-copy.is-on { opacity: 1; transform: none; }
+  .rb-copy p {
+    margin: 0;
+    font: italic clamp(18px, 5vw, 28px)/1.35 "Playfair Display", Georgia, serif;
+    letter-spacing: .12em;
+    text-transform: lowercase;
+    text-shadow: 0 0 25px rgba(255,80,130,.4), 0 0 60px rgba(255,50,100,.15);
+  }
+  .rb-next {
+    position: relative;
+    z-index: 30;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity .7s ease, transform .7s ease;
+    min-height: 48px;
+  }
+  .rb-next.is-on { opacity: 1; transform: none; }
+  .rb-next button {
+    min-height: 46px;
+    padding: 12px 22px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,195,215,.28);
+    background: rgba(90, 8, 28, .42);
+    color: #ffeef2;
+    font: 600 .78rem/1 Inter, system-ui, sans-serif;
+    letter-spacing: .08em;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+  }
+  .rb-fall { position: absolute; inset: 0; pointer-events: none; z-index: 25; overflow: hidden; }
+  .rb-fall-petal {
+    position: absolute;
+    border-radius: 50% 50% 45% 55% / 60% 60% 40% 40%;
+    background: radial-gradient(ellipse at 40% 30%, var(--fp-c1, #9a001d), var(--fp-c2, #3d0008) 75%);
+    opacity: 0;
+    animation: rb-fall var(--f-dur, 7s) linear var(--f-delay, 0s) forwards;
+  }
+  @keyframes rb-spin {
+    from { transform: rotateX(-22deg) rotateY(0deg); }
+    to { transform: rotateX(-22deg) rotateY(360deg); }
+  }
+  @keyframes rb-fall {
+    0% { opacity: 0; transform: translateX(0) translateY(0) rotate(0deg) rotateY(0deg) scale(1); }
+    8% { opacity: .85; }
+    25% { transform: translateX(var(--s1, 35px)) translateY(20vh) rotate(70deg) rotateY(40deg) scale(.95); }
+    50% { transform: translateX(var(--s2, -25px)) translateY(48vh) rotate(160deg) rotateY(90deg) scale(.88); }
+    75% { transform: translateX(var(--s3, 35px)) translateY(75vh) rotate(270deg) rotateY(150deg) scale(.78); opacity: .55; }
+    100% { opacity: 0; transform: translateX(var(--s4, 10px)) translateY(108vh) rotate(390deg) rotateY(210deg) scale(.55); }
+  }
+  @keyframes rb-overlay-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @media (max-height: 700px) {
+    .rb-scaler { transform: scale(min(1, 86vw / 300px, 50dvh / 480px)); }
+    .rb-copy p { letter-spacing: .06em; }
+  }
+`;

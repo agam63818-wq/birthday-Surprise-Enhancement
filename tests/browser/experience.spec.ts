@@ -19,7 +19,7 @@ function fixture(): SurpriseConfig {
   config.audio = { backgroundMusic: "", birthdaySong: "", useFallbackTones: false };
   return config;
 }
-async function setup(page: Page, initial: SurpriseConfig = fixture(), signedIn = true) {
+async function setup(page: Page, initial: SurpriseConfig = fixture(), signedIn = true, motion: "reduce" | "no-preference" = "reduce") {
   let row = { id: "00000000-0000-4000-8000-000000000002", user_id: user.id, slug: "qa-surprise", is_paid: true, config: initial, photo_urls: [], audio_urls: [], updated_at: "2026-01-01T00:00:00Z" };
   const writes: any[] = [];
   const errors: string[] = [];
@@ -58,13 +58,18 @@ async function setup(page: Page, initial: SurpriseConfig = fixture(), signedIn =
     localStorage.setItem("sb-qa-auth-token", JSON.stringify({ access_token: token, refresh_token: "qa-refresh", expires_at: exp, expires_in: 3600, token_type: "bearer", user }));
     sessionStorage.setItem("qa-seeded", "true");
   }, { user });
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.emulateMedia({ reducedMotion: motion });
   return { writes, errors, loaded, saved: () => row.config };
 }
 async function tab(page: Page, name: string) {
   const desktop = page.getByRole("tab", { name, exact: true });
+  const menu = page.getByRole("button", { name: "Open menu", exact: true });
+  await expect(desktop.or(menu)).toBeVisible();
   if (await desktop.isVisible()) await desktop.click();
-  else { await page.getByRole("button", { name: "Open menu", exact: true }).click(); await page.getByRole("menuitem", { name, exact: true }).click(); }
+  else {
+    await menu.click();
+    await page.getByRole("menuitem", { name, exact: true }).click();
+  }
 }
 async function noOverflow(page: Page) { expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true); }
 
@@ -94,11 +99,14 @@ test("canonical editor, notebook, reorder, AI review/cancel/apply/undo, save and
   await page.getByRole("button", { name: "Next scene", exact: true }).click();
   await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "giftReveal");
   await expect(page.getByText("Asha QA", { exact: false }).first()).toBeVisible();
-  await expect(page.getByText("Happy Anniversary", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("A little memory, wrapped just for you.", { exact: true })).toBeVisible();
   await tab(page, "AI Assistant");
   await page.getByLabel("AI change request").fill("Use Ocean Night and personalize the butterfly");
   await page.getByRole("button", { name: "Review AI changes", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Review proposed changes" })).toBeVisible();
+  await expect(page.getByText("AI wants to change:")).toBeVisible();
+  await expect(page.getByText("✓ Switch theme to oceanNight")).toBeVisible();
+  await expect(page.getByText("✓ Change the butterfly message")).toBeVisible();
   expect(qa.writes).toHaveLength(0);
   await page.getByRole("button", { name: "Cancel changes" }).click();
   await page.getByRole("button", { name: "Review AI changes", exact: true }).click();
@@ -173,6 +181,45 @@ for (const occasionType of ["birthday", "rakshabandhan", "mothersday", "fathersd
   await tab(page, "Preview");
   await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "intro");
   expect(qa.writes).toHaveLength(0); expect(qa.errors).toEqual([]);
+});
+
+test("cinematic rose, letters, and recipient navigation", async ({ page }) => {
+  const qa = await setup(page);
+  await page.goto("/s/qa-surprise");
+  await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "intro");
+  await expect(page.getByText("Interactive Letters", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/\b\d+\s*\/\s*17\b/)).toHaveCount(0);
+  const order = DEFAULT_V2_SCENE_SEQUENCE;
+  for (let i = 0; i < order.length; i++) {
+    await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", order[i]);
+    if (order[i] === "letters") {
+      await expect(page.getByRole("button", { name: /Open letter/i }).first()).toBeVisible();
+      await expect(page.getByText("Letter 01 · Open")).toHaveCount(0);
+      await page.getByRole("button", { name: /Open letter 01/i }).click();
+      await expect(page.getByText("Our first memory", { exact: true })).toBeVisible();
+    }
+    if (order[i] === "roseBloom") {
+      await expect(page.locator("[data-rose-stem]")).toBeVisible();
+      await expect(page.locator("[data-rose-head]")).toBeVisible();
+      await expect(page.getByText("Always remembered", { exact: true })).toBeVisible();
+    }
+    if (i < order.length - 1) await page.getByRole("button", { name: "Next scene", exact: true }).click();
+  }
+  expect(qa.errors).toEqual([]);
+  await noOverflow(page);
+});
+
+test("butterfly canvas is sized as soon as the scene mounts", async ({ page }) => {
+  const qa = await setup(page, fixture(), true, "no-preference");
+  await page.goto("/s/qa-surprise");
+  await page.getByRole("button", { name: "Next scene", exact: true }).click();
+  await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "butterfly");
+  const canvas = page.locator("[data-butterfly-canvas]");
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  expect(box?.width ?? 0).toBeGreaterThan(80);
+  expect(box?.height ?? 0).toBeGreaterThan(80);
+  expect(qa.errors).toEqual([]);
 });
 
 test("every scene can be independently disabled without loading it", async ({ page }) => {
