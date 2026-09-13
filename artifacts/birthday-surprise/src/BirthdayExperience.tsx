@@ -17,8 +17,10 @@ import PageMemoryWall from "@/pages/PageMemoryWall";
 import PageBeforeYouLeave from "@/pages/PageBeforeYouLeave";
 import PageLastNote from "@/pages/PageLastNote";
 import defaultConfig, { type Config } from "@/config";
-import { ConfigProvider, useConfig } from "@/contexts/ConfigContext";
+import { ConfigProvider, useConfig, useNormalizedConfig } from "@/contexts/ConfigContext";
 import { applyTheme } from "@/lib/themePresets";
+import type { SurpriseConfig } from "@/lib/v2/schema";
+import SceneEngine from "@/scenes/SceneEngine";
 
 const PAGES = [
   "landing", "intro", "cuteness", "celebration",
@@ -105,6 +107,7 @@ export default function BirthdayExperience({
 
 function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode }) {
   const config = useConfig();
+  const normalized = useNormalizedConfig();
   const [page, setPage] = useState<Page>("landing");
   const [transitioning, setTransitioning] = useState(false);
   const { start, stop, playing, playCakeSong } = useBackgroundMusic();
@@ -113,9 +116,23 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
   // Apply the saved color theme once on mount and whenever themeId changes.
   // "midnightPurple" is the default — identical to the current live CSS —
   // so existing users see zero visual change.
+  // For v2 configs with midnightRose, applyTheme handles the legacy presets;
+  // midnightRose is applied separately via CSS vars on the experience root.
   useEffect(() => {
-    applyTheme(config.themeId ?? "midnightPurple");
-  }, [config.themeId]);
+    const themePreset = normalized.theme.preset;
+    if (themePreset === "midnightRose") {
+      // midnightRose: apply to document root for now (scoped to experience)
+      // Full scoping to element is Part 2 (requires experience container ref)
+      import("@/lib/v2/midnightRose").then(({ MIDNIGHT_ROSE_VARS }) => {
+        const root = document.documentElement;
+        for (const [prop, value] of Object.entries(MIDNIGHT_ROSE_VARS)) {
+          root.style.setProperty(prop, value);
+        }
+      });
+    } else {
+      applyTheme((themePreset as Parameters<typeof applyTheme>[0]) ?? "midnightPurple");
+    }
+  }, [normalized.theme.preset]);
 
   const goTo = useCallback((next: Page) => {
     if (transitioning) return;
@@ -168,6 +185,50 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
 
   const pageIdx = PAGES.indexOf(page);
 
+  // ── v2 path: use SceneEngine for configs with explicit scene sequences ──
+  // Legacy v1 configs (no _version or _version===1) always use the fixed
+  // legacy sequence below — zero behaviour change for existing records.
+  if (normalized.version === 2 && Array.isArray((config as SurpriseConfig).scenes) && ((config as SurpriseConfig).scenes?.length ?? 0) > 0) {
+    // Legacy scene renderer: maps scene IDs to existing page components.
+    // The SceneEngine calls this for any non-heavy scene in the sequence.
+    const renderLegacyScene = (sceneId: string, onNext: () => void) => {
+      switch (sceneId) {
+        case "landing":      return <PageLanding onNext={onNext} />;
+        case "intro":        return <PageIntro onNext={onNext} />;
+        case "cuteness":     return <PageCutenessMeter onNext={onNext} />;
+        case "celebration":  return <PageCelebration onNext={onNext} />;
+        case "cake":
+        case "rakhiHero":
+        case "familyHero":
+        case "loveDayHero":  return renderHeroPage(onNext, playCakeSong);
+        case "whyYouMatter": return <PageWhyYouMatter onNext={onNext} />;
+        case "ourStory":     return <PageOurStory onNext={onNext} />;
+        case "memoryWall":   return <PageMemoryWall onNext={onNext} />;
+        case "beforeLeave":  return <PageBeforeYouLeave onNext={onNext} />;
+        case "lastNote":     return <PageLastNote />;
+        default:             return null;
+      }
+    };
+
+    return (
+      <>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600&display=swap"
+          rel="stylesheet"
+        />
+        <Background />
+        <AmbientFX />
+        <MusicToggle playing={playing} onToggle={toggleMusic} />
+        <SceneEngine
+          normalizedConfig={normalized}
+          globalMuted={!playing}
+          renderLegacyScene={renderLegacyScene}
+        />
+      </>
+    );
+  }
+
+  // ── v1 / legacy path: fixed sequence, completely unchanged ──────────────
   return (
     <>
       <link
