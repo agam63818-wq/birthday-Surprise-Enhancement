@@ -54,6 +54,8 @@ export default function RoseBloomScene({ onNext, isActive, reducedMotion, global
 
   const roseText = normalized.roseBloom.text ?? "Made with love, just for you 🌹";
   const speed = normalized.roseBloom.speed ?? "normal";
+  const intensity = normalized.roseBloom.intensity ?? "normal";
+  const soundEnabled = normalized.roseBloom.soundEnabled !== false;
   const fallingPetals = normalized.roseBloom.fallingPetals !== false;
 
   const speedMultiplier = speed === "slow" ? 1.5 : speed === "fast" ? 0.6 : 1;
@@ -94,12 +96,12 @@ export default function RoseBloomScene({ onNext, isActive, reducedMotion, global
       const curl = 18 + Math.random() * 8;
       sepal.style.setProperty("--sepal-angle", `${angle}deg`);
       sepal.style.setProperty("--sepal-curl", `${curl}deg`);
-      sepal.style.setProperty("--sepal-delay", `${delay}s`);
+      sepal.style.setProperty("--sepal-delay", `${delay * speedMultiplier}s`);
       calyx.appendChild(sepal);
     }
 
     // Create petals
-    PETAL_LAYERS.forEach((layer, li) => {
+    (intensity === "subtle" ? PETAL_LAYERS.slice(0, 5) : PETAL_LAYERS).forEach((layer, li) => {
       const angleStep = 360 / layer.count;
       const layerOffset = li * 24 + (Math.random() - 0.5) * 8;
 
@@ -118,21 +120,21 @@ export default function RoseBloomScene({ onNext, isActive, reducedMotion, global
         petal.style.setProperty("--angle", `${angle}deg`);
         petal.style.setProperty("--curl", `${layer.curl + curlJitter}deg`);
         petal.style.setProperty("--scale", String(scaleJitter));
-        petal.style.setProperty("--delay", `${delay}s`);
+        petal.style.setProperty("--delay", `${delay * speedMultiplier}s`);
         petal.style.setProperty("--tz", `${layer.tz}px`);
-        petal.style.setProperty("--bloom-dur", `${bloomDur}s`);
+        petal.style.setProperty("--bloom-dur", `${bloomDur * speedMultiplier}s`);
 
         roseHead.appendChild(petal);
       }
     });
-  }, []);
+  }, [intensity, speedMultiplier]);
 
   // Spawn falling petal
   const spawnFallingPetal = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
     const fallingPetalsEl = container.querySelector(".falling-petals") as HTMLElement;
-    if (!fallingPetalsEl || fallingPetalsEl.childElementCount > 10) return;
+    if (!fallingPetalsEl || fallingPetalsEl.childElementCount >= (intensity === "subtle" ? 3 : intensity === "dramatic" ? 10 : 6)) return;
 
     const petal = document.createElement("div");
     petal.className = "falling-petal-el";
@@ -157,7 +159,7 @@ export default function RoseBloomScene({ onNext, isActive, reducedMotion, global
     petal.style.setProperty("--fp-c1", colors[0]);
     petal.style.setProperty("--fp-c2", colors[1]);
     petal.style.setProperty("--f-dur", `${dur}s`);
-    petal.style.setProperty("--f-delay", `${delay}s`);
+    petal.style.setProperty("--f-delay", `${delay * speedMultiplier}s`);
     petal.style.setProperty("--s1", `${s1}px`);
     petal.style.setProperty("--s2", `${s2}px`);
     petal.style.setProperty("--s3", `${s3}px`);
@@ -169,11 +171,11 @@ export default function RoseBloomScene({ onNext, isActive, reducedMotion, global
       if (petal.parentNode) petal.remove();
     }, (dur + delay) * 1000 + 300);
     timersRef.current.push(cleanup);
-  }, []);
+  }, [intensity, speedMultiplier]);
 
   // Start animation sequence
   const startAnimation = useCallback(() => {
-    if (started) return;
+    if (started || reducedMotion || !isActive) return;
     setStarted(true);
 
     buildRose();
@@ -190,7 +192,7 @@ export default function RoseBloomScene({ onNext, isActive, reducedMotion, global
     const roseWrapper = container.querySelector(".rose-wrapper") as HTMLElement;
 
     // Grow stem
-    if (stem) stem.classList.add("grow");
+    if (stem) { stem.style.animationDuration = `${2.2 * speedMultiplier}s`; stem.classList.add("grow"); }
 
     addTimer(() => { if (leafLeft && mountedRef.current) leafLeft.classList.add("visible"); }, 800);
     addTimer(() => { if (leafRight && mountedRef.current) leafRight.classList.add("visible"); }, 1100);
@@ -217,7 +219,7 @@ export default function RoseBloomScene({ onNext, isActive, reducedMotion, global
         }
         const interval = addInterval(() => {
           if (mountedRef.current) spawnFallingPetal();
-        }, 2200);
+        }, (intensity === "dramatic" ? 1200 : intensity === "subtle" ? 3500 : 2200) * speedMultiplier);
       }, 5700);
     }
 
@@ -230,24 +232,26 @@ export default function RoseBloomScene({ onNext, isActive, reducedMotion, global
     addTimer(() => {
       if (mountedRef.current) setShowNext(true);
     }, 9000);
-  }, [started, buildRose, fallingPetals, spawnFallingPetal]);
+  }, [started, buildRose, fallingPetals, spawnFallingPetal, speedMultiplier, intensity, reducedMotion, isActive]);
 
-  // Loading bar simulation
+  // Ready immediately: no fake loading interval or reduced-motion background work.
+  useEffect(() => { setLoadProgress(100); setLoadReady(true); }, []);
+
+  // Soft, short bloom chime. A muted/disabled/unmounted scene owns no audio context.
   useEffect(() => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 15 + 5;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        setTimeout(() => {
-          if (mountedRef.current) setLoadReady(true);
-        }, 300);
-      }
-      setLoadProgress(Math.min(progress, 100));
-    }, 200);
-    return () => clearInterval(interval);
-  }, []);
+    if (!started || !isActive || reducedMotion || globalMuted || !soundEnabled) return;
+    let ctx: AudioContext | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      ctx = new AudioContext();
+      const gain = ctx.createGain(); gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.025, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 2.5);
+      [261.63, 329.63, 392].forEach(f => { const o = ctx!.createOscillator(); o.frequency.value = f; o.connect(gain); o.start(); o.stop(ctx!.currentTime + 2.5); });
+      timer = setTimeout(() => { void ctx?.close().catch(() => {}); }, 2700);
+    } catch { /* Audio unavailable: keep the visual experience. */ }
+    return () => { if (timer) clearTimeout(timer); if (ctx && ctx.state !== "closed") void ctx.close().catch(() => {}); };
+  }, [started, isActive, reducedMotion, globalMuted, soundEnabled]);
 
   // Cleanup
   useEffect(() => {

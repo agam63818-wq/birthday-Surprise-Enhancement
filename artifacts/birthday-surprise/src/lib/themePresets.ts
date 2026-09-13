@@ -1,3 +1,4 @@
+import { MIDNIGHT_ROSE_VARS } from "./v2/midnightRose";
 // ============================================================
 //  THEME PRESETS
 //  Shared color-theme presets for the full-page experience.
@@ -16,7 +17,8 @@ export type ThemePresetId =
   | "midnightPurple"
   | "roseGold"
   | "deepEmerald"
-  | "royalGold";
+  | "royalGold"
+  | "midnightRose" | "dreamyLavender" | "champagne" | "oceanNight" | "softBloom";
 
 export interface ThemePreset {
   label: string;
@@ -27,7 +29,22 @@ export interface ThemePreset {
   vars: Record<string, string>;
 }
 
+function cinematicTheme(label: string, background: string, accent: string, highlight: string): ThemePreset {
+  return { label, emoji: "", swatchGradient: `linear-gradient(135deg, ${background}, ${accent}, ${highlight})`, vars: {
+    ...MIDNIGHT_ROSE_VARS, "--bg-deep": background, "--background": background,
+    "--plum-deep": background, "--midnight-purple": background, "--black-violet": background,
+    "--pink": accent, "--pink-magenta": accent, "--primary": accent,
+    "--violet": highlight, "--lavender": highlight, "--magenta": accent,
+    "--grad-brand": `linear-gradient(135deg, ${highlight}, ${accent})`,
+  }};
+}
+
 export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
+  midnightRose: { label: "Midnight Rose", emoji: "", swatchGradient: "linear-gradient(135deg, #080306, #6b1028, #e8c98a)", vars: MIDNIGHT_ROSE_VARS },
+  dreamyLavender: cinematicTheme("Dreamy Lavender", "#100d20", "#76639c", "#d9caf1"),
+  champagne: cinematicTheme("Champagne", "#17110b", "#8a6845", "#edd8ad"),
+  oceanNight: cinematicTheme("Ocean Night", "#040f1b", "#17647a", "#abd5dd"),
+  softBloom: cinematicTheme("Soft Bloom", "#190e15", "#9a586f", "#f1cdd5"),
   // ── Midnight Purple ─────────────────────────────────────────
   // Reproduces the current live look — no visual change for existing users.
   midnightPurple: {

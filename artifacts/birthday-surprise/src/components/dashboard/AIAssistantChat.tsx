@@ -15,7 +15,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { OCCASION_META, OCCASION_IDS, type OccasionId } from "@/lib/occasions";
-import type { Config } from "@/config";
+import type { SurpriseConfig as Config } from "@/lib/v2/schema";
+import { validatePatch, configToPatch, applyConfigPatch, readPath, type ConfigPatch } from "../../../supabase/functions/_shared/configPatch";
 import type { SurpriseRow } from "@/types/surprise";
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -87,45 +88,6 @@ const GENERATING_PHASES = [
   "🎨 Polishing the details…",
   "🌟 Almost ready…",
 ];
-
-// ── Deep-merge helper ────────────────────────────────────────────────────
-// Returned non-empty values win; never wipe an existing field with an
-// empty string or empty array.
-function deepMergeConfig(base: Config, patch: Record<string, unknown>): Config {
-  const result: Record<string, unknown> = { ...base };
-
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === null || value === undefined) continue;
-
-    if (
-      typeof value === "object" &&
-      !Array.isArray(value) &&
-      typeof result[key] === "object" &&
-      result[key] !== null &&
-      !Array.isArray(result[key])
-    ) {
-      // Recurse into nested objects
-      result[key] = deepMergeConfig(
-        result[key] as Config,
-        value as Record<string, unknown>,
-      );
-    } else if (Array.isArray(value)) {
-      // Only replace arrays if the new one is non-empty
-      if (value.length > 0) {
-        result[key] = value;
-      }
-    } else if (typeof value === "string") {
-      // Only replace strings if the new one is non-empty
-      if (value.trim().length > 0) {
-        result[key] = value;
-      }
-    } else {
-      result[key] = value;
-    }
-  }
-
-  return result as Config;
-}
 
 // ── Sub-components ───────────────────────────────────────────────────────
 
@@ -290,11 +252,11 @@ function ActionButton({
 
 export default function AIAssistantChat({
   surprise,
-  onSurpriseChange,
+  onApply,
   onSwitchToCustomize,
 }: {
   surprise: SurpriseRow;
-  onSurpriseChange: (updated: SurpriseRow) => void;
+  onApply: (next: Config, base: Config) => boolean;
   onSwitchToCustomize: () => void;
 }) {
   const [step, setStep] = useState<Step>("name");
@@ -323,9 +285,8 @@ export default function AIAssistantChat({
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Undo snapshot
-  const [preAiConfig, setPreAiConfig] = useState<Config | null>(null);
-  const [showUndo, setShowUndo] = useState(false);
+  const [pending, setPending] = useState<{ patch: ConfigPatch; base: Config } | null>(null);
+  const [request, setRequest] = useState("");
 
   // Double-submit guard
   const submittingRef = useRef(false);
@@ -554,7 +515,7 @@ export default function AIAssistantChat({
 
   // ── Generate ───────────────────────────────────────────────────────────
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(async (mode: "guided" | "patch" = "guided") => {
     if (submittingRef.current || generating) return;
     submittingRef.current = true;
     setGenerating(true);
@@ -563,9 +524,8 @@ export default function AIAssistantChat({
     setErrorCode(null);
     setErrorMessage(null);
 
-    // Snapshot current config for undo
-    setPreAiConfig(structuredClone(surprise.config));
-    setShowUndo(false);
+    const base = structuredClone(surprise.config);
+    setPending(null);
 
     // Capture the key into a local const — it will be cleared in finally
     const capturedKey = useOwnKey ? apiKeyInput.trim() : undefined;
@@ -573,7 +533,7 @@ export default function AIAssistantChat({
 
     try {
       const occasionId: OccasionId =
-        answers.occasion !== "" ? (answers.occasion as OccasionId) : "birthday";
+        mode === "patch" ? (base.occasionId ?? base.occasionType ?? "birthday") : answers.occasion !== "" ? (answers.occasion as OccasionId) : "birthday";
 
       const answersPayload: Record<string, string> = {
         recipientName:  answers.name,
@@ -589,6 +549,7 @@ export default function AIAssistantChat({
       const invokeBody: Record<string, unknown> = {
         answers: answersPayload,
         occasionType: occasionId,
+        ...(mode === "patch" || base._version === 2 ? { mode: "patch", currentConfig: base, request: mode === "patch" ? request : "Personalize the experience using these answers. Preserve photos, media, feature flags and scene order. Update names and messages across enabled scenes where needed." } : {}),
       };
       if (capturedKey) {
         invokeBody.userApiKey = capturedKey;
@@ -616,43 +577,18 @@ export default function AIAssistantChat({
         return;
       }
 
-      if (!data?.config || typeof data.config !== "object") {
-        handleGenerateError("invalid_model_output", "AI returned an unexpected response. Please try again.");
+      const patch = data?.patch ? validatePatch(data.patch) : configToPatch(data?.config);
+      if (!patch.changes.length) {
+        setStep("done");
+        addMessage("assistant", "That request has no supported changes. I can edit scenes, notebook pages, names, messages, occasions and themes; unsupported features are not added.");
         return;
       }
-
-      // Deep-merge the returned partial config over the current config
-      const merged = deepMergeConfig(surprise.config, data.config as Record<string, unknown>);
-
-      // Persist to Supabase (same path as CustomizeForm.handleSave)
-      const photo_urls = merged.memoryWall.photos.map((p) => p.src).filter(Boolean);
-      const audio_urls = [merged.audio.backgroundMusic, merged.audio.birthdaySong].filter(Boolean);
-
-      const { data: saved, error: saveError } = await supabase
-        .from("surprises")
-        .update({ config: merged, photo_urls, audio_urls })
-        .eq("id", surprise.id)
-        .select()
-        .single();
-
-      if (saveError) {
-        toast.error("AI generated your content but couldn't save it. Please try again.");
-        handleGenerateError("provider_error", "Save failed after generation.");
-        return;
-      }
-
-      onSurpriseChange(saved as SurpriseRow);
-      try {
-        localStorage.removeItem(`customize-draft:${surprise.id}`);
-      } catch { /* ignore storage errors */ }
-      setShowUndo(true);
+      applyConfigPatch(base, patch); // Validate atomically before presenting a review.
+      setPending({ patch, base });
       setStep("done");
-      toast.success("✨ Your surprise has been personalised! Check the Customize tab to review.");
-
-      // Switch to Customize tab after a short delay
-      setTimeout(() => {
-        onSwitchToCustomize();
-      }, 1800);
+      addMessage("assistant", "Your changes are ready to review below. Nothing has been applied or saved yet.");
+    } catch {
+      handleGenerateError("invalid_model_output", "The request failed or returned unsupported changes. Nothing was changed. Please try again.");
     } finally {
       // Clear the captured key — it must not outlive this call
       // (capturedKey is a local const so it's already GC-eligible,
@@ -664,7 +600,7 @@ export default function AIAssistantChat({
       submittingRef.current = false;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answers, apiKeyInput, apiProvider, generating, surprise, useOwnKey, onSurpriseChange, onSwitchToCustomize]);
+  }, [answers, apiKeyInput, apiProvider, generating, surprise, useOwnKey, onApply, onSwitchToCustomize, request]);
 
   const handleGenerateError = (code: string, msg: string) => {
     setErrorCode(code);
@@ -682,12 +618,14 @@ export default function AIAssistantChat({
     }
   };
 
-  const handleUndo = () => {
-    if (!preAiConfig) return;
-    onSurpriseChange({ ...surprise, config: preAiConfig });
-    setShowUndo(false);
-    setPreAiConfig(null);
-    toast.success("Reverted to your previous config.");
+  const handleApply = () => {
+    if (!pending) return;
+    try {
+      const next = applyConfigPatch(pending.base, pending.patch);
+      if (!onApply(next, pending.base)) { toast.error("Your draft changed after generation. Cancel and ask again to protect newer edits."); return; }
+      setPending(null);
+      toast.success("Applied to your draft. Preview or Customize it, then Save to share. Undo is available above.");
+    } catch { toast.error("Invalid changes. Nothing was applied."); }
   };
 
   const handleRetry = () => {
@@ -711,6 +649,18 @@ export default function AIAssistantChat({
         gap: "0",
       }}
     >
+      {surprise.config._version === 2 && <section className="v2-editor v2-panel" aria-label="AI cinematic editing">
+        <h3>Edit your experience with AI</h3><p>Ask for changes, review the exact patch, then apply. Your API key is used once and never saved.</p>
+        <label>Your request<textarea aria-label="AI change request" maxLength={2000} value={request} onChange={e => setRequest(e.target.value)} placeholder="Turn on the rose scene and put it before the final message" style={{ minHeight: 90, padding: 12, background: "#160e15", border: "1px solid #61404b", borderRadius: 10 }} /></label>
+        <label><input type="checkbox" checked={useOwnKey} onChange={e => { setUseOwnKey(e.target.checked); setApiKeyInput(""); }} /> Use my own API key</label>
+        {useOwnKey && <><label>AI provider<select value={apiProvider} onChange={e => setApiProvider(e.target.value as ApiProvider)}><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select></label><label>One-time API key<input type="password" autoComplete="off" value={apiKeyInput} onChange={e => setApiKeyInput(e.target.value)} /></label></>}
+        <button type="button" disabled={generating || !!pending || !request.trim() || (useOwnKey && !apiKeyInput.trim())} onClick={() => handleGenerate("patch")}>{generating ? "Preparing changes…" : "Review AI changes"}</button>
+      </section>}
+      {pending && <section className="v2-editor v2-panel" aria-label="Review proposed changes">
+        <h3>Review proposed changes</h3><p>No changes are saved until you Apply, then Save in Customize. Arrays show the complete before/after order or page content.</p>
+        {pending.patch.changes.map(change => <details key={change.path}><summary>{change.path}</summary><p>Before</p><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 12 }}>{JSON.stringify(readPath(pending.base, change.path), null, 2) ?? "Not set"}</pre><p>After</p><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 12 }}>{JSON.stringify(change.value, null, 2)}</pre></details>)}
+        <div className="v2-actions"><button type="button" onClick={handleApply}>Apply changes</button><button type="button" onClick={() => { setPending(null); toast.info("Proposal cancelled. Your draft is unchanged."); }}>Cancel changes</button></div>
+      </section>}
       {/* Header */}
       <div style={{ marginBottom: "16px", textAlign: "center" }}>
         <h2
@@ -1132,7 +1082,7 @@ export default function AIAssistantChat({
               Ready to generate your personalised surprise? This may take 20–40 seconds.
             </p>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <ActionButton onClick={handleGenerate} disabled={generating}>
+              <ActionButton onClick={() => handleGenerate()} disabled={generating}>
                 🪄 Generate Surprise
               </ActionButton>
               <BackButton onClick={goBack} />
@@ -1153,13 +1103,9 @@ export default function AIAssistantChat({
         {step === "done" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             <p style={{ fontSize: "0.88rem", color: "var(--ink-soft)", lineHeight: 1.5 }}>
-              🎉 Your surprise has been personalised! Switching to the Customize tab…
+              🎉 Review the proposal above, then Apply. Nothing is saved automatically.
             </p>
-            {showUndo && preAiConfig && (
-              <ActionButton variant="secondary" onClick={handleUndo}>
-                ↩️ Undo AI fill
-              </ActionButton>
-            )}
+
           </div>
         )}
 
@@ -1191,43 +1137,6 @@ export default function AIAssistantChat({
           </div>
         )}
       </div>
-
-      {/* Undo banner (shown after done, before switching tabs) */}
-      {showUndo && preAiConfig && step === "done" && (
-        <div
-          style={{
-            marginTop: "12px",
-            padding: "10px 14px",
-            borderRadius: "var(--rad-md)",
-            background: "rgba(124,58,237,0.12)",
-            border: "1px solid rgba(124,58,237,0.3)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "12px",
-            fontSize: "0.8rem",
-            color: "var(--ink-soft)",
-          }}
-        >
-          <span>✨ AI fill applied. Not happy with it?</span>
-          <button
-            type="button"
-            onClick={handleUndo}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--pink)",
-              fontWeight: 600,
-              cursor: "pointer",
-              fontSize: "inherit",
-              padding: 0,
-              flexShrink: 0,
-            }}
-          >
-            Undo
-          </button>
-        </div>
-      )}
 
       {/* Spinner keyframe (inline — avoids adding to global CSS) */}
       <style>{`

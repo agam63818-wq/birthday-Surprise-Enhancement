@@ -397,7 +397,7 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
           bottom: "calc(40px + env(safe-area-inset-bottom, 0px))",
           left: "50%",
           transform: "translateX(-50%)",
-          animation: "fadeInUp 0.6s ease forwards",
+          animation: "together-fadeInUp 0.6s ease forwards",
           pointerEvents: "auto",
         }}>
           <button
@@ -421,7 +421,7 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
       )}
 
       <style>{`
-        @keyframes fadeInUp {
+        @keyframes together-fadeInUp {
           from { opacity: 0; transform: translateX(-50%) translateY(10px); }
           to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }

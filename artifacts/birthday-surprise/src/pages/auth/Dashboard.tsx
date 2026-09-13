@@ -8,6 +8,8 @@ import BirthdayExperience from "@/BirthdayExperience";
 import DashboardTopBar, { type DashboardTab } from "@/components/dashboard/DashboardTopBar";
 import CustomizeForm from "@/components/dashboard/CustomizeForm";
 import AIAssistantChat from "@/components/dashboard/AIAssistantChat";
+import type { SurpriseConfig } from "@/lib/v2/schema";
+import { validateV2Config } from "../../../supabase/functions/_shared/configPatch";
 import type { SurpriseRow } from "@/types/surprise";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
@@ -43,6 +45,35 @@ export default function Dashboard() {
   const { user, signOut } = useAuth();
   const [tab, setTab] = useState<DashboardTab>("preview");
   const [surprise, setSurprise] = useState<SurpriseRow | null>(null);
+  const [draft, setDraft] = useState<SurpriseConfig | null>(null);
+  const [history, setHistory] = useState<{ before: SurpriseConfig; after: string } | null>(null);
+  const config = draft ?? surprise?.config;
+  const configRef = useRef(config);
+  configRef.current = config;
+  const dirty = !!surprise && !!config && JSON.stringify(config) !== JSON.stringify(surprise.config);
+  const canUndo = !!history && JSON.stringify(config) === history.after;
+  const undoAI = () => {
+    if (!history || !canUndo) { toast.error("Newer edits exist. Undo is blocked to protect them."); return; }
+    setDraft(structuredClone(history.before)); setHistory(null);
+    toast.success("AI change undone in draft. Save to update the shared experience.");
+  };
+  const applyAI = (next: SurpriseConfig, base: SurpriseConfig) => {
+    if (JSON.stringify(configRef.current) !== JSON.stringify(base)) return false;
+    validateV2Config(next);
+    setHistory({ before: structuredClone(base), after: JSON.stringify(next) });
+    setDraft(next); return true;
+  };
+  useEffect(() => {
+    if (!surprise || !config) return;
+    const key = `customize-draft:${surprise.id}`;
+    try {
+      if (dirty) localStorage.setItem(key, JSON.stringify({ base: JSON.stringify(surprise.config), config }));
+      else localStorage.removeItem(key);
+    } catch { /* Private mode/full storage: draft remains in memory. */ }
+    const guard = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [config, surprise, dirty]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const hasLoadedOnce = useRef(false);
@@ -69,7 +100,16 @@ export default function Dashboard() {
       setLoadError("Couldn't load your surprise. Please try again.");
       return;
     }
-    setSurprise(data as SurpriseRow);
+    const row = data as SurpriseRow;
+    let restored = row.config;
+    try {
+      const saved = JSON.parse(localStorage.getItem(`customize-draft:${row.id}`) ?? "null");
+      if (saved?.base === JSON.stringify(row.config) && saved?.config) {
+        validateV2Config(saved.config); restored = saved.config;
+        toast.info("Your unsaved draft has been restored.");
+      } else if (saved) toast.info("An older draft was not restored because its saved version could not be verified.");
+    } catch { /* Corrupt or invalid drafts never replace the saved config. */ }
+    setSurprise(row); setDraft(restored); setHistory(null);
   }, [user?.id]);
 
   useEffect(() => {
@@ -78,6 +118,7 @@ export default function Dashboard() {
 
   const handleShare = async () => {
     if (!surprise) return;
+    if (dirty) { toast.info("Save your draft in Customize before sharing. Your link still shows the last saved version."); setTab("customize"); return; }
     const url = `${window.location.origin}/s/${surprise.slug}`;
 
     // Native share sheet on mobile (WhatsApp, Instagram, SMS, etc.)
@@ -137,7 +178,7 @@ export default function Dashboard() {
     );
   }
 
-  if (loadError || !surprise) {
+  if (loadError || !surprise || !config) {
     return (
       <FullScreenState>
         <p style={{ color: "var(--ink-soft)", maxWidth: "320px" }}>{loadError}</p>
@@ -158,8 +199,13 @@ export default function Dashboard() {
         onLogout={() => signOut()}
       />
       <div style={{ paddingTop: "calc(56px + env(safe-area-inset-top, 0px))" }}>
+        <div className="canonical-status" role="status"><span>{dirty ? "Unsaved draft · Preview includes your changes" : "Saved experience"}</span>
+          {dirty && <button type="button" onClick={() => setTab("customize")}>Save in Customize</button>}
+          {dirty && <button type="button" onClick={() => { if (window.confirm("Discard all unsaved changes?")) { setDraft(surprise.config); setHistory(null); } }}>Discard draft</button>}
+          {history && <button type="button" disabled={!canUndo} title={canUndo ? "Restore the exact pre-AI draft" : "Undo blocked because newer changes exist"} onClick={undoAI}>Undo last AI change</button>}
+        </div>
         {tab === "preview" ? (
-          <BirthdayExperience config={surprise.config} />
+          <BirthdayExperience config={config} />
         ) : tab === "customize" ? (
           <div
             style={{
@@ -172,9 +218,12 @@ export default function Dashboard() {
           >
             <CustomizeForm
               surprise={surprise}
+              config={config}
+              onConfigChange={setDraft}
               onSurpriseChange={setSurprise}
               onSaved={(updated) => {
                 setSurprise(updated);
+                setDraft(updated.config);
                 setTab("preview");
               }}
             />
@@ -190,8 +239,8 @@ export default function Dashboard() {
             }}
           >
             <AIAssistantChat
-              surprise={surprise}
-              onSurpriseChange={setSurprise}
+              surprise={{ ...surprise, config }}
+              onApply={applyAI}
               onSwitchToCustomize={() => setTab("customize")}
             />
           </div>

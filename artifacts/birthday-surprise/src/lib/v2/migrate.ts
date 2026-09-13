@@ -68,22 +68,15 @@ export const LEGACY_SCENE_SEQUENCE: LegacySceneId[] = [
 // Only used when _version === 2 AND scenes is explicitly set.
 // NOT applied to legacy records.
 export const DEFAULT_V2_SCENE_SEQUENCE: SceneId[] = [
-  "landing",
-  "intro",
-  "butterfly",
-  "giftReveal",
-  "cake",
-  "whyYouMatter",
-  "memoryWall",
-  "youAndMe",
-  "notebook",
-  "roseBloom",
-  "lastNote",
+  "intro", "butterfly", "giftReveal", "celebration", "memoryWall",
+  "youAndMe", "letters", "notebook", "roseBloom", "lastNote",
 ];
 
 // ── Default feature flags ────────────────────────────────────────────────
 function defaultLegacyFeatures(): FeatureFlags {
   return {
+    letters: false,
+    landing: true, cake: true, rakhiHero: true, familyHero: true, loveDayHero: true,
     // Legacy features: all on
     intro: true,
     cutenessMeter: true,
@@ -104,9 +97,11 @@ function defaultLegacyFeatures(): FeatureFlags {
 
 function defaultV2Features(): FeatureFlags {
   return {
+    letters: true,
+    landing: true, cake: true, rakhiHero: true, familyHero: true, loveDayHero: true,
     intro: true,
     cutenessMeter: false,
-    celebration: false,
+    celebration: true,
     memoryWall: true,
     ourStory: false,
     whyYouMatter: true,
@@ -148,6 +143,7 @@ function resolveTheme(raw: SurpriseConfig): {
     return { preset: raw.themePreset };
   }
   // Legacy themeId
+  if (raw._version === 2 && !raw.themeId) return { preset: "midnightRose" };
   const legacyId = raw.themeId ?? "midnightPurple";
   return { preset: legacyId, legacyThemeId: legacyId };
 }
@@ -172,11 +168,10 @@ function resolveFeatures(raw: SurpriseConfig, version: ConfigVersion): FeatureFl
 // ── Resolve scenes ───────────────────────────────────────────────────────
 function resolveScenes(raw: SurpriseConfig, version: ConfigVersion): SceneId[] {
   // v2 with explicit scenes array
-  if (version === 2 && Array.isArray(raw.scenes) && raw.scenes.length > 0) {
-    return raw.scenes;
+  if (version === 2 && Array.isArray(raw.scenes)) {
+    return [...raw.scenes];
   }
-  // Legacy: always use the fixed sequence
-  return [...LEGACY_SCENE_SEQUENCE];
+  return version === 2 ? [...DEFAULT_V2_SCENE_SEQUENCE] : [...LEGACY_SCENE_SEQUENCE];
 }
 
 // ── Resolve audio ────────────────────────────────────────────────────────
@@ -232,7 +227,7 @@ function resolveGiftReveal(raw: SurpriseConfig): GiftRevealConfig {
 // ── Resolve you & me ─────────────────────────────────────────────────────
 function resolveYouAndMe(raw: SurpriseConfig): YouAndMeConfig {
   return {
-    name1: raw.youAndMe?.name1,
+    name1: raw.youAndMe?.name1 ?? raw.giftReveal?.senderName,
     name2: raw.youAndMe?.name2 ?? raw.name,
   };
 }
@@ -322,18 +317,20 @@ export function normalizeConfig(raw: SurpriseConfig): NormalizedConfig {
  * triggers a save. Callers decide whether to persist the result.
  */
 export function migrateV1ToV2(raw: Config): SurpriseConfig {
+  const existing = raw as SurpriseConfig;
+  if (existing._version === 2) return structuredClone(existing);
   const result: SurpriseConfig = {
-    ...raw,
+    ...structuredClone(raw),
     _version: 2,
     // Preserve legacy occasionType as occasionId for forward compat
     occasionId: resolveOccasion(raw as SurpriseConfig),
     // Preserve legacy themeId as themePreset
-    themePreset: (raw.themeId ?? "midnightPurple") as ExtendedThemePresetId,
+    themePreset: existing.themePreset ?? raw.themeId ?? "midnightPurple",
     // Legacy records: no new scenes, no new features
-    features: defaultLegacyFeatures(),
-    scenes: [...LEGACY_SCENE_SEQUENCE],
+    features: { ...defaultLegacyFeatures(), ...existing.features },
+    scenes: existing.scenes ? [...existing.scenes] : [...LEGACY_SCENE_SEQUENCE],
     // Empty notebook (not enabled)
-    notebook: defaultNotebook(),
+    notebook: existing.notebook ?? defaultNotebook(),
   };
   return result;
 }
@@ -435,4 +432,17 @@ export function sceneReorder(
   const [moved] = result.splice(fromIndex, 1);
   result.splice(toIndex, 0, moved);
   return result;
+}
+
+/** Explicit creator opt-in only. Never called while loading an existing row. */
+export function promoteToCinematic(raw: SurpriseConfig): SurpriseConfig {
+  if (raw._version === 2) return structuredClone(raw);
+  return {
+    ...structuredClone(raw), _version: 2,
+    occasionId: raw.occasionId ?? resolveOccasion(raw),
+    themePreset: raw.themePreset ?? raw.themeId ?? "midnightRose",
+    scenes: raw.scenes ? [...raw.scenes] : [...DEFAULT_V2_SCENE_SEQUENCE],
+    features: { ...defaultV2Features(), ...raw.features },
+    notebook: raw.notebook ?? { pages: [] },
+  };
 }

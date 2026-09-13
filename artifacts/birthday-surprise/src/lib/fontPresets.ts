@@ -40,9 +40,9 @@ export type FontPageKey =
  * saved surprises that don't have this field yet.
  */
 export function resolveFontFamily(
-  textStyles: Partial<Record<FontPageKey, FontPresetId>> | undefined,
+  textStyles: Partial<Record<FontPageKey | "global", FontPresetId>> | undefined,
   page: FontPageKey,
 ): string {
-  const id = (textStyles?.[page] ?? DEFAULT_FONT_PRESET) as FontPresetId;
+  const id = (textStyles?.[page] ?? textStyles?.global ?? DEFAULT_FONT_PRESET) as FontPresetId;
   return (FONT_PRESETS[id] ?? FONT_PRESETS[DEFAULT_FONT_PRESET]).fontFamily;
 }

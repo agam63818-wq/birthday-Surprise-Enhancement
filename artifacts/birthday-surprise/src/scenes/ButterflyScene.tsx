@@ -86,6 +86,7 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
   const normalized = useNormalizedConfig();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
+  const cleanupRef = useRef<(() => void) | undefined>(undefined);
   const startedRef = useRef(false);
   const mountedRef = useRef(true);
   const [started, setStarted] = useState(false);
@@ -100,7 +101,9 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
     setStarted(true);
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d")!;
+    const context = canvas.getContext("2d");
+    if (!context) { setShowNext(true); return; }
+    const ctx: CanvasRenderingContext2D = context;
     let W = canvas.width;
     let H = canvas.height;
 
@@ -432,8 +435,9 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
 
     rafRef.current = requestAnimationFrame(loop);
 
-    return () => {
+    cleanupRef.current = () => {
       window.removeEventListener("resize", resize);
+      cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
@@ -442,9 +446,11 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      cleanupRef.current?.();
+      startedRef.current = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, []);
+  }, [reducedMotion]);
 
   // Reduced motion: static view
   if (reducedMotion) {
@@ -527,7 +533,7 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: "clamp(2.5rem, 10vw, 5rem)", animation: "pulse 2s ease-in-out infinite" }}>🦋</div>
+          <div style={{ fontSize: "clamp(2.5rem, 10vw, 5rem)", animation: "butterfly-pulse 2s ease-in-out infinite" }}>🦋</div>
           <p style={{
             fontFamily: "'Dancing Script', cursive",
             fontSize: "clamp(1.1rem, 4vw, 1.6rem)",
@@ -581,7 +587,7 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
             alignItems: "center",
             gap: "8px",
             opacity: 0,
-            animation: "fadeInUp 0.8s ease 2.5s forwards",
+            animation: "butterfly-fadeInUp 0.8s ease 2.5s forwards",
           }}>
             <span>💖</span>
             <span style={{ fontSize: "0.7rem", letterSpacing: "0.15em", color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>
@@ -592,7 +598,7 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
 
           <div style={{
             opacity: 0,
-            animation: "fadeInUp 0.8s ease 3.2s forwards",
+            animation: "butterfly-fadeInUp 0.8s ease 3.2s forwards",
           }}>
             <div style={{ fontSize: "clamp(0.8rem, 2.5vw, 1rem)", color: "rgba(255,255,255,0.6)", letterSpacing: "0.1em" }}>
               you still give me
@@ -610,7 +616,7 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
           <div style={{
             maxWidth: "480px",
             opacity: 0,
-            animation: "fadeInUp 0.8s ease 4.5s forwards",
+            animation: "butterfly-fadeInUp 0.8s ease 4.5s forwards",
           }}>
             <p style={{
               color: "rgba(255,255,255,0.75)",
@@ -630,7 +636,7 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
           bottom: "calc(40px + env(safe-area-inset-bottom, 0px))",
           left: "50%",
           transform: "translateX(-50%)",
-          animation: "fadeInUp 0.6s ease forwards",
+          animation: "butterfly-fadeInUp 0.6s ease forwards",
         }}>
           <button
             onClick={onNext}
@@ -654,11 +660,11 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
       )}
 
       <style>{`
-        @keyframes fadeInUp {
+        @keyframes butterfly-fadeInUp {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes pulse {
+        @keyframes butterfly-pulse {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.08); }
         }

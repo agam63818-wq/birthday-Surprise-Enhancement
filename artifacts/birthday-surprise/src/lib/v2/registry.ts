@@ -33,9 +33,11 @@ export interface SceneMeta {
 
 // ── Registry ─────────────────────────────────────────────────────────────
 export const SCENE_REGISTRY: Record<SceneId, SceneMeta> = {
+  letters: { id: "letters", label: "Interactive Letters", description: "Open personal notes from your final letter lines", isLegacy: false, featureKey: "letters", isHeavy: true, pacing: "emotion" },
   // ── Legacy scenes ──────────────────────────────────────────────────────
   landing: {
     id: "landing",
+    featureKey: "landing",
     label: "Landing",
     description: "The opening page with title and button",
     isLegacy: true,
@@ -71,6 +73,7 @@ export const SCENE_REGISTRY: Record<SceneId, SceneMeta> = {
   },
   cake: {
     id: "cake",
+    featureKey: "cake",
     label: "Occasion Hero",
     description: "Birthday cake / Rakhi / Family Day / Love Day hero",
     isLegacy: true,
@@ -81,6 +84,7 @@ export const SCENE_REGISTRY: Record<SceneId, SceneMeta> = {
   },
   rakhiHero: {
     id: "rakhiHero",
+    featureKey: "rakhiHero",
     label: "Rakhi Hero",
     description: "Rakshabandhan hero page",
     isLegacy: true,
@@ -91,6 +95,7 @@ export const SCENE_REGISTRY: Record<SceneId, SceneMeta> = {
   },
   familyHero: {
     id: "familyHero",
+    featureKey: "familyHero",
     label: "Family Day Hero",
     description: "Father's Day / Mother's Day hero page",
     isLegacy: true,
@@ -101,6 +106,7 @@ export const SCENE_REGISTRY: Record<SceneId, SceneMeta> = {
   },
   loveDayHero: {
     id: "loveDayHero",
+    featureKey: "loveDayHero",
     label: "Love Day Hero",
     description: "Love Day / Romantic hero page",
     isLegacy: true,
@@ -224,6 +230,7 @@ export interface SceneComponentProps {
 }
 
 export const SCENE_LAZY_LOADERS: Partial<Record<SceneId, LazySceneLoader>> = {
+  letters: () => import("@/scenes/LettersScene"),
   butterfly: () => import("@/scenes/ButterflyScene"),
   giftReveal: () => import("@/scenes/GiftRevealScene"),
   youAndMe: () => import("@/scenes/YouAndMeScene"),
@@ -233,11 +240,12 @@ export const SCENE_LAZY_LOADERS: Partial<Record<SceneId, LazySceneLoader>> = {
 
 // ── Validation ───────────────────────────────────────────────────────────
 export function isValidSceneId(id: string): id is SceneId {
-  return id in SCENE_REGISTRY;
+  return Object.prototype.hasOwnProperty.call(SCENE_REGISTRY, id);
 }
 
 export function isValidFeatureKey(key: string): key is keyof FeatureFlags {
   const validKeys: (keyof FeatureFlags)[] = [
+    "letters", "landing", "cake", "rakhiHero", "familyHero", "loveDayHero",
     "intro", "cutenessMeter", "celebration", "memoryWall", "ourStory",
     "whyYouMatter", "beforeLeave", "lastNote",
     "butterfly", "giftReveal", "youAndMe", "notebook", "roseBloom",
@@ -261,7 +269,7 @@ export function computeActiveSequence(
   scenes: SceneId[],
   features: FeatureFlags,
 ): SceneId[] {
-  return scenes.filter((id) => {
+  return [...new Set(scenes)].filter((id) => {
     if (!isValidSceneId(id)) return false;
     const meta = SCENE_REGISTRY[id];
     if (!meta.featureKey) return true; // always-on scenes (landing, cake)

@@ -136,6 +136,7 @@ interface SceneEngineProps {
   normalizedConfig: NormalizedConfig;
   globalMuted: boolean;
   onExperienceComplete?: () => void;
+  onInteract?: () => void;
   /**
    * Optional renderer for legacy (non-heavy) scenes.
    * Called when the active scene is a legacy scene ID.
@@ -149,6 +150,7 @@ export default function SceneEngine({
   normalizedConfig,
   globalMuted,
   onExperienceComplete,
+  onInteract,
   renderLegacyScene,
 }: SceneEngineProps) {
   const reducedMotion = useReducedMotion();
@@ -156,69 +158,39 @@ export default function SceneEngine({
   const [transitioning, setTransitioning] = useState(false);
   const mountedRef = useRef(true);
 
-  // Compute active sequence
-  const activeScenes = computeActiveSequence(
-    normalizedConfig.scenes,
-    normalizedConfig.features,
-  );
-
-  // Deterministic empty sequence handling
-  if (activeScenes.length === 0) {
-    return (
-      <div style={{
-        minHeight: "100dvh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--bg-deep, #07011a)",
-        color: "var(--ink)",
-        textAlign: "center",
-        padding: "32px",
-      }}>
-        <p style={{ color: "var(--ink-soft)" }}>No scenes configured.</p>
-      </div>
-    );
-  }
-
-  const currentSceneId = activeScenes[Math.min(sceneIndex, activeScenes.length - 1)];
-  const isLastScene = sceneIndex >= activeScenes.length - 1;
-
-  const goNext = useCallback(() => {
-    if (transitioning || !mountedRef.current) return;
-
-    if (isLastScene) {
-      onExperienceComplete?.();
-      return;
-    }
-
-    setTransitioning(true);
-    setTimeout(() => {
-      if (!mountedRef.current) return;
-      setSceneIndex((i) => Math.min(i + 1, activeScenes.length - 1));
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      setTimeout(() => {
-        if (mountedRef.current) setTransitioning(false);
-      }, 80);
-    }, 600);
-  }, [transitioning, isLastScene, activeScenes.length, onExperienceComplete]);
-
-  const goPrev = useCallback(() => {
-    if (transitioning || sceneIndex === 0 || !mountedRef.current) return;
-    setTransitioning(true);
-    setTimeout(() => {
-      if (!mountedRef.current) return;
-      setSceneIndex((i) => Math.max(i - 1, 0));
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      setTimeout(() => {
-        if (mountedRef.current) setTransitioning(false);
-      }, 80);
-    }, 600);
-  }, [transitioning, sceneIndex]);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeScenes = computeActiveSequence(normalizedConfig.scenes, normalizedConfig.features);
+  const sequenceKey = activeScenes.join("|");
+  const boundedIndex = Math.min(sceneIndex, Math.max(0, activeScenes.length - 1));
+  const currentSceneId = activeScenes[boundedIndex];
+  const isLastScene = boundedIndex >= activeScenes.length - 1;
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
+    setSceneIndex(0);
+    setTransitioning(false);
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [sequenceKey]);
+
+  const navigate = useCallback((index: number) => {
+    if (transitioning || !mountedRef.current) return;
+    onInteract?.();
+    const swap = () => {
+      setSceneIndex(index);
+      setTransitioning(false);
+      window.scrollTo({ top: 0, behavior: "instant" });
+    };
+    if (reducedMotion) { swap(); return; }
+    setTransitioning(true);
+    timerRef.current = setTimeout(swap, 350);
+  }, [transitioning, reducedMotion, onInteract]);
+  const goNext = () => isLastScene ? onExperienceComplete?.() : navigate(boundedIndex + 1);
+  const goPrev = () => navigate(Math.max(0, boundedIndex - 1));
+
+  if (!currentSceneId) return <div role="status" style={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>No scenes configured. Enable a scene in Customize.</div>;
 
   // Render current scene
   const renderScene = () => {
@@ -248,7 +220,7 @@ export default function SceneEngine({
         );
       }
       return (
-        <SceneErrorBoundary onNext={goNext} sceneId={currentSceneId}>
+        <SceneErrorBoundary key={currentSceneId} onNext={goNext} sceneId={currentSceneId}>
           <Suspense fallback={<SceneLoadingFallback />}>
             <LazyScene {...commonProps} />
           </Suspense>
@@ -271,14 +243,19 @@ export default function SceneEngine({
   };
 
   return (
-    <div style={{
+    <div data-scene={currentSceneId} style={{
       position: "relative",
       opacity: transitioning ? 0 : 1,
-      transform: transitioning ? "scale(0.97) translateY(12px)" : "scale(1) translateY(0)",
+      transform: !reducedMotion && transitioning ? "scale(0.97) translateY(12px)" : "scale(1) translateY(0)",
       transition: `opacity ${transitioning ? "0.35" : "0.45"}s ease, transform ${transitioning ? "0.35" : "0.45"}s cubic-bezier(0.22,1,0.36,1)`,
       willChange: "opacity, transform",
     }}>
-      {renderScene()}
+      <nav aria-label="Experience scenes" className="scene-navigation">
+        <button type="button" aria-label="Previous scene" disabled={boundedIndex === 0 || transitioning} onClick={goPrev}>Back</button>
+        <span aria-live="polite">{boundedIndex + 1} / {activeScenes.length} · {SCENE_REGISTRY[currentSceneId].label}</span>
+        <button type="button" aria-label="Next scene" disabled={isLastScene || transitioning} onClick={goNext}>Next</button>
+      </nav>
+      <div key={currentSceneId} className="scene-content">{renderScene()}</div>
     </div>
   );
 }

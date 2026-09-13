@@ -16,6 +16,7 @@
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validatePatch, validateV2Config, PATCH_INSTRUCTIONS, OCCASION_IDS, THEME_IDS } from "../_shared/configPatch.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 // ── Model IDs — bump here when you want to upgrade ──────────────────────
@@ -26,18 +27,14 @@ const MODEL_IDS: Record<string, string> = {
 };
 
 // ── Known valid values ───────────────────────────────────────────────────
-const VALID_OCCASION_TYPES = new Set([
-  "birthday", "rakshabandhan", "fathersday", "mothersday", "loveday", "custom",
-]);
-const VALID_THEME_IDS = new Set([
-  "midnightPurple", "roseGold", "deepEmerald", "royalGold",
-]);
+const VALID_OCCASION_TYPES = new Set<string>(OCCASION_IDS);
+const VALID_THEME_IDS = new Set<string>(THEME_IDS);
 
 // ── Abuse-control constants ──────────────────────────────────────────────
-const MAX_BODY_BYTES   = 16_384;   // 16 KB
+const MAX_BODY_BYTES   = 262_144;  // bounded V2 config context
 const MAX_ANSWER_LEN   = 1_000;    // chars per answer
 const MAX_ANSWER_KEYS  = 20;       // number of answer keys
-const MAX_OUTPUT_TOKENS = 2_048;
+const MAX_OUTPUT_TOKENS = 4_096;
 const FETCH_TIMEOUT_MS  = 45_000;  // 45 s
 
 // ── Error codes (stable, machine-readable) ───────────────────────────────
@@ -491,8 +488,8 @@ Return ONLY a single valid JSON object — no markdown, no prose, no explanation
 
 {
   "name": "string — recipient's first name",
-  "occasionType": "one of: birthday | rakshabandhan | fathersday | mothersday | loveday | custom",
-  "themeId": "one of: midnightPurple | roseGold | deepEmerald | royalGold",
+  "occasionType": "one of: ${OCCASION_IDS.join(" | ")}",
+  "themeId": "one of: ${THEME_IDS.join(" | ")}",
   "landing": { "title": "string", "subtitle": "string", "buttonText": "string" },
   "intro": { "heading": "string", "message": "string", "loadingText": "string", "buttonText": "string" },
   "cutenessMeter": { "title": "string", "subtitle": "string", "scanningText": "string", "resultText": "string", "resultHeadline": "string", "resultMessage": "string", "buttonText": "string" },
@@ -584,6 +581,7 @@ Deno.serve(async (req: Request) => {
       return errResponse("invalid_request", "Request body too large");
     }
     body = JSON.parse(text);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return errResponse("invalid_request", "Expected object body");
   } catch {
     return errResponse("invalid_request", "Invalid JSON body");
   }
@@ -617,6 +615,12 @@ Deno.serve(async (req: Request) => {
     keyCount++;
   }
 
+  const patchMode = body.mode === "patch";
+  if (patchMode) {
+    if (typeof body.request !== "string" || !body.request.trim() || body.request.length > 2000 || !body.currentConfig || typeof body.currentConfig !== "object" || Array.isArray(body.currentConfig)) return errResponse("invalid_request", "Invalid editing request");
+    try { validateV2Config(body.currentConfig); } catch { return errResponse("invalid_request", "Invalid V2 configuration"); }
+  }
+
   // ── 4. Key resolution ──────────────────────────────────────────────────
   // userApiKey is held ONLY in this local const and never echoed in errors.
   const resolvedKey: string | null = (() => {
@@ -641,11 +645,11 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── 5. Build prompts ───────────────────────────────────────────────────
-  const systemPrompt = buildSystemPrompt(occasionType);
+  const systemPrompt = patchMode ? PATCH_INSTRUCTIONS : buildSystemPrompt(occasionType);
 
   // User answers go in a separate user message behind clear delimiters.
   // They are NEVER concatenated into the system prompt.
-  const userPayload = `<USER_ANSWERS>
+  const userPayload = patchMode ? JSON.stringify({ request: body.request, currentConfig: body.currentConfig, answers: clampedAnswers }) : `<USER_ANSWERS>
 ${Object.entries(clampedAnswers).map(([k, v]) => `${k}: ${v}`).join("\n")}
 </USER_ANSWERS>
 
@@ -684,6 +688,12 @@ Using the answers above as content to write about, generate the personalised sur
     return errResponse("invalid_model_output", "AI returned an unexpected format. Please try again.");
   }
 
+  if (patchMode) {
+    try {
+      const patch = validatePatch(parsed);
+      return new Response(JSON.stringify({ patch }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch { return errResponse("invalid_model_output", "AI proposed unsupported or invalid changes. Nothing was applied."); }
+  }
   const validated = validateConfig(parsed);
   if (Object.keys(validated).length === 0) {
     return errResponse("invalid_model_output", "AI output did not contain usable config fields. Please try again.");

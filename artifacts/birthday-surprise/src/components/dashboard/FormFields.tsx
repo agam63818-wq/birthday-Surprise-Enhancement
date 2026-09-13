@@ -17,7 +17,7 @@ export function TextField({
   return (
     <div style={{ marginBottom: "14px" }}>
       <FieldLabel>{label}</FieldLabel>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+      <Input aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   );
 }
@@ -39,6 +39,7 @@ export function TextAreaField({
     <div style={{ marginBottom: "14px" }}>
       <FieldLabel>{label}</FieldLabel>
       <Textarea
+        aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={rows}

@@ -73,21 +73,12 @@ function renderPageContent(page: NotebookPage) {
               transform: "rotate(-1deg)",
               background: "#f0ebe0",
             }}>
+              <span role="img" aria-label="Memory photo" style={{ position: "absolute", opacity: 0.3 }}>Photo unavailable</span>
               <img
                 src={page.image}
                 alt={page.caption ?? page.title ?? "Memory"}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={(e) => {
-                  const el = e.currentTarget as HTMLImageElement;
-                  el.style.display = "none";
-                  const parent = el.parentElement;
-                  if (parent) {
-                    parent.style.display = "flex";
-                    parent.style.alignItems = "center";
-                    parent.style.justifyContent = "center";
-                    parent.innerHTML = '<span style="font-size:2rem;opacity:0.4">📷</span>';
-                  }
-                }}
+                style={{ width: "100%", height: "100%", objectFit: "cover", position: "relative" }}
+                onError={(e) => { e.currentTarget.hidden = true; }}
               />
             </div>
           )}
@@ -173,11 +164,12 @@ export default function NotebookScene({ onNext, isActive, reducedMotion }: Scene
   const [currentPage, setCurrentPage] = useState(0);
   const [flipping, setFlipping] = useState(false);
   const [flipDir, setFlipDir] = useState<"forward" | "backward">("forward");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
 
   const rawPages = normalized.notebook.pages ?? [];
   const enabledPages = rawPages.filter((p: NotebookPage) => p.enabled !== false);
-  const pages = enabledPages.length > 0 ? enabledPages : getDefaultPages(normalized.recipient.name ?? "");
+  const pages = rawPages.length > 0 ? enabledPages : getDefaultPages(normalized.recipient.name ?? "");
 
   const totalPages = pages.length;
   const isFirst = currentPage === 0;
@@ -187,23 +179,23 @@ export default function NotebookScene({ onNext, isActive, reducedMotion }: Scene
     if (flipping || isLast) return;
     setFlipDir("forward");
     setFlipping(true);
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       if (!mountedRef.current) return;
       setCurrentPage((p) => Math.min(p + 1, totalPages - 1));
       setFlipping(false);
-    }, 400);
-  }, [flipping, isLast, totalPages]);
+    }, reducedMotion ? 0 : 400);
+  }, [flipping, isLast, totalPages, reducedMotion]);
 
   const goPrev = useCallback(() => {
     if (flipping || isFirst) return;
     setFlipDir("backward");
     setFlipping(true);
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       if (!mountedRef.current) return;
       setCurrentPage((p) => Math.max(p - 1, 0));
       setFlipping(false);
-    }, 400);
-  }, [flipping, isFirst]);
+    }, reducedMotion ? 0 : 400);
+  }, [flipping, isFirst, reducedMotion]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -217,10 +209,11 @@ export default function NotebookScene({ onNext, isActive, reducedMotion }: Scene
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => { mountedRef.current = false; if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
-  const page = pages[currentPage];
+  const page = pages[Math.min(currentPage, Math.max(0, totalPages - 1))];
+  if (!page) return <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}><p>No enabled notebook pages.</p><button onClick={onNext}>Continue</button></div>;
 
   if (reducedMotion) {
     return (
