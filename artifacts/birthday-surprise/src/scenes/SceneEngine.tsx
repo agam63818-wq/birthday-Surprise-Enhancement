@@ -260,8 +260,8 @@ export default function SceneEngine({
         >
           <span aria-hidden="true">←</span>
         </button>
-        <div className="scene-progress" aria-live="polite">
-          <span className="scene-progress-label">{SCENE_REGISTRY[currentSceneId].label}</span>
+        <div className="scene-progress">
+          <span className="scene-progress-label vis-hidden">{SCENE_REGISTRY[currentSceneId].label}</span>
           <span
             className="scene-progress-dots"
             role="progressbar"

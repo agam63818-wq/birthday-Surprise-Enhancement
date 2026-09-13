@@ -12,7 +12,16 @@ export default defineConfig({
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
     launchOptions: chromiumExecutable
-      ? { executablePath: chromiumExecutable, args: ["--no-sandbox"] }
+      ? {
+          executablePath: chromiumExecutable,
+          args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--font-render-hinting=none",
+            "--disable-gpu",
+          ],
+        }
       : undefined,
   },
   reporter: [["list"]],

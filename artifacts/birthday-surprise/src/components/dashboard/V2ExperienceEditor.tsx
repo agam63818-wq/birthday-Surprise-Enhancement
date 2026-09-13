@@ -75,7 +75,7 @@ export default function V2ExperienceEditor({ config, onChange }: Props) {
     </details>
     <details className="v2-panel"><summary>Interactive notebook</summary><CheckboxField label="Enable Notebook" checked={enabled("notebook")} onChange={v => toggle("notebook", v)} />
       <p>Empty notebooks show a reading-only fallback. If all your custom pages are disabled, none are shown.</p>
-      <label>New page type<select value={pageType} onChange={e => setPageType(e.target.value as NotebookPageType)}>{PAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></label>
+      <label>New page type<select aria-label="New page type" value={pageType} onChange={e => setPageType(e.target.value as NotebookPageType)}>{PAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></label>
       <button type="button" disabled={notebook.pages.length >= 40} onClick={() => patch("notebook.pages", notebookAddPage(notebook, pageType).pages)}>Add notebook page</button>
       {notebook.pages.map((page, index) => <fieldset key={page.id} className="v2-page-editor"><legend>Page {index + 1} · {page.type}</legend>
         <CheckboxField label={`Enable page ${index + 1}`} checked={page.enabled} onChange={enabled => editPage(page.id, { enabled })} />

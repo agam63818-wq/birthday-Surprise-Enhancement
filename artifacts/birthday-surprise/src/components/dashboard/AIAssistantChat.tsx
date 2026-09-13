@@ -17,6 +17,7 @@ import { supabase } from "@/lib/supabase";
 import { OCCASION_META, OCCASION_IDS, type OccasionId } from "@/lib/occasions";
 import type { SurpriseConfig as Config } from "@/lib/v2/schema";
 import { validatePatch, configToPatch, applyConfigPatch, readPath, type ConfigPatch } from "../../../supabase/functions/_shared/configPatch";
+import { describeConfigChange } from "@/lib/v2/cinematicCopy";
 import type { SurpriseRow } from "@/types/surprise";
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -657,7 +658,14 @@ export default function AIAssistantChat({
         <button type="button" disabled={generating || !!pending || !request.trim() || (useOwnKey && !apiKeyInput.trim())} onClick={() => handleGenerate("patch")}>{generating ? "Preparing changes…" : "Review AI changes"}</button>
       </section>}
       {pending && <section className="v2-editor v2-panel" aria-label="Review proposed changes">
-        <h3>Review proposed changes</h3><p>No changes are saved until you Apply, then Save in Customize. Arrays show the complete before/after order or page content.</p>
+        <h3>Review proposed changes</h3>
+        <p>AI wants to change:</p>
+        <ul className="v2-change-summary">
+          {pending.patch.changes.map(change => (
+            <li key={`summary-${change.path}`}>✓ {describeConfigChange(change.path, change.value)}</li>
+          ))}
+        </ul>
+        <p>No changes are saved until you Apply, then Save in Customize. Arrays show the complete before/after order or page content.</p>
         {pending.patch.changes.map(change => <details key={change.path}><summary>{change.path}</summary><p>Before</p><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 12 }}>{JSON.stringify(readPath(pending.base, change.path), null, 2) ?? "Not set"}</pre><p>After</p><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 12 }}>{JSON.stringify(change.value, null, 2)}</pre></details>)}
         <div className="v2-actions"><button type="button" onClick={handleApply}>Apply changes</button><button type="button" onClick={() => { setPending(null); toast.info("Proposal cancelled. Your draft is unchanged."); }}>Cancel changes</button></div>
       </section>}

@@ -69,6 +69,36 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
 
   const photo = photos[idx];
 
+  if (!photo) {
+    return (
+      <div className="min-h-screen-dvh" style={{
+        display: "flex", flexDirection: "column", alignItems: "center",
+        justifyContent: "center",
+        padding: "calc(56px + env(safe-area-inset-top, 0px)) 20px calc(40px + env(safe-area-inset-bottom, 0px))",
+        position: "relative", zIndex: 5, textAlign: "center", gap: "16px",
+      }}>
+        <BackgroundEffectsLayer accent="violet" density="low" zIndex={1} />
+        <p className="chip">📸 Memories</p>
+        <StaggeredText
+          as="h1"
+          text={title}
+          delay={0.2}
+          className="font-script hero-gradient-text"
+          style={{ fontSize: "clamp(1.9rem, 5.5vw, 2.8rem)", lineHeight: "var(--leading-tight)" }}
+        />
+        <p style={{ color: "var(--ink-faint)", fontSize: "13px", fontFamily: bodyFont, maxWidth: "420px" }}>
+          {subtitle || "The album is waiting for its first picture."}
+        </p>
+        <GlowButton onClick={onNext} style={{
+          background: "linear-gradient(135deg, #4c1d95, #7c3aed, #be185d)",
+          position: "relative", zIndex: 5,
+        }}>
+          {buttonText}
+        </GlowButton>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen-dvh" style={{
       display: "flex", flexDirection: "column", alignItems: "center",
