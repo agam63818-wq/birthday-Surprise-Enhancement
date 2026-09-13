@@ -251,9 +251,43 @@ export default function SceneEngine({
       willChange: "opacity, transform",
     }}>
       <nav aria-label="Experience scenes" className="scene-navigation">
-        <button type="button" aria-label="Previous scene" disabled={boundedIndex === 0 || transitioning} onClick={goPrev}>Back</button>
-        <span aria-live="polite">{boundedIndex + 1} / {activeScenes.length} · {SCENE_REGISTRY[currentSceneId].label}</span>
-        <button type="button" aria-label="Next scene" disabled={isLastScene || transitioning} onClick={goNext}>Next</button>
+        <button
+          type="button"
+          className="scene-nav-arrow"
+          aria-label="Previous scene"
+          disabled={boundedIndex === 0 || transitioning}
+          onClick={goPrev}
+        >
+          <span aria-hidden="true">←</span>
+        </button>
+        <div className="scene-progress" aria-live="polite">
+          <span className="scene-progress-label">{SCENE_REGISTRY[currentSceneId].label}</span>
+          <span
+            className="scene-progress-dots"
+            role="progressbar"
+            aria-label={`Scene ${boundedIndex + 1} of ${activeScenes.length}`}
+            aria-valuemin={1}
+            aria-valuemax={activeScenes.length}
+            aria-valuenow={boundedIndex + 1}
+          >
+            {activeScenes.map((sceneId, index) => (
+              <span
+                key={sceneId}
+                className={`scene-progress-dot ${index === boundedIndex ? "is-current" : ""} ${index < boundedIndex ? "is-complete" : ""}`}
+                aria-hidden="true"
+              />
+            ))}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="scene-nav-arrow"
+          aria-label={isLastScene ? "Experience complete" : "Next scene"}
+          disabled={isLastScene || transitioning}
+          onClick={goNext}
+        >
+          <span aria-hidden="true">→</span>
+        </button>
       </nav>
       <div key={currentSceneId} className="scene-content">{renderScene()}</div>
     </div>

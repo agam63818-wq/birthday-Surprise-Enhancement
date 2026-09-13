@@ -1,664 +1,646 @@
 /**
- * RoseBloomScene — Cinematic rose blooming with stem, leaves, and petals.
+ * RoseBloomScene
  *
- * Adapted from animation_code.zip/rose/
- * Original character preserved: CSS 3D petal layers, stem growth,
- * leaf reveal, sepal formation, falling petals, end text reveal.
+ * A single responsive flower composition:
+ * bloom -> calyx -> stem -> leaves.
  *
- * Changes from original:
- * - Converted from standalone HTML to React component
- * - Demo branding removed ("Love.css", "i coded this for you")
- * - Text configurable via config.roseBloom.text
- * - Global mute respected (soundEnabled flag)
- * - Reduced motion: static rose emoji + text
- * - Proper RAF/timer/interval cleanup on unmount (Strict Mode safe)
- * - No global DOM mutations or CSS leakage (scoped styles)
- * - Keyboard-accessible tap/click start
- * - Configurable speed/intensity/fallingPetals
+ * The previous implementation rendered the stem before the flower head and
+ * used a dynamically-mutated petal tree with viewport-fixed text. That made
+ * the flower read as disconnected parts on small screens. This version keeps
+ * the visual relationship in the DOM and lets CSS stage each layer cleanly.
  */
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { SceneComponentProps } from "@/lib/v2/registry";
 import { useNormalizedConfig } from "@/contexts/ConfigContext";
 
-const PETAL_LAYERS = [
-  { count: 4, w: 24, h: 46, curl: 78, delayBase: 0, tz: 2, cls: "petal-bud" },
-  { count: 5, w: 34, h: 58, curl: 65, delayBase: 0.25, tz: 9, cls: "petal-core" },
-  { count: 6, w: 46, h: 72, curl: 48, delayBase: 0.55, tz: 18, cls: "petal-inner" },
-  { count: 7, w: 58, h: 88, curl: 22, delayBase: 0.90, tz: 30, cls: "petal-mid-inner" },
-  { count: 8, w: 72, h: 104, curl: -5, delayBase: 1.30, tz: 44, cls: "petal-mid" },
-  { count: 9, w: 86, h: 118, curl: -25, delayBase: 1.75, tz: 60, cls: "petal-outer" },
-  { count: 10, w: 98, h: 130, curl: -48, delayBase: 2.25, tz: 76, cls: "petal-blush" },
+type PetalLayer = {
+  count: number;
+  width: number;
+  height: number;
+  radius: number;
+  depth: number;
+  tone: "inner" | "mid" | "outer";
+  delay: number;
+};
+
+const PETAL_LAYERS: PetalLayer[] = [
+  { count: 5, width: 34, height: 58, radius: 9, depth: 34, tone: "inner", delay: 0.05 },
+  { count: 7, width: 50, height: 82, radius: 17, depth: 26, tone: "mid", delay: 0.35 },
+  { count: 9, width: 68, height: 104, radius: 24, depth: 18, tone: "mid", delay: 0.7 },
+  { count: 11, width: 84, height: 118, radius: 30, depth: 8, tone: "outer", delay: 1.05 },
 ];
 
-const SEPALS_COUNT = 5;
+const FALLING_PETALS = Array.from({ length: 12 }, (_, index) => ({
+  left: `${8 + ((index * 17) % 84)}%`,
+  delay: `${(index * 0.72) % 5.5}s`,
+  duration: `${7.5 + (index % 4) * 1.2}s`,
+  size: `${8 + (index % 4) * 2}px`,
+  height: `${(8 + (index % 4) * 2) * 1.35}px`,
+  drift: `${index % 2 === 0 ? 1 : -1}`,
+}));
 
-const FALLING_PETAL_COLORS = [
-  ["#9a001d", "#3d0008"],
-  ["#850018", "#2b0005"],
-  ["#ad0022", "#480008"],
-  ["#bf0028", "#52000c"],
-];
+const cssVar = (name: string, value: string | number): CSSProperties =>
+  ({ [name]: typeof value === "number" ? String(value) : value }) as CSSProperties;
 
-export default function RoseBloomScene({ onNext, isActive, reducedMotion, globalMuted }: SceneComponentProps) {
+export default function RoseBloomScene({
+  onNext,
+  isActive,
+  reducedMotion,
+  globalMuted,
+}: SceneComponentProps) {
   const normalized = useNormalizedConfig();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const intervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
-  const mountedRef = useRef(true);
   const [started, setStarted] = useState(false);
   const [showText, setShowText] = useState(false);
   const [showNext, setShowNext] = useState(false);
-  const [loadProgress, setLoadProgress] = useState(0);
-  const [loadReady, setLoadReady] = useState(false);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const roseText = normalized.roseBloom.text ?? "Made with love, just for you 🌹";
-  const speed = normalized.roseBloom.speed ?? "normal";
-  const intensity = normalized.roseBloom.intensity ?? "normal";
-  const soundEnabled = normalized.roseBloom.soundEnabled !== false;
-  const fallingPetals = normalized.roseBloom.fallingPetals !== false;
+  const rose = normalized.roseBloom;
+  const roseText = rose.text?.trim() || "Made with love, just for you.";
+  const speedMultiplier = rose.speed === "slow" ? 1.25 : rose.speed === "fast" ? 0.78 : 1;
+  const intensity = rose.intensity ?? "normal";
+  const layers = intensity === "subtle" ? PETAL_LAYERS.slice(0, 3) : PETAL_LAYERS;
 
-  const speedMultiplier = speed === "slow" ? 1.5 : speed === "fast" ? 0.6 : 1;
+  const petals = useMemo(() => {
+    let serial = 0;
+    return layers.flatMap((layer) =>
+      Array.from({ length: layer.count }, (_, index) => {
+        const angle = (360 / layer.count) * index + (serial % 2 === 0 ? -4 : 4);
+        const item = {
+          id: serial++,
+          angle,
+          width: layer.width,
+          height: layer.height,
+          radius: layer.radius,
+          depth: layer.depth,
+          tone: layer.tone,
+          delay: layer.delay + index * 0.045,
+        };
+        return item;
+      }),
+    );
+  }, [layers]);
 
-  const addTimer = (fn: () => void, ms: number) => {
-    const t = setTimeout(fn, ms * speedMultiplier);
-    timersRef.current.push(t);
-    return t;
-  };
-
-  const addInterval = (fn: () => void, ms: number) => {
-    const t = setInterval(fn, ms);
-    intervalsRef.current.push(t);
-    return t;
-  };
-
-  // Build rose DOM elements
-  const buildRose = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const roseHead = container.querySelector(".rose-head") as HTMLElement;
-    const calyx = container.querySelector(".calyx") as HTMLElement;
-
-    if (!roseHead || !calyx) return;
-
-    // Clear existing
-    roseHead.innerHTML = '<div class="rose-glow"></div><div class="rose-glow-inner"></div>';
-    calyx.innerHTML = "";
-
-    // Create sepals
-    const step = 360 / SEPALS_COUNT;
-    for (let i = 0; i < SEPALS_COUNT; i++) {
-      const sepal = document.createElement("div");
-      sepal.className = "rose-sepal";
-      const angle = i * step + (Math.random() - 0.5) * 5;
-      const delay = 0.3 + i * 0.06;
-      const curl = 18 + Math.random() * 8;
-      sepal.style.setProperty("--sepal-angle", `${angle}deg`);
-      sepal.style.setProperty("--sepal-curl", `${curl}deg`);
-      sepal.style.setProperty("--sepal-delay", `${delay * speedMultiplier}s`);
-      calyx.appendChild(sepal);
-    }
-
-    // Create petals
-    (intensity === "subtle" ? PETAL_LAYERS.slice(0, 5) : PETAL_LAYERS).forEach((layer, li) => {
-      const angleStep = 360 / layer.count;
-      const layerOffset = li * 24 + (Math.random() - 0.5) * 8;
-
-      for (let i = 0; i < layer.count; i++) {
-        const petal = document.createElement("div");
-        petal.className = `rose-petal ${layer.cls}`;
-
-        const angle = layerOffset + i * angleStep + (Math.random() - 0.5) * 5;
-        const delay = layer.delayBase + i * 0.05;
-        const curlJitter = (Math.random() - 0.5) * 6;
-        const scaleJitter = 0.94 + Math.random() * 0.12;
-        const bloomDur = 2.1 + Math.random() * 0.4;
-
-        petal.style.width = `${layer.w}px`;
-        petal.style.height = `${layer.h}px`;
-        petal.style.setProperty("--angle", `${angle}deg`);
-        petal.style.setProperty("--curl", `${layer.curl + curlJitter}deg`);
-        petal.style.setProperty("--scale", String(scaleJitter));
-        petal.style.setProperty("--delay", `${delay * speedMultiplier}s`);
-        petal.style.setProperty("--tz", `${layer.tz}px`);
-        petal.style.setProperty("--bloom-dur", `${bloomDur * speedMultiplier}s`);
-
-        roseHead.appendChild(petal);
-      }
-    });
-  }, [intensity, speedMultiplier]);
-
-  // Spawn falling petal
-  const spawnFallingPetal = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const fallingPetalsEl = container.querySelector(".falling-petals") as HTMLElement;
-    if (!fallingPetalsEl || fallingPetalsEl.childElementCount >= (intensity === "subtle" ? 3 : intensity === "dramatic" ? 10 : 6)) return;
-
-    const petal = document.createElement("div");
-    petal.className = "falling-petal-el";
-
-    const w = 10 + Math.random() * 12;
-    const h = w * (1.25 + Math.random() * 0.15);
-    const x = 20 + Math.random() * 60;
-    const dur = 5.5 + Math.random() * 3.5;
-    const delay = Math.random() * 0.6;
-    const colors = FALLING_PETAL_COLORS[Math.floor(Math.random() * FALLING_PETAL_COLORS.length)];
-
-    const sign = () => (Math.random() > 0.5 ? 1 : -1);
-    const s1 = sign() * (15 + Math.random() * 25);
-    const s2 = sign() * (10 + Math.random() * 20);
-    const s3 = sign() * (20 + Math.random() * 30);
-    const s4 = sign() * (10 + Math.random() * 15);
-
-    petal.style.left = `${x}vw`;
-    petal.style.top = `3vh`;
-    petal.style.setProperty("--fp-w", `${w}px`);
-    petal.style.setProperty("--fp-h", `${h}px`);
-    petal.style.setProperty("--fp-c1", colors[0]);
-    petal.style.setProperty("--fp-c2", colors[1]);
-    petal.style.setProperty("--f-dur", `${dur}s`);
-    petal.style.setProperty("--f-delay", `${delay * speedMultiplier}s`);
-    petal.style.setProperty("--s1", `${s1}px`);
-    petal.style.setProperty("--s2", `${s2}px`);
-    petal.style.setProperty("--s3", `${s3}px`);
-    petal.style.setProperty("--s4", `${s4}px`);
-
-    fallingPetalsEl.appendChild(petal);
-
-    const cleanup = setTimeout(() => {
-      if (petal.parentNode) petal.remove();
-    }, (dur + delay) * 1000 + 300);
-    timersRef.current.push(cleanup);
-  }, [intensity, speedMultiplier]);
-
-  // Start animation sequence
-  const startAnimation = useCallback(() => {
-    if (started || reducedMotion || !isActive) return;
+  useEffect(() => {
+    if (!reducedMotion || !isActive) return;
     setStarted(true);
+    setShowText(true);
+    setShowNext(true);
+  }, [isActive, reducedMotion]);
 
-    buildRose();
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    const stem = container.querySelector(".rose-stem") as HTMLElement;
-    const leafLeft = container.querySelector(".leaf-left") as HTMLElement;
-    const leafRight = container.querySelector(".leaf-right") as HTMLElement;
-    const calyx = container.querySelector(".calyx") as HTMLElement;
-    const roseHead = container.querySelector(".rose-head") as HTMLElement;
-    const ambientLight = container.querySelector(".ambient-light") as HTMLElement;
-    const roseWrapper = container.querySelector(".rose-wrapper") as HTMLElement;
-
-    // Grow stem
-    if (stem) { stem.style.animationDuration = `${2.2 * speedMultiplier}s`; stem.classList.add("grow"); }
-
-    addTimer(() => { if (leafLeft && mountedRef.current) leafLeft.classList.add("visible"); }, 800);
-    addTimer(() => { if (leafRight && mountedRef.current) leafRight.classList.add("visible"); }, 1100);
-
-    // Bloom
-    addTimer(() => {
-      if (!mountedRef.current) return;
-      if (calyx) calyx.classList.add("visible");
-      if (ambientLight) ambientLight.classList.add("visible");
-      if (roseHead) roseHead.classList.add("blooming");
-    }, 2300);
-
-    // Rotate
-    addTimer(() => {
-      if (roseWrapper && mountedRef.current) roseWrapper.classList.add("rotating");
-    }, 4900);
-
-    // Falling petals
-    if (fallingPetals) {
-      addTimer(() => {
-        if (!mountedRef.current) return;
-        for (let i = 0; i < 3; i++) {
-          addTimer(() => spawnFallingPetal(), i * 300);
-        }
-        const interval = addInterval(() => {
-          if (mountedRef.current) spawnFallingPetal();
-        }, (intensity === "dramatic" ? 1200 : intensity === "subtle" ? 3500 : 2200) * speedMultiplier);
-      }, 5700);
-    }
-
-    // Show text
-    addTimer(() => {
-      if (mountedRef.current) setShowText(true);
-    }, 6900);
-
-    // Show continue
-    addTimer(() => {
-      if (mountedRef.current) setShowNext(true);
-    }, 9000);
-  }, [started, buildRose, fallingPetals, spawnFallingPetal, speedMultiplier, intensity, reducedMotion, isActive]);
-
-  // Ready immediately: no fake loading interval or reduced-motion background work.
-  useEffect(() => { setLoadProgress(100); setLoadReady(true); }, []);
-
-  // Soft, short bloom chime. A muted/disabled/unmounted scene owns no audio context.
   useEffect(() => {
-    if (!started || !isActive || reducedMotion || globalMuted || !soundEnabled) return;
-    let ctx: AudioContext | undefined;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      ctx = new AudioContext();
-      const gain = ctx.createGain(); gain.connect(ctx.destination);
-      gain.gain.setValueAtTime(0.025, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 2.5);
-      [261.63, 329.63, 392].forEach(f => { const o = ctx!.createOscillator(); o.frequency.value = f; o.connect(gain); o.start(); o.stop(ctx!.currentTime + 2.5); });
-      timer = setTimeout(() => { void ctx?.close().catch(() => {}); }, 2700);
-    } catch { /* Audio unavailable: keep the visual experience. */ }
-    return () => { if (timer) clearTimeout(timer); if (ctx && ctx.state !== "closed") void ctx.close().catch(() => {}); };
-  }, [started, isActive, reducedMotion, globalMuted, soundEnabled]);
-
-  // Cleanup
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      timersRef.current.forEach(clearTimeout);
-      intervalsRef.current.forEach(clearInterval);
-    };
+    return () => timersRef.current.forEach(clearTimeout);
   }, []);
+
+  const later = (fn: () => void, delay: number) => {
+    const timer = setTimeout(fn, delay * speedMultiplier);
+    timersRef.current.push(timer);
+  };
+
+  const startBloom = () => {
+    if (started || !isActive) return;
+    setStarted(true);
+    later(() => setShowText(true), 5200);
+    later(() => setShowNext(true), 6500);
+  };
+
+  useEffect(() => {
+    if (!started || reducedMotion || globalMuted || rose.soundEnabled === false) return;
+    let audio: AudioContext | undefined;
+    try {
+      audio = new AudioContext();
+      const gain = audio.createGain();
+      gain.connect(audio.destination);
+      gain.gain.setValueAtTime(0.018, audio.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 2.2);
+      [261.63, 329.63, 392].forEach((frequency, index) => {
+        const oscillator = audio!.createOscillator();
+        oscillator.frequency.value = frequency;
+        oscillator.connect(gain);
+        oscillator.start(audio!.currentTime + index * 0.12);
+        oscillator.stop(audio!.currentTime + 2.2);
+      });
+      const closeTimer = setTimeout(() => void audio?.close(), 2600);
+      return () => {
+        clearTimeout(closeTimer);
+        if (audio && audio.state !== "closed") void audio.close();
+      };
+    } catch {
+      // Audio is an enhancement. The visual reveal remains fully functional.
+      return undefined;
+    }
+  }, [globalMuted, reducedMotion, rose.soundEnabled, started]);
 
   if (reducedMotion) {
     return (
-      <div style={{
-        minHeight: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "32px 24px",
-        background: "radial-gradient(ellipse at 50% 75%, #120105 0%, #050002 55%, #000 100%)",
-        textAlign: "center",
-        gap: "24px",
-      }}>
-        <div style={{ fontSize: "clamp(3rem, 10vw, 5rem)", filter: "drop-shadow(0 4px 12px rgba(255,30,80,0.4))" }}>🌹</div>
-        <p style={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: "clamp(1.1rem, 3.5vw, 1.6rem)",
-          color: "#fff",
-          lineHeight: 1.5,
-          maxWidth: "400px",
-          textShadow: "0 0 20px rgba(255,30,80,0.3)",
-        }}>{roseText}</p>
-        <button onClick={onNext} style={{
-          marginTop: "16px", padding: "14px 32px", borderRadius: "999px",
-          border: "1px solid rgba(255,30,80,0.5)",
-          background: "rgba(255,30,80,0.15)",
-          color: "#fff", fontSize: "1rem", cursor: "pointer",
-        }}>Continue ✨</button>
-      </div>
+      <RoseShell>
+        <RoseComposition petals={petals} started reducedMotion />
+        <RoseCopy text={roseText} visible />
+        <RoseButton onClick={onNext} visible />
+      </RoseShell>
     );
   }
 
   return (
-    <div ref={containerRef} style={{
-      position: "relative",
-      width: "100%",
-      height: "100dvh",
-      background: "radial-gradient(ellipse at 50% 75%, #120105 0%, #050002 55%, #000 100%)",
-      overflow: "hidden",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}>
-      {/* Vignette */}
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        background: "radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.9) 100%)",
-        zIndex: 100,
-        pointerEvents: "none",
-      }} />
-
-      {/* Spotlight */}
-      <div style={{
-        position: "fixed",
-        top: "35%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: "85vw",
-        height: "85vh",
-        background: "radial-gradient(circle, rgba(255,30,80,0.06) 0%, transparent 70%)",
-        filter: "blur(50px)",
-        pointerEvents: "none",
-        zIndex: 1,
-      }} />
-
-      {/* Ambient light */}
-      <div className="ambient-light" style={{
-        position: "fixed",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: "300px",
-        height: "300px",
-        borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(255,30,80,0.12) 0%, transparent 70%)",
-        filter: "blur(40px)",
-        pointerEvents: "none",
-        zIndex: 2,
-        opacity: 0,
-        transition: "opacity 2s ease",
-      }} />
-
-      {/* Trigger overlay */}
-      {!started && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "rgba(0,0,0,0.85)",
-          backdropFilter: "blur(15px)",
-          WebkitBackdropFilter: "blur(15px)",
-          zIndex: 200,
-        }}>
-          <div style={{
-            width: "min(85vw, 340px)",
-            background: "rgba(22,10,15,0.55)",
-            border: "1px solid rgba(255,40,100,0.2)",
-            borderRadius: "24px",
-            padding: "35px 24px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center",
-            boxShadow: "0 25px 60px rgba(0,0,0,0.6), 0 0 40px rgba(255,30,80,0.1)",
-          }}>
-            <div style={{ fontSize: "54px", marginBottom: "12px", filter: "drop-shadow(0 4px 12px rgba(255,30,80,0.4))", animation: "pulseIcon 2s ease-in-out infinite" }}>🌹</div>
-
-            <h2 style={{
-              fontFamily: "'Playfair Display', serif",
-              fontSize: "26px",
-              fontWeight: 700,
-              color: "#fff",
-              letterSpacing: "1px",
-              marginBottom: "22px",
-            }}>Rose Bloom</h2>
-
-            {/* Loading bar */}
-            <div style={{ width: "100%", height: "6px", background: "rgba(255,255,255,0.06)", borderRadius: "3px", overflow: "hidden", marginBottom: "10px" }}>
-              <div style={{
-                width: `${loadProgress}%`,
-                height: "100%",
-                background: "linear-gradient(to right, #9a001d, #ff1a4a)",
-                borderRadius: "3px",
-                transition: "width 0.2s ease",
-              }} />
+    <RoseShell>
+      <div className={`rose-bloom-scene ${started ? "is-started" : ""}`}>
+        <div className="rose-scene-kicker">A quiet little moment</div>
+        <div className="rose-stage">
+          <div className="rose-atmosphere" aria-hidden="true" />
+          <RoseComposition petals={petals} started={started} />
+          {rose.fallingPetals !== false && started && (
+            <div className="rose-falling-petals" aria-hidden="true">
+              {FALLING_PETALS.map((petal, index) => (
+                <span
+                  key={index}
+                  className="rose-falling-petal"
+                  style={{
+                    left: petal.left,
+                    animationDelay: petal.delay,
+                    animationDuration: petal.duration,
+                    width: petal.size,
+                    height: petal.height,
+                    ...cssVar("--petal-drift", petal.drift),
+                  }}
+                />
+              ))}
             </div>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.75rem", marginBottom: "20px" }}>
-              {loadProgress < 100 ? "Growing digital petals..." : "Ready to bloom!"}
-            </p>
+          )}
+        </div>
 
-            <button
-              onClick={startAnimation}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") startAnimation(); }}
-              disabled={!loadReady}
-              aria-label="Tap to bloom the rose"
-              style={{
-                padding: "14px 32px",
-                borderRadius: "999px",
-                border: "1px solid rgba(255,30,80,0.5)",
-                background: loadReady
-                  ? "linear-gradient(135deg, rgba(255,30,80,0.3), rgba(100,0,20,0.3))"
-                  : "rgba(255,255,255,0.05)",
-                color: loadReady ? "#fff" : "rgba(255,255,255,0.3)",
-                fontSize: "1rem",
-                cursor: loadReady ? "pointer" : "not-allowed",
-                transition: "all 0.3s ease",
-                width: "100%",
-              }}
-            >
-              🌹 Tap to Bloom
+        {!started && (
+          <div className="rose-start-card">
+            <span className="rose-start-mark" aria-hidden="true">✦</span>
+            <p className="rose-start-eyebrow">For you</p>
+            <h1>Let it bloom slowly.</h1>
+            <p>Some things are more beautiful when they take their time.</p>
+            <button type="button" onClick={startBloom}>
+              Begin the bloom
+              <span aria-hidden="true"> →</span>
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Rose scene */}
-      <div className="rose-wrapper" style={{
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        zIndex: 10,
-      }}>
-        {/* Stem group */}
-        <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          {/* Stem */}
-          <div className="rose-stem" style={{
-            width: "8px",
-            height: "0px",
-            background: "linear-gradient(to top, #1a4a1a, #2d7a2d, #3a9a3a)",
-            borderRadius: "4px",
-            transition: `height ${2.2 * speedMultiplier}s cubic-bezier(0.25,1,0.5,1)`,
-            position: "relative",
-            zIndex: 5,
-          }} />
-
-          {/* Leaves */}
-          <div className="leaf-left" style={{
-            position: "absolute",
-            bottom: "40%",
-            left: "-30px",
-            width: "50px",
-            height: "25px",
-            background: "linear-gradient(135deg, #2d7a2d, #1a4a1a)",
-            borderRadius: "50% 0 50% 0",
-            transform: "rotate(-30deg) scaleX(0)",
-            transformOrigin: "right center",
-            transition: `transform ${0.8 * speedMultiplier}s cubic-bezier(0.34,1.56,0.64,1)`,
-            zIndex: 4,
-          }} />
-          <div className="leaf-right" style={{
-            position: "absolute",
-            bottom: "55%",
-            right: "-30px",
-            width: "50px",
-            height: "25px",
-            background: "linear-gradient(135deg, #2d7a2d, #1a4a1a)",
-            borderRadius: "0 50% 0 50%",
-            transform: "rotate(30deg) scaleX(0)",
-            transformOrigin: "left center",
-            transition: `transform ${0.8 * speedMultiplier}s cubic-bezier(0.34,1.56,0.64,1)`,
-            zIndex: 4,
-          }} />
-        </div>
-
-        {/* Calyx */}
-        <div className="calyx" style={{
-          position: "relative",
-          width: "40px",
-          height: "30px",
-          opacity: 0,
-          transition: "opacity 0.5s ease",
-          zIndex: 6,
-        }} />
-
-        {/* Rose head */}
-        <div className="rose-head" style={{
-          position: "relative",
-          width: "130px",
-          height: "130px",
-          transformStyle: "preserve-3d",
-          zIndex: 7,
-        }}>
-          <div className="rose-glow" style={{
-            position: "absolute",
-            inset: "-20px",
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(255,30,80,0.3) 0%, transparent 70%)",
-            filter: "blur(15px)",
-            opacity: 0,
-            transition: "opacity 1s ease",
-          }} />
-          <div className="rose-glow-inner" style={{
-            position: "absolute",
-            inset: "10px",
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(255,80,120,0.2) 0%, transparent 70%)",
-            filter: "blur(8px)",
-            opacity: 0,
-            transition: "opacity 1s ease",
-          }} />
-        </div>
+        <RoseCopy text={roseText} visible={showText} />
+        <RoseButton onClick={onNext} visible={showNext} />
       </div>
+    </RoseShell>
+  );
+}
 
-      {/* End text */}
-      {showText && (
-        <div style={{
-          position: "fixed",
-          bottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
-          left: "50%",
-          transform: "translateX(-50%)",
-          textAlign: "center",
-          zIndex: 150,
-          animation: "fadeInUp 1s ease forwards",
-          padding: "0 24px",
-        }}>
-          <p style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: "clamp(1rem, 3.5vw, 1.4rem)",
-            color: "rgba(255,255,255,0.9)",
-            textShadow: "0 0 20px rgba(255,30,80,0.4)",
-            lineHeight: 1.5,
-          }}>
-            {roseText}
-          </p>
-          <span style={{ fontSize: "1.5rem" }}>🌹</span>
-        </div>
-      )}
-
-      {/* Continue button */}
-      {showNext && (
-        <div style={{
-          position: "fixed",
-          bottom: "calc(24px + env(safe-area-inset-bottom, 0px))",
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 200,
-          animation: "fadeInUp 0.6s ease forwards",
-        }}>
-          <button
-            onClick={onNext}
-            style={{
-              padding: "14px 36px",
-              borderRadius: "999px",
-              border: "1px solid rgba(255,30,80,0.5)",
-              background: "rgba(255,30,80,0.15)",
-              color: "#fff",
-              fontSize: "1rem",
-              cursor: "pointer",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Continue ✨
-          </button>
-        </div>
-      )}
-
-      {/* Falling petals container */}
-      <div className="falling-petals" style={{
-        position: "fixed",
-        inset: 0,
-        pointerEvents: "none",
-        zIndex: 50,
-        overflow: "hidden",
-      }} />
-
+function RoseShell({ children }: { children: ReactNode }) {
+  return (
+    <section className="rose-shell">
       <style>{`
-        .rose-stem.grow {
-          height: 180px !important;
+        .rose-shell {
+          --rose-ink: #f8e9ec;
+          --rose-muted: rgba(248, 233, 236, 0.66);
+          --rose-line: rgba(236, 174, 192, 0.22);
+          --rose-red: #b51f45;
+          --rose-deep: #4c071b;
+          --rose-pink: #f58aa7;
+          min-height: 100dvh;
+          position: relative;
+          isolation: isolate;
+          overflow: hidden;
+          display: grid;
+          place-items: center;
+          padding: calc(38px + env(safe-area-inset-top, 0px)) 20px calc(30px + env(safe-area-inset-bottom, 0px));
+          color: var(--rose-ink);
+          background:
+            radial-gradient(circle at 50% 39%, rgba(146, 18, 55, 0.18), transparent 25%),
+            radial-gradient(circle at 50% 80%, rgba(103, 18, 47, 0.24), transparent 35%),
+            linear-gradient(180deg, #09030b 0%, #15030b 52%, #060207 100%);
         }
-        .leaf-left.visible {
-          transform: rotate(-30deg) scaleX(1) !important;
+        .rose-shell::before,
+        .rose-shell::after {
+          content: "";
+          position: absolute;
+          pointer-events: none;
+          inset: 0;
+          z-index: -1;
         }
-        .leaf-right.visible {
-          transform: rotate(30deg) scaleX(1) !important;
+        .rose-shell::before {
+          opacity: 0.5;
+          background-image:
+            radial-gradient(circle at 18% 22%, rgba(255,255,255,.72) 0 1px, transparent 1.5px),
+            radial-gradient(circle at 82% 28%, rgba(251,177,196,.62) 0 1px, transparent 1.5px),
+            radial-gradient(circle at 74% 78%, rgba(255,255,255,.45) 0 1px, transparent 1.5px);
+          background-size: 240px 220px, 310px 280px, 190px 260px;
         }
-        .calyx.visible {
-          opacity: 1 !important;
+        .rose-shell::after {
+          background: radial-gradient(ellipse at center, transparent 32%, rgba(0,0,0,.72) 100%);
         }
-        .ambient-light.visible {
-          opacity: 1 !important;
+        .rose-bloom-scene {
+          width: min(100%, 540px);
+          min-height: min(760px, calc(100dvh - 22px));
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          text-align: center;
         }
-        .rose-head.blooming .rose-glow,
-        .rose-head.blooming .rose-glow-inner {
-          opacity: 1 !important;
+        .rose-scene-kicker {
+          position: absolute;
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          color: rgba(248,233,236,.42);
+          font: 500 .64rem/1.2 Inter, system-ui, sans-serif;
+          letter-spacing: .24em;
+          text-transform: uppercase;
+          white-space: nowrap;
         }
-        .rose-wrapper.rotating {
-          animation: roseRotate 12s linear infinite;
+        .rose-stage {
+          width: min(100%, 440px);
+          height: clamp(370px, 58dvh, 510px);
+          position: relative;
+          display: grid;
+          place-items: center;
+        }
+        .rose-atmosphere {
+          position: absolute;
+          width: min(72vw, 340px);
+          aspect-ratio: 1;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(205,33,78,.2), transparent 68%);
+          filter: blur(24px);
+          opacity: 0;
+          transition: opacity 2s ease;
+        }
+        .is-started .rose-atmosphere { opacity: 1; }
+        .rose-composition {
+          --rose-ease: cubic-bezier(.16,1,.3,1);
+          position: relative;
+          width: clamp(190px, 58vw, 270px);
+          height: clamp(330px, 52dvh, 420px);
+          display: flex;
+          align-items: center;
+          flex-direction: column;
+          z-index: 2;
+          transform: translateY(10px);
+        }
+        .rose-bloom {
+          position: relative;
+          width: clamp(156px, 46vw, 224px);
+          aspect-ratio: 1;
+          z-index: 4;
+          filter: drop-shadow(0 22px 24px rgba(53,0,14,.5));
         }
         .rose-petal {
           position: absolute;
-          top: 50%;
           left: 50%;
-          transform-origin: bottom center;
-          transform: translateX(-50%) rotate(var(--angle)) translateY(-50%) rotateX(var(--curl)) translateZ(var(--tz)) scale(var(--scale));
-          border-radius: 50% 50% 30% 30%;
-          background: radial-gradient(ellipse at 30% 30%, #ff6b8a, #9a001d 60%, #3d0008);
+          top: 53%;
+          width: var(--petal-width);
+          height: var(--petal-height);
+          transform-origin: 50% 100%;
+          transform: translate(-50%, -100%) rotate(var(--petal-angle)) translateY(calc(var(--petal-radius) * -1)) rotateX(54deg) scale(.08);
           opacity: 0;
-          animation: petalBloom var(--bloom-dur) cubic-bezier(0.34,1.56,0.64,1) var(--delay) forwards;
-          will-change: opacity, transform;
+          border-radius: 50% 50% 39% 39%;
+          border: 1px solid rgba(255,218,226,.16);
+          box-shadow: inset 8px 9px 18px rgba(255,205,219,.16), inset -10px -16px 20px rgba(50,0,12,.3), 0 4px 14px rgba(63,0,16,.25);
+          animation: none;
+          z-index: var(--petal-depth);
+        }
+        .rose-composition.is-blooming .rose-petal {
+          animation: rose-petal-open 1.9s var(--rose-ease) var(--petal-delay) forwards;
+        }
+        .rose-petal--inner { background: radial-gradient(ellipse at 28% 19%, #ffd3df 0%, #ec7394 31%, #8c0f32 82%); }
+        .rose-petal--mid { background: radial-gradient(ellipse at 26% 16%, #ffc1d1 0%, #d8446c 34%, #710a28 84%); }
+        .rose-petal--outer { background: radial-gradient(ellipse at 24% 15%, #f6a3b7 0%, #bb234d 34%, #4b061b 84%); }
+        .rose-petal:nth-child(3n) { animation-duration: 2.15s; }
+        .rose-petal:nth-child(4n) { filter: brightness(.88); }
+        .rose-bud-core {
+          position: absolute;
+          z-index: 40;
+          left: 50%;
+          top: 51%;
+          width: 30%;
+          aspect-ratio: .78;
+          transform: translate(-50%, -50%) scale(.35);
+          opacity: 0;
+          border-radius: 52% 52% 42% 42%;
+          background: linear-gradient(135deg, #ffd8e3, #d7476d 42%, #650923 90%);
+          box-shadow: 0 0 22px rgba(255,103,144,.38), inset -8px -10px 12px rgba(50,0,12,.3);
+          opacity: .74;
+        }
+        .rose-composition.is-blooming .rose-bud-core {
+          animation: rose-core-open 1.5s ease .25s forwards;
+        }
+        .rose-bud-core::after {
+          content: "";
+          position: absolute;
+          top: 10%;
+          left: 28%;
+          width: 26%;
+          height: 40%;
+          border-radius: 50%;
+          background: rgba(255,244,247,.58);
+          filter: blur(2px);
+        }
+        .rose-calyx {
+          position: relative;
+          width: clamp(54px, 15vw, 72px);
+          height: 34px;
+          margin-top: -19px;
+          z-index: 6;
         }
         .rose-sepal {
           position: absolute;
-          top: 50%;
           left: 50%;
+          top: 0;
           width: 18px;
-          height: 32px;
-          transform-origin: bottom center;
-          transform: translateX(-50%) rotate(var(--sepal-angle)) translateY(-50%) rotateX(var(--sepal-curl));
-          border-radius: 50% 50% 30% 30%;
-          background: linear-gradient(to top, #1a4a1a, #2d7a2d);
+          height: 42px;
+          transform-origin: 50% 100%;
+          transform: translateX(-50%) rotate(var(--sepal-angle)) scaleY(.15);
           opacity: 0;
-          animation: sepalReveal 0.6s ease var(--sepal-delay) forwards;
+          border-radius: 50% 50% 18% 18%;
+          background: linear-gradient(160deg, #98b46d, #355a2f 58%, #162d1c);
+          animation: none;
         }
-        .falling-petal-el {
+        .rose-composition.is-blooming .rose-sepal {
+          animation: rose-sepal-open .8s ease var(--sepal-delay) forwards;
+        }
+        .rose-stem {
+          position: relative;
+          width: 13px;
+          height: clamp(190px, 31dvh, 250px);
+          margin-top: -4px;
+          transform-origin: 50% 0;
+          transform: scaleY(0);
+          border-radius: 999px;
+          background: linear-gradient(90deg, #162f1e, #699357 42%, #254c2b 68%, #102218);
+          box-shadow: 5px 0 10px rgba(10,0,2,.25);
+          transform: scaleY(.04);
+        }
+        .rose-composition.is-blooming .rose-stem {
+          animation: rose-stem-grow 1.8s var(--rose-ease) .05s forwards;
+        }
+        .rose-stem::after {
+          content: "";
           position: absolute;
-          width: var(--fp-w);
-          height: var(--fp-h);
-          border-radius: 50% 50% 30% 30%;
-          background: radial-gradient(ellipse at 30% 30%, var(--fp-c1), var(--fp-c2));
-          animation: fallingPetal var(--f-dur) ease-in var(--f-delay) forwards;
+          inset: 0 3px 0 4px;
+          border-radius: inherit;
+          background: linear-gradient(180deg, rgba(209,239,181,.4), transparent 40%);
+        }
+        .rose-leaf {
+          position: absolute;
+          width: clamp(60px, 17vw, 82px);
+          height: clamp(27px, 7vw, 36px);
+          top: 34%;
           opacity: 0;
+          background: linear-gradient(145deg, #8eb26b 0%, #3d713d 46%, #162d1c 100%);
+          box-shadow: inset -10px -6px 10px rgba(10,22,10,.28), 0 4px 8px rgba(8,0,2,.22);
+          transform: rotate(var(--leaf-angle)) scale(0);
         }
-        @keyframes petalBloom {
-          0% { opacity: 0; transform: translateX(-50%) rotate(var(--angle)) translateY(-30%) rotateX(calc(var(--curl) + 40deg)) translateZ(0) scale(0.3); }
-          60% { opacity: 0.9; }
-          100% { opacity: 1; transform: translateX(-50%) rotate(var(--angle)) translateY(-50%) rotateX(var(--curl)) translateZ(var(--tz)) scale(var(--scale)); }
+        .rose-composition.is-blooming .rose-leaf {
+          animation: rose-leaf-open .95s var(--rose-ease) 1.08s forwards;
         }
-        @keyframes sepalReveal {
-          from { opacity: 0; transform: translateX(-50%) rotate(var(--sepal-angle)) translateY(-30%) rotateX(calc(var(--sepal-curl) + 30deg)); }
-          to { opacity: 1; transform: translateX(-50%) rotate(var(--sepal-angle)) translateY(-50%) rotateX(var(--sepal-curl)); }
+        .rose-leaf::after {
+          content: "";
+          position: absolute;
+          width: 80%;
+          height: 1px;
+          top: 50%;
+          left: 10%;
+          background: rgba(219,238,186,.4);
+          transform: rotate(-5deg);
         }
-        @keyframes fallingPetal {
-          0% { opacity: 0; transform: translateY(0) translateX(0) rotate(0deg); }
-          10% { opacity: 0.8; }
-          90% { opacity: 0.6; }
-          100% { opacity: 0; transform: translateY(90vh) translateX(calc(var(--s1) + var(--s2))) rotate(360deg); }
+        .rose-leaf--left {
+          right: 50%;
+          transform-origin: 100% 50%;
+          border-radius: 100% 0 100% 0;
         }
-        @keyframes roseRotate {
-          from { transform: rotateY(0deg); }
-          to { transform: rotateY(360deg); }
+        .rose-leaf--right {
+          left: 50%;
+          top: 54%;
+          transform-origin: 0 50%;
+          border-radius: 0 100% 0 100%;
+          animation-delay: 1.35s;
         }
-        @keyframes pulseIcon {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.08); }
+        .rose-copy {
+          max-width: min(390px, 90vw);
+          min-height: 82px;
+          margin: -2px auto 0;
+          opacity: 0;
+          transform: translateY(16px);
+          transition: opacity 1.1s ease, transform 1.1s var(--rose-ease);
+          position: relative;
+          z-index: 5;
         }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .rose-copy.is-visible { opacity: 1; transform: translateY(0); }
+        .rose-copy p {
+          margin: 0;
+          color: var(--rose-ink);
+          font: 500 clamp(1rem, 3.8vw, 1.25rem)/1.65 "Playfair Display", Georgia, serif;
+          text-wrap: balance;
+          text-shadow: 0 4px 24px rgba(196,31,76,.32);
+        }
+        .rose-copy span {
+          display: block;
+          margin-top: 10px;
+          color: rgba(247,171,191,.74);
+          font-size: .9rem;
+        }
+        .rose-button {
+          opacity: 0;
+          transform: translateY(12px);
+          transition: opacity .7s ease .15s, transform .7s var(--rose-ease) .15s;
+          margin-top: 18px;
+        }
+        .rose-button.is-visible { opacity: 1; transform: translateY(0); }
+        .rose-button button,
+        .rose-start-card button {
+          min-height: 46px;
+          padding: 12px 23px;
+          border: 1px solid rgba(242,157,181,.34);
+          border-radius: 999px;
+          color: #ffeef2;
+          background: rgba(114, 13, 42, .42);
+          box-shadow: 0 8px 24px rgba(28,0,11,.35), inset 0 0 20px rgba(246,115,151,.06);
+          font: 600 .78rem/1 Inter, system-ui, sans-serif;
+          letter-spacing: .06em;
+          cursor: pointer;
+          backdrop-filter: blur(12px);
+          transition: border-color .2s ease, background .2s ease, transform .2s ease;
+        }
+        .rose-button button:hover,
+        .rose-start-card button:hover { border-color: rgba(255,190,207,.7); background: rgba(155,25,61,.5); transform: translateY(-2px); }
+        .rose-start-card {
+          position: absolute;
+          left: 50%;
+          bottom: 7%;
+          transform: translateX(-50%);
+          width: min(330px, calc(100vw - 42px));
+          padding: 18px 22px 20px;
+          border: 1px solid rgba(238,165,185,.18);
+          border-radius: 22px;
+          background: linear-gradient(145deg, rgba(43,9,22,.9), rgba(18,3,12,.82));
+          box-shadow: 0 18px 60px rgba(0,0,0,.32);
+          z-index: 10;
+          animation: rose-card-in .8s var(--rose-ease) both;
+        }
+        .rose-start-mark {
+          display: block;
+          color: #f49bb4;
+          font-size: 1.25rem;
+          margin-bottom: 4px;
+        }
+        .rose-start-eyebrow {
+          margin: 0 0 7px;
+          color: rgba(249,181,199,.62);
+          font: 600 .62rem/1 Inter, system-ui, sans-serif;
+          letter-spacing: .2em;
+          text-transform: uppercase;
+        }
+        .rose-start-card h1 {
+          margin: 0;
+          color: #fff3f6;
+          font: 500 clamp(1.25rem, 5vw, 1.65rem)/1.2 "Playfair Display", Georgia, serif;
+        }
+        .rose-start-card > p:not(.rose-start-eyebrow) {
+          margin: 8px 0 16px;
+          color: var(--rose-muted);
+          font: .78rem/1.55 Inter, system-ui, sans-serif;
+        }
+        .rose-start-card button { background: linear-gradient(135deg, rgba(165,28,68,.78), rgba(90,11,37,.78)); }
+        .rose-falling-petals {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          overflow: hidden;
+          z-index: 7;
+        }
+        .rose-falling-petal {
+          position: absolute;
+          top: -22px;
+          border-radius: 80% 10% 80% 10%;
+          background: linear-gradient(135deg, #f7a4ba, #941436 72%);
+          opacity: 0;
+          filter: drop-shadow(0 3px 5px rgba(80,0,20,.4));
+          animation: rose-fall var(--fall-duration, 8s) linear var(--fall-delay, 0s) infinite;
+        }
+        @keyframes rose-petal-open {
+          0% { opacity: 0; transform: translate(-50%, -100%) rotate(var(--petal-angle)) translateY(calc(var(--petal-radius) * -.42)) rotateX(65deg) scale(.08); }
+          58% { opacity: .94; }
+          100% { opacity: 1; transform: translate(-50%, -100%) rotate(var(--petal-angle)) translateY(calc(var(--petal-radius) * -1)) rotateX(10deg) scale(1); }
+        }
+        @keyframes rose-core-open {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(-12deg); }
+          70% { opacity: 1; transform: translate(-50%, -50%) scale(1.08) rotate(3deg); }
+          100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+        }
+        @keyframes rose-sepal-open {
+          0% { opacity: 0; transform: translateX(-50%) rotate(var(--sepal-angle)) scaleY(.15); }
+          100% { opacity: 1; transform: translateX(-50%) rotate(var(--sepal-angle)) scaleY(1); }
+        }
+        @keyframes rose-stem-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+        @keyframes rose-leaf-open {
+          0% { opacity: 0; transform: rotate(var(--leaf-angle)) scale(0); }
+          65% { opacity: 1; transform: rotate(var(--leaf-angle)) scale(1.08); }
+          100% { opacity: 1; transform: rotate(var(--leaf-angle)) scale(1); }
+        }
+        @keyframes rose-fall {
+          0% { opacity: 0; transform: translate3d(0, -16px, 0) rotate(0); }
+          10% { opacity: .75; }
+          82% { opacity: .54; }
+          100% { opacity: 0; transform: translate3d(calc(var(--petal-drift) * 60px), 560px, 0) rotate(330deg); }
+        }
+        @keyframes rose-card-in { from { opacity: 0; transform: translate(-50%, 18px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        @media (max-height: 700px) {
+          .rose-bloom-scene { min-height: calc(100dvh - 12px); }
+          .rose-stage { height: 340px; }
+          .rose-composition { height: 300px; }
+          .rose-stem { height: 170px; }
+          .rose-start-card { bottom: 2%; padding-block: 13px 15px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .rose-shell * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
         }
       `}</style>
+      {children}
+    </section>
+  );
+}
+
+function RoseComposition({
+  petals,
+  started,
+  reducedMotion = false,
+}: {
+  petals: Array<{
+    id: number;
+    angle: number;
+    width: number;
+    height: number;
+    radius: number;
+    depth: number;
+    tone: string;
+    delay: number;
+  }>;
+  started: boolean;
+  reducedMotion?: boolean;
+}) {
+  return (
+    <div
+      className={`rose-composition ${started ? "is-blooming" : "is-bud"} ${reducedMotion ? "is-static" : ""}`}
+      aria-label="A blooming rose"
+      role="img"
+    >
+      <div className="rose-bloom">
+        {petals.map((petal) => (
+          <span
+            key={petal.id}
+            className={`rose-petal rose-petal--${petal.tone}`}
+            style={{
+              ...cssVar("--petal-angle", `${petal.angle}deg`),
+              ...cssVar("--petal-width", `${petal.width}px`),
+              ...cssVar("--petal-height", `${petal.height}px`),
+              ...cssVar("--petal-radius", `${petal.radius}px`),
+              ...cssVar("--petal-depth", petal.depth),
+              ...cssVar("--petal-delay", `${started ? petal.delay : 9999}s`),
+              ...cssVar("--rose-ease", "cubic-bezier(.16,1,.3,1)"),
+            }}
+          />
+        ))}
+        <span className="rose-bud-core" />
+      </div>
+      <div className="rose-calyx" aria-hidden="true">
+        {[0, 1, 2, 3, 4].map((index) => (
+          <span
+            className="rose-sepal"
+            key={index}
+            style={{
+              ...cssVar("--sepal-angle", `${index * 72 - 144}deg`),
+              ...cssVar("--sepal-delay", `${0.22 + index * 0.07}s`),
+            }}
+          />
+        ))}
+      </div>
+      <div className="rose-stem" aria-hidden="true">
+        <span className="rose-leaf rose-leaf--left" style={cssVar("--leaf-angle", "-28deg")} />
+        <span className="rose-leaf rose-leaf--right" style={cssVar("--leaf-angle", "28deg")} />
+      </div>
+    </div>
+  );
+}
+
+function RoseCopy({ text, visible }: { text: string; visible: boolean }) {
+  return (
+    <div className={`rose-copy ${visible ? "is-visible" : ""}`} aria-live="polite">
+      <p>{text}</p>
+      {visible && <span>Some feelings grow quietly.</span>}
+    </div>
+  );
+}
+
+function RoseButton({ onClick, visible }: { onClick: () => void; visible: boolean }) {
+  return (
+    <div className={`rose-button ${visible ? "is-visible" : ""}`}>
+      <button type="button" onClick={onClick} tabIndex={visible ? 0 : -1}>
+        Continue <span aria-hidden="true">✦</span>
+      </button>
     </div>
   );
 }

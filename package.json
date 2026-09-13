@@ -2,7 +2,7 @@
   "name": "birthday-surprise-workspace",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.32.1",
+  "packageManager": "pnpm@10.26.1",
   "scripts": {
     "typecheck": "tsc -p artifacts/birthday-surprise/tsconfig.json --noEmit",
     "build": "pnpm typecheck && PORT=3000 BASE_PATH=/ pnpm --filter @workspace/birthday-surprise build",

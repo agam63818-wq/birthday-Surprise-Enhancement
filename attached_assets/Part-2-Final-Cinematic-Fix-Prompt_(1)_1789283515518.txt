@@ -1,0 +1,825 @@
+PART 2 — CINEMATIC QUALITY-FIX / FINAL POLISH MASTER PROMPT
+
+PROJECT
+
+Birthday Surprise Enhancement
+
+GitHub: https://github.com/agam63818-wq/birthday-Surprise-Enhancement
+
+Supabase: https://fhzogztljvdazpyefwrr.supabase.co
+
+You are now doing a FINAL QUALITY PASS on the Part 2 implementation.
+
+I have personally tested the current Vercel experience on a real Android
+phone and the current implementation has obvious visual/integration
+problems.
+
+I am attaching screenshots as visual QA references. Treat them as actual
+bug reports, not as design inspiration.
+
+CRITICAL INSTRUCTION: DO NOT just tweak a few CSS values. AUDIT THE
+ACTUAL IMPLEMENTATION, COMPARE IT WITH THE ORIGINAL ANIMATION SOURCE
+FILES THAT WERE PROVIDED IN THE REPOSITORY, AND FIX THE INTEGRATION
+PROPERLY.
+
+The goal is NOT “technically works”. The goal is: “THIS LOOKS LIKE A
+PREMIUM CINEMATIC DIGITAL SURPRISE.”
+
+=========================================================== 1. CURRENT
+VISUAL BUGS OBSERVED
+===========================================================
+
+BUG A — ROSE BLOOM IS VISUALLY BROKEN
+
+The current Rose Bloom scene looks wrong on mobile.
+
+Observed: - The rose head is oversized and visually disconnected from
+the stem. - The stem is unnaturally long. - Leaves appear
+detached/misaligned. - The rose composition does not look like a
+coherent flower. - The bloom is too low/large relative to the
+viewport. - The overall flower looks like separate CSS pieces rather
+than one elegant cinematic rose. - The final text is sitting awkwardly
+over the rose. - The scene feels unfinished compared with the quality of
+the original rose animation source. - The red/pink color treatment is
+too generic. - The Continue button is visually competing with the
+flower.
+
+FIX IT PROPERLY.
+
+DO NOT solve this by simply: - reducing font size - reducing the flower
+scale once - moving the stem - adding random margins - replacing it with
+🌹 emoji - creating a completely new cheap flower animation
+
+Instead:
+
+1.  Re-open the original animation_code.zip/rose implementation in the
+    repo.
+2.  Understand its coordinate system, petal layers, stem, leaves, calyx,
+    perspective and bloom timing.
+3.  Compare the React adaptation line-by-line with the original
+    structure.
+4.  Restore missing relationships/transform origins/positioning.
+5.  Make the flower a single coherent visual composition.
+6.  Use a responsive stage with a controlled max-size.
+7.  Keep the rose centered optically, not just mathematically.
+8.  Ensure stem terminates naturally into the flower head.
+9.  Ensure leaves attach to the stem.
+10. Ensure petals bloom around a consistent flower center.
+11. Ensure the flower does not collide with the text.
+12. Keep the final text below or elegantly integrated into the
+    composition.
+13. Make the Continue CTA appear only after the emotional reveal and
+    keep it visually subordinate.
+14. Respect mobile safe areas.
+
+The rose should feel like:
+
+     stem
+       │
+      leaves
+       │
+    ┌───────┐
+    │  ROSE │
+    │ BLOOM │
+    └───────┘
+       ↓
+
+final message ↓ continue
+
+NOT like:
+
+     huge rose
+        ↓
+
+detached stem ↓ random leaves
+
+ROSE ANIMATION QUALITY TARGET
+
+The flower should: - begin as a small bud / stem - grow naturally -
+reveal leaves - build calyx - bloom petal layers progressively - have
+subtle depth - have restrained atmospheric particles - reach a beautiful
+final pose - then reveal the message - then reveal Continue
+
+The animation should have intentional timing and staging.
+
+Do NOT start all visual elements simultaneously.
+
+The rose must look premium even with animations disabled.
+
+=========================================================== 2. TOP “BACK
+/ 7/17 / NEXT” NAVIGATION IS BAD
+===========================================================
+
+The current screenshots show a top navigation bar like:
+
+Back 7 / 17 · Interactive Letters Next
+
+and:
+
+Back 8 / 17 · Notebook Next
+
+This looks like a developer/debug navigation layer, not a finished
+product.
+
+REMOVE THIS VISUAL STYLE FROM THE RECIPIENT EXPERIENCE.
+
+The recipient should NOT feel like they are browsing an admin wizard.
+
+Replace it with a premium cinematic navigation system.
+
+REQUIRED:
+
+-   Minimal
+-   Elegant
+-   Mobile-first
+-   Contextual
+-   Does not dominate the screen
+-   Does not look like “page 7 of 17”
+-   Does not expose implementation terminology such as scene IDs
+-   Does not consume a huge horizontal row
+
+Preferred concept:
+
+Top: subtle progress indicator / tiny scene label
+
+Bottom: Back Continue →
+
+OR: small progress dots + contextual Continue button
+
+For example:
+
+     · · ● · ·
+
+     [ Continue ✨ ]
+
+Back can be: - a subtle icon/button - shown only when useful -
+positioned safely - not constantly screaming “Back”
+
+The progress system must be based on the ACTIVE V2 SCENE SEQUENCE.
+
+If the creator disables a scene: - it must disappear from progress -
+total count must update - no gaps
+
+If the creator reorders scenes: - progress must follow the new order.
+
+NEVER show: - “7 / 17” - raw scene IDs - developer terminology - giant
+Back / Next text bar
+
+unless the design system intentionally uses it in an extremely subtle
+way.
+
+=========================================================== 3.
+INTERACTIVE LETTERS IS NOT IMPLEMENTED CORRECTLY
+===========================================================
+
+This is the biggest functional/design problem.
+
+Current screenshot shows:
+
+WORDS TO KEEP
+
+Letters for Pushpanjali Open a note. Take your time.
+
+Letter 01 · Open Letter 02 · Close Mile kabhi nahi, but care jayda
+Letter 03 · Open Letter 04 · Open …
+
+This does NOT feel like an “Interactive Letters” cinematic experience.
+
+It looks like a generic list of cards.
+
+That is NOT acceptable.
+
+The original provided notebook animation code must be treated as a major
+reference for the intended experience.
+
+DO NOT simply display a list of letter cards.
+
+Build an actual emotional letter-opening interaction.
+
+=========================================================== 4. REQUIRED
+INTERACTIVE LETTER EXPERIENCE
+===========================================================
+
+The Letters scene should feel like receiving a collection of private
+notes.
+
+Recommended flow:
+
+SCREEN ENTRY
+
+Dark cinematic background.
+
+Small heading:
+
+     WORDS TO KEEP
+
+     Letters for Pushpanjali
+
+     Some words are meant to stay.
+
+Then show elegant sealed envelopes / folded notes / cards.
+
+Example:
+
+        ✉
+     Letter 01
+     "Open me"
+
+        ✉
+     Letter 02
+     "For the days you need a smile"
+
+        ✉
+     Letter 03
+     "One little memory"
+
+The exact visual can differ, but it must feel premium.
+
+CLICK LETTER
+
+When user taps a letter:
+
+1.  Card/envelope should animate.
+2.  It should visually open.
+3.  Content should reveal with a cinematic transition.
+4.  Text should animate in naturally.
+5.  User should be able to close it and open another.
+6.  State must remain stable.
+7.  Do not navigate to a separate route.
+8.  Do not reload the page.
+
+Possible animation: - envelope unfolds - paper slides out - subtle blur
+-> sharp - text fade/slide - tiny ambient particles
+
+Keep it tasteful.
+
+NO: - generic accordion - plain HTML details element - giant blue/purple
+rectangles - developer-looking “Open/Close” labels
+
+=========================================================== 5. NOTEBOOK
+MUST ACTUALLY FEEL LIKE A NOTEBOOK
+===========================================================
+
+Current Notebook screenshot is technically present but visually
+disconnected from the Midnight Rose experience.
+
+The brown desk + notebook is visually very different from the rest of
+the cinematic experience.
+
+Do NOT destroy the original notebook character, but integrate it into
+the overall design language.
+
+Requirements:
+
+-   retain recognizable 3D page-turn notebook character
+-   preserve paper texture / ruled-paper feel
+-   preserve page-turn animation
+-   improve responsive scaling
+-   improve spacing
+-   ensure it fits on mobile without clipping
+-   integrate ambient lighting with the selected theme
+-   keep text readable
+-   no awkward giant empty areas
+-   no random emoji as the main visual
+-   no broken page proportions
+
+For Midnight Rose: - desk can remain warm/dark - lighting should subtly
+pick up wine/champagne tones - paper should remain believable - do not
+turn the notebook into a neon UI
+
+Navigation: - Previous / Next should be inside the notebook interaction
+area or very close to it - Continue should appear after the final page -
+no giant external “Back / 8/17 / Notebook / Next” developer bar
+
+=========================================================== 6.
+IMPORTANT: ORIGINAL ANIMATION SOURCE MUST BE USED
+===========================================================
+
+The repository contains animation source code from:
+
+-   romantic_butterfly
+-   animated_birthday
+-   you_and_me
+-   notebook
+-   rose
+
+Do not create approximations when the original animation code already
+exists.
+
+For each scene:
+
+A. inspect original source B. inspect current React adaptation C.
+identify missing visual/animation behavior D. restore important
+structure E. adapt only the content/configuration layer F. test mobile
+G. test desktop H. test reduced motion I. test unmount/remount
+
+The original animation should be the visual foundation.
+
+React should provide: - lifecycle - config - navigation -
+accessibility - mute - responsive wrapper
+
+Do not replace the animation with a simplified fake version.
+
+=========================================================== 7. BUTTERFLY
+SCENE NEEDS PREMIUM POLISH
+===========================================================
+
+Current butterfly scene is visually much better than the rose/letters,
+but it still looks like a standalone animation inserted into a generic
+page.
+
+Make it feel like part of one continuous story.
+
+Requirements:
+
+-   preserve butterfly swarm animation
+-   keep black cinematic background
+-   reduce visual noise
+-   typography hierarchy should be intentional
+-   personalized message should come from config
+-   butterfly reveal should lead naturally into the next scene
+-   CTA should appear after the main visual reveal
+-   no giant top navigation
+-   no excessive particles
+-   no hardcoded romantic wording that conflicts with Friendship/Family/
+    Congratulations/etc.
+
+For non-romantic occasions, wording must adapt.
+
+=========================================================== 8. GIFT
+REVEAL NEEDS TO BE OCCASION-AWARE
+===========================================================
+
+Do not make every occasion look like a birthday.
+
+Examples:
+
+Birthday: A little surprise for you 🎁
+
+Anniversary: A little memory, wrapped just for you.
+
+Friendship: Something small for one very special friend.
+
+Congratulations: You did it. This one’s for you. 🎉
+
+Just Because: No occasion needed.
+
+Custom: use creator’s message.
+
+All wording must be config-driven.
+
+=========================================================== 9. ONE
+UNIFIED CINEMATIC DESIGN SYSTEM
+===========================================================
+
+Current scenes look like separate mini-projects.
+
+Fix this.
+
+They must feel like one product.
+
+Create a shared V2 cinematic shell/design system.
+
+Common: - background treatment - typography - spacing - button system -
+progress system - transitions - safe-area handling - focus states -
+reduced motion - ambient effects - sound/mute UI
+
+Each scene may have its own visual identity, but they should belong to
+the same world.
+
+Think:
+
+     Scene 1
+       ↓
+
+cinematic transition ↓ Scene 2 ↓ cinematic transition ↓ Scene 3
+
+NOT:
+
+     unrelated webpage
+       ↓
+     unrelated demo
+       ↓
+     unrelated animation
+       ↓
+     unrelated webpage
+
+=========================================================== 10. REMOVE
+DEBUG / ADMIN-LIKE FEEL FROM RECIPIENT EXPERIENCE
+===========================================================
+
+Recipient view must never expose: - scene IDs - developer labels - raw
+progress numbers - debug controls - config terms - “Saved experience”
+unless there is a genuine intentional status message - implementation
+terminology
+
+The recipient is opening a surprise, not an editor.
+
+=========================================================== 11.
+CUSTOMIZE / CREATOR PREVIEW
+===========================================================
+
+Do NOT accidentally remove creator functionality while fixing recipient
+UX.
+
+Creator Preview must: - render the same canonical config - render the
+same V2 scenes - show the actual recipient experience - optionally have
+a clearly separate creator preview toolbar if needed
+
+Keep editor-only controls OUT of recipient/public mode.
+
+=========================================================== 12. AI
+FUNCTION — AUDIT IT DEEPLY
+===========================================================
+
+I specifically want you to verify that the AI function is actually fully
+integrated, not merely visually present.
+
+Inspect:
+
+-   AIAssistantChat.tsx
+-   Dashboard.tsx
+-   configPatch utilities
+-   Supabase edge functions
+-   generate-surprise-structure
+-   extract-chat-field
+-   canonical V2 schema
+-   migration/normalization
+-   persistence flow
+
+Verify the entire chain:
+
+User request ↓ AI provider ↓ structured response ↓ validated patch ↓
+review UI ↓ Apply ↓ canonical config ↓ Customize updates ↓ Preview
+updates ↓ Supabase save ↓ reload ↓ same config
+
+TEST REAL REQUESTS SUCH AS:
+
+“Turn on the rose scene.”
+
+“Move the rose scene to the end.”
+
+“Disable notebook.”
+
+“Use Midnight Rose.”
+
+“Make this an anniversary surprise.”
+
+“Add a letter saying: …”
+
+“Change the butterfly message.”
+
+“Make the experience more cinematic.”
+
+“Add a memory page.”
+
+“Remove the fourth letter.”
+
+Verify each request produces only supported config changes.
+
+=========================================================== 13. AI
+SAFETY / VALIDATION
+===========================================================
+
+AI must NEVER be allowed to invent:
+
+features.randomMagic scene.superUltra theme.fakeTheme arbitrary DOM
+instructions HTML injection arbitrary JavaScript unsupported config
+paths
+
+Only allow schema/registry-approved paths.
+
+Unknown paths: - reject - explain - do not partially apply
+
+Multi-change transaction: - validate entire patch first - then apply
+atomically
+
+Existing API-key security must remain: - never persist user API key -
+never log user API key - clear ephemeral key after request
+
+=========================================================== 14. AI
+REVIEW UI ===========================================================
+
+When AI proposes changes, show a polished review panel.
+
+Example:
+
+AI wants to change:
+
+✓ Enable Rose Bloom ✓ Move Rose Bloom to scene 10 ✓ Change final message
+✓ Switch theme to Midnight Rose
+
+[ Cancel ] [ Apply Changes ]
+
+After Apply:
+
+✓ Changes applied
+
+[ Undo ]
+
+Do not make the AI silently mutate the configuration without review if
+the current architecture is intended to support review.
+
+=========================================================== 15.
+CANONICAL CONFIG SYNC
+===========================================================
+
+This is mandatory.
+
+If Customize changes:
+
+    canonical config
+         ↓
+    Preview + AI
+
+If AI changes:
+
+    canonical config
+         ↓
+    Customize + Preview
+
+No stale copies.
+
+No hidden second state tree.
+
+No separate “AI config”.
+
+No separate “Preview config”.
+
+=========================================================== 16. SCENE
+ENABLE / DISABLE
+===========================================================
+
+When OFF:
+
+-   scene disappears from experience
+-   scene disappears from progress
+-   scene is not initialized
+-   heavy assets are not lazy-loaded unnecessarily
+-   settings remain saved
+
+When ON again: - previous settings return
+
+Do not delete settings when toggling OFF.
+
+=========================================================== 17. SCENE
+REORDER ===========================================================
+
+Creator can drag:
+
+Intro Butterfly Gift Message Memory You & Me Letters Notebook Rose Final
+
+into any valid order.
+
+Recipient follows exact order.
+
+Progress follows exact order.
+
+No hardcoded “page 7 = notebook” assumptions.
+
+=========================================================== 18.
+MOBILE-FIRST REQUIREMENTS
+===========================================================
+
+Test at:
+
+360 x 800 390 x 844 412 x 915
+
+and desktop.
+
+Specifically inspect:
+
+-   rose
+-   butterfly
+-   letters
+-   notebook
+-   gift
+-   final message
+
+No: - horizontal scroll - clipped CTA - text behind flowers - flower
+off-screen - huge empty blank space - navigation overlap - browser
+safe-area collision
+
+Use: - 100dvh - safe-area insets - responsive clamp() - max-width -
+controlled aspect ratios where appropriate.
+
+=========================================================== 19.
+PERFORMANCE ===========================================================
+
+Do not sacrifice animation quality.
+
+But: - lazy load heavy scenes - only mount active scene - clean timers -
+clean RAF - clean listeners - avoid unnecessary DOM recreation - no
+runaway intervals - no infinite animation after scene unmount - respect
+reduced motion
+
+=========================================================== 20.
+ACCESSIBILITY
+===========================================================
+
+All interactive elements: - keyboard accessible - semantic buttons -
+visible focus - aria labels where necessary - reduced motion - readable
+contrast
+
+Letter opening must work with keyboard.
+
+Notebook navigation must work with keyboard.
+
+=========================================================== 21. LEGACY
+COMPATIBILITY
+===========================================================
+
+Do NOT break V1.
+
+Existing saved surprises must still work.
+
+Do NOT blindly mass-migrate all existing Supabase rows.
+
+Do NOT modify payment behavior.
+
+Do NOT add a payment system.
+
+Do NOT remove existing photo/audio/customization functionality.
+
+=========================================================== 22. SUPABASE
+===========================================================
+
+Use existing:
+
+project: fhzogztljvdazpyefwrr
+
+Keep:
+
+surprises.config JSONB
+
+Do not create a second configuration database.
+
+Do not destroy existing rows.
+
+Do not expose private data.
+
+Inspect public slug retrieval and existing RLS before modifying
+anything.
+
+=========================================================== 23. FINAL
+VISUAL QUALITY BAR
+===========================================================
+
+Before declaring success, ask:
+
+“If I showed this to someone as a premium digital gift product, would
+they think this is a polished product or a collection of demo
+components?”
+
+The answer must be:
+
+POLISHED PRODUCT.
+
+The experience should feel closer to:
+
+-   cinematic interactive invitation
+-   premium digital gift
+-   emotional story
+-   personalized interactive memory
+
+and NOT:
+
+-   dashboard
+-   slideshow
+-   generic card list
+-   developer demo
+-   collection of disconnected animations
+
+=========================================================== 24. DO NOT
+CHEAT ===========================================================
+
+Do NOT fix the screenshot by hiding the broken scene.
+
+Do NOT: - disable Rose - disable Letters - replace Notebook with a
+static image - remove navigation entirely without replacement - replace
+animations with emojis - replace animation with a video/iframe -
+hardcode one person’s name - hardcode one occasion - delete
+functionality to make QA pass
+
+FIX THE ROOT CAUSE.
+
+=========================================================== 25. REQUIRED
+TEST MATRIX ===========================================================
+
+Run all:
+
+LEGACY: - birthday - rakshabandhan - mothersday - fathersday - loveday -
+custom
+
+V2: - birthday - anniversary - friendship - mothersday - fathersday -
+rakshabandhan - congratulations - romantic - justbecause - custom
+
+SCENES: - all enabled - each disabled individually - arbitrary reorder
+
+ANIMATIONS: - Butterfly - Gift - You & Me - Letters - Notebook - Rose
+
+FEATURES: - theme switching - mute - reduced motion - missing image -
+empty notebook - multiple notebook pages - multiple letters - AI patch -
+AI cancel - AI undo
+
+=========================================================== 26. BROWSER
+QA IS MANDATORY
+===========================================================
+
+Actually run the app.
+
+Do not rely only on TypeScript/build.
+
+Check real browser rendering.
+
+Use mobile viewport.
+
+Inspect the exact scenes shown in the supplied screenshots.
+
+Compare: - before - after
+
+Especially verify:
+
+ROSE: [ ] flower coherent [ ] stem connected [ ] leaves connected [ ]
+petals centered [ ] text positioned correctly [ ] CTA positioned
+correctly [ ] no clipping
+
+LETTERS: [ ] not generic cards [ ] opening interaction works [ ] closing
+works [ ] content animates [ ] multiple letters work [ ] responsive
+
+NOTEBOOK: [ ] page turn works [ ] mobile fit [ ] no clipping [ ] theme
+integration [ ] navigation polished
+
+NAV: [ ] no ugly “7/17” [ ] no developer labels [ ] active scene
+progress correct [ ] reorder reflected
+
+AI: [ ] request -> patch [ ] validation [ ] review [ ] apply [ ] undo [
+] persistence [ ] preview sync
+
+=========================================================== 27. CODE
+QUALITY ===========================================================
+
+After fixes:
+
+-   TypeScript typecheck must pass
+-   production build must pass
+-   existing tests must pass
+-   new tests should be added for root causes fixed
+-   no console errors
+-   no React key warnings
+-   no hydration/runtime errors
+-   no obvious memory leaks
+
+Do not silence errors just to get a green build.
+
+=========================================================== 28. FINAL
+DELIVERABLE ===========================================================
+
+Implement the fixes directly.
+
+Then report:
+
+1.  Root causes found
+2.  Files changed
+3.  Rose fixes
+4.  Letters fixes
+5.  Notebook fixes
+6.  Navigation fixes
+7.  AI audit result
+8.  Config synchronization result
+9.  Supabase changes, if any
+10. Typecheck result
+11. Build result
+12. Test result
+13. Browser/mobile QA result
+14. Remaining limitations
+15. Commit SHA
+16. Deployment status
+
+NEVER CLAIM SUCCESS WITHOUT ACTUALLY VERIFYING IT.
+
+=========================================================== FINAL
+PRODUCT TARGET
+===========================================================
+
+The user opens the surprise.
+
+It should feel like:
+
+        ✦
+
+something made just for you ↓ butterflies ↓ a little gift ↓ your
+memories ↓ you & me ↓ letters to keep ↓ notebook ↓ a rose blooms ↓ final
+message ↓ ✨
+
+Every transition should feel intentional.
+
+Every scene should feel personalized.
+
+Every animation should feel alive.
+
+The entire experience should feel like ONE beautiful digital surprise.
+
+Do not stop at “it works”.
+
+Make it feel PREMIUM.

@@ -1316,10 +1316,16 @@ button.dash-mobile-dropdown-item.is-current:hover {
 .cinematic-experience { background: radial-gradient(ellipse at 50% 20%, var(--plum-deep), var(--bg-deep)); overflow-x: clip; }
 .cinematic-experience .scene-content { overflow-wrap: anywhere; }
 .cinematic-experience :focus-visible, .v2-editor :focus-visible { outline: 2px solid #e8c98a; outline-offset: 4px; }
-.scene-navigation { position: sticky; top: 0; z-index: 210; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 50px 8px 8px; background: var(--bg-deep); border-bottom: 1px solid var(--border); font: 12px Inter, sans-serif; }
-.scene-navigation button { min-height: 44px; padding: 8px; border-radius: 8px; }
-.scene-navigation button:disabled { opacity: .35; }
-.scene-navigation span { text-align: center; }
+.scene-navigation { position: sticky; top: 0; z-index: 210; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; min-height: 54px; padding: 5px 10px; background: color-mix(in srgb, var(--bg-deep) 86%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent); backdrop-filter: blur(14px); font: 12px Inter, sans-serif; }
+.scene-nav-arrow { min-height: 44px; padding: 8px; border: 0; border-radius: 50%; color: var(--ink-soft); background: transparent; cursor: pointer; font-size: 18px; line-height: 1; transition: color .2s ease, background .2s ease, transform .2s ease; }
+.scene-nav-arrow:hover:not(:disabled) { color: var(--ink); background: rgba(255,255,255,.08); transform: scale(1.05); }
+.scene-nav-arrow:disabled { opacity: .24; cursor: default; }
+.scene-progress { min-width: 0; display: grid; justify-items: center; gap: 6px; }
+.scene-progress-label { max-width: 100%; overflow: hidden; color: var(--ink-soft); text-align: center; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+.scene-progress-dots { display: flex; align-items: center; justify-content: center; gap: 5px; width: min(100%, 280px); }
+.scene-progress-dot { width: 5px; height: 5px; flex: 0 0 auto; border-radius: 50%; background: color-mix(in srgb, var(--ink-soft) 38%, transparent); transition: width .3s ease, border-radius .3s ease, background .3s ease, transform .3s ease; }
+.scene-progress-dot.is-complete { background: color-mix(in srgb, var(--violet) 68%, transparent); }
+.scene-progress-dot.is-current { width: 20px; border-radius: 999px; background: var(--violet); box-shadow: 0 0 12px color-mix(in srgb, var(--violet) 55%, transparent); }
 @media (prefers-reduced-motion: reduce) {
   .experience-root *, .experience-root *::before, .experience-root *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
