@@ -175,7 +175,7 @@ export type Config = BaseConfig & {
   // Occasion type — determines which occasion-specific pages/copy to show.
   // Defaults to "birthday" when absent so every existing row keeps working.
   // "custom" is reserved for future use and is not exposed in the UI yet.
-  occasionType?: "birthday" | "rakshabandhan" | "fathersday" | "mothersday" | "loveday" | "custom";
+  occasionType?: "birthday" | "rakshabandhan" | "fathersday" | "mothersday" | "loveday" | "custom" | "anniversary" | "friendship" | "congratulations" | "romantic" | "justbecause";
 
   // Color theme — maps to a ThemePresetId defined in src/lib/themePresets.ts.
   // Defaults to "midnightPurple" (= the current live look) when absent.

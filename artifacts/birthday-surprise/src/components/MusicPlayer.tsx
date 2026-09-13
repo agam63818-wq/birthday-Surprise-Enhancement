@@ -23,6 +23,10 @@ import { useConfig } from "@/contexts/ConfigContext";
 // ─── Module-level singletons ───────────────────────────────────────
 let _bgAudio:   HTMLAudioElement | null = null;
 let _songAudio: HTMLAudioElement | null = null;
+let _birthdayCtx: AudioContext | null = null;
+let _generation = 0;
+const _pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+const later = (fn: () => void, ms: number) => { const t = setTimeout(() => { _pendingTimers.delete(t); fn(); }, ms); _pendingTimers.add(t); return t; };
 let _bgStarted  = false;   // has bg audio ever been created?
 let _bgPlaying  = false;   // is it currently unpaused?
 
@@ -61,6 +65,8 @@ function fadeTo(audio: HTMLAudioElement, target: number, ms = 1200, onDone?: () 
 function playHappyBirthdayFallback() {
   try {
     const ctx = new AudioContext();
+    _birthdayCtx = ctx;
+    later(() => { void ctx.close().catch(() => {}); if (_birthdayCtx === ctx) _birthdayCtx = null; }, 8000);
     const notes = [261, 261, 293, 261, 349, 329, 261, 261, 293, 261, 392, 349];
     const durs  = [0.3, 0.15, 0.4, 0.4, 0.4, 0.8, 0.3, 0.15, 0.4, 0.4, 0.4, 0.8];
     let t = ctx.currentTime + 0.1;
@@ -131,6 +137,7 @@ export function useBackgroundMusic() {
       return;
     }
     _bgStarted = true;
+    const generation = ++_generation;
 
     const audio = new Audio(config.audio.backgroundMusic);
     audio.loop = true;
@@ -139,11 +146,13 @@ export function useBackgroundMusic() {
 
     audio.play()
       .then(() => {
+        if (generation !== _generation) { audio.pause(); return; }
         _bgPlaying = true;
         setPlaying(true);
         fadeTo(audio, BG_VOL, 1800); // gentle fade-in for Song 1
       })
       .catch(() => {
+        if (generation !== _generation) return;
         // mp3 blocked/missing — Web Audio fallback only if allowed
         _bgAudio = null;
         if (fallbackAllowed) {
@@ -167,12 +176,17 @@ export function useBackgroundMusic() {
       _songAudio = null;
       fadeTo(s, 0, 500, () => { s.pause(); });
     }
+    _generation++;
+    _pendingTimers.forEach(clearTimeout); _pendingTimers.clear();
+    void _birthdayCtx?.close().catch(() => {}); _birthdayCtx = null;
+    if (!_bgAudio) _bgStarted = false;
     stopBgTones();
     _bgPlaying = false;
     setPlaying(false);
   }, []);
 
   const playCakeSong = useCallback(() => {
+    const generation = _generation;
     // 1. Kill any existing song instance
     if (_songAudio) {
       clearFade(_songAudio);
@@ -191,13 +205,14 @@ export function useBackgroundMusic() {
     _songAudio = song;
 
     song.play()
-      .then(() => { fadeTo(song, SONG_VOL, 1400); })
+      .then(() => { if (generation !== _generation) { song.pause(); return; } fadeTo(song, SONG_VOL, 1400); })
       .catch(() => {
+        if (generation !== _generation) return;
         _songAudio = null;
         if (fallbackAllowed) {
           playHappyBirthdayFallback();
           // Restore bg volume after fallback tones (~8s)
-          setTimeout(() => { if (_bgAudio) fadeTo(_bgAudio, BG_VOL, 2200); }, 8000);
+          later(() => { if (_bgAudio) fadeTo(_bgAudio, BG_VOL, 2200); }, 8000);
         } else if (_bgAudio) {
           fadeTo(_bgAudio, BG_VOL, 1500);
         }
@@ -211,7 +226,7 @@ export function useBackgroundMusic() {
     song.addEventListener("ended", handleEnd, { once: true });
 
     // 5. Safety: hand back to Song 1 after 35s even if \"ended\" never fires
-    setTimeout(() => {
+    later(() => {
       if (_songAudio === song) {
         fadeTo(song, 0, 1500, () => { song.pause(); _songAudio = null; });
       }
@@ -219,8 +234,17 @@ export function useBackgroundMusic() {
     }, 35000);
   }, [config.audio.birthdaySong, fallbackAllowed]);
 
-  // Sync playing state on mount
-  useEffect(() => { setPlaying(_bgPlaying); }, []);
+  useEffect(() => {
+    setPlaying(false);
+    return () => {
+      _generation++;
+      [_bgAudio, _songAudio].forEach(a => { if (a) { clearFade(a); a.pause(); a.src = ""; } });
+      _bgAudio = null; _songAudio = null; _bgStarted = false; _bgPlaying = false;
+      _fadeTimers.forEach(clearInterval); _fadeTimers.clear();
+      _pendingTimers.forEach(clearTimeout); _pendingTimers.clear();
+      stopBgTones(); void _birthdayCtx?.close().catch(() => {}); _birthdayCtx = null;
+    };
+  }, [config.audio.backgroundMusic, config.audio.birthdaySong]);
 
   // Fix H: recover music after the page is backgrounded and resumed.
   // Mobile browsers may pause audio when the tab is hidden; resume it

@@ -1311,3 +1311,41 @@ button.dash-mobile-dropdown-item.is-current:hover {
   );
   animation: afterglow-in 2.2s var(--ease-smooth) both;
 }
+
+/* V2 experience styles never escape the experience root. */
+.cinematic-experience { background: radial-gradient(ellipse at 50% 20%, var(--plum-deep), var(--bg-deep)); overflow-x: clip; }
+.cinematic-experience .scene-content { overflow-wrap: anywhere; }
+.cinematic-experience :focus-visible, .v2-editor :focus-visible { outline: 2px solid #e8c98a; outline-offset: 4px; }
+.scene-navigation { position: sticky; top: 0; z-index: 210; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 50px 8px 8px; background: var(--bg-deep); border-bottom: 1px solid var(--border); font: 12px Inter, sans-serif; }
+.scene-navigation button { min-height: 44px; padding: 8px; border-radius: 8px; }
+.scene-navigation button:disabled { opacity: .35; }
+.scene-navigation span { text-align: center; }
+@media (prefers-reduced-motion: reduce) {
+  .experience-root *, .experience-root *::before, .experience-root *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+.v2-editor { color: #f5e9e2; display: grid; gap: 16px; margin-bottom: 28px; font-family: Inter, sans-serif; }
+.v2-panel { min-width: 0; padding: clamp(16px, 4vw, 26px); border: 1px solid #61404b66; border-radius: 18px; background: linear-gradient(145deg, #21141bdd, #100c12); display: grid; gap: 16px; }
+.v2-panel h2 { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(24px, 5vw, 32px); line-height: 1.2; }
+.v2-panel h3, .v2-panel summary { font-size: 18px; font-weight: 600; }
+.v2-panel summary { cursor: pointer; padding: 8px 0; min-height: 44px; }
+.v2-panel p { font-size: 13px; line-height: 1.65; color: #c5b1b9; }
+.v2-panel .v2-eyebrow { color: #dfc398; letter-spacing: .16em; font-size: 10px; }
+.v2-editor button, .canonical-status button { min-height: 44px; padding: 10px 14px; border: 1px solid #ad7b8960; border-radius: 10px; background: #42233088; color: #f5e9e2; font-size: 12px; cursor: pointer; }
+.v2-editor button:disabled, .canonical-status button:disabled { opacity: .4; cursor: not-allowed; }
+.v2-editor label { display: grid; gap: 8px; font-size: 13px; }
+.v2-editor select { display: block; width: 100%; padding: 12px; min-height: 44px; border-radius: 10px; border: 1px solid #ad7b8960; background: #160e15; color: #f5e9e2; }
+.v2-themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 10px; }
+.v2-themes button { text-align: left; background: #160e15; }
+.v2-themes button[aria-pressed=true] { border-color: #e8c98a; box-shadow: 0 0 0 1px #e8c98a; }
+.v2-swatch { display: block; height: 45px; border-radius: 6px; margin-bottom: 10px; }
+.v2-scene-list { display: grid; gap: 10px; list-style: none; padding: 0; }
+.v2-scene-card, .v2-page-editor { border: 1px solid #ad7b8933; border-radius: 12px; padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.v2-scene-title { display: flex; align-items: flex-start; gap: 12px; }
+.v2-scene-title > span { font-family: Georgia, serif; color: #dfc398; padding-top: 2px; }
+.v2-scene-title strong { font-size: 14px; }
+.v2-scene-title small { font-size: 10px; color: #dfc398; }
+.v2-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.canonical-status { position: relative; z-index: 6; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; padding: 10px 16px; background: #160e15; color: #e5d3dc; font: 12px Inter, sans-serif; }
+.cinematic-experience p { font-family: var(--v2-body-font, Inter, sans-serif) !important; }
+.cinematic-experience .scene-content h1, .cinematic-experience .scene-content h2 { font-family: 'Playfair Display', Georgia, serif; }

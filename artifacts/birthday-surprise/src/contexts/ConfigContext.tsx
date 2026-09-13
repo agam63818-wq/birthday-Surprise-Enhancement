@@ -8,7 +8,7 @@ import type { NormalizedConfig, SurpriseConfig } from "@/lib/v2/schema";
 // user's own row from `surprises` (dashboard preview), or a publicly
 // fetched row via the `get_surprise_by_slug` RPC (public share page) —
 // without every page needing a `config` prop threaded through it.
-const ConfigContext = createContext<Config>(defaultConfig);
+const ConfigContext = createContext<SurpriseConfig>(defaultConfig);
 
 // v2: normalized config context (always fully resolved)
 const NormalizedConfigContext = createContext<NormalizedConfig | null>(null);
@@ -17,7 +17,7 @@ export function ConfigProvider({
   config,
   children,
 }: {
-  config: Config;
+  config: SurpriseConfig;
   children: ReactNode;
 }) {
   // Normalize once per config change (pure, non-mutating)
@@ -35,7 +35,7 @@ export function ConfigProvider({
   );
 }
 
-export function useConfig(): Config {
+export function useConfig(): SurpriseConfig {
   return useContext(ConfigContext);
 }
 

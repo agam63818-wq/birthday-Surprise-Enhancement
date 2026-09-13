@@ -16,7 +16,7 @@ export const OCCASION_IDS: OccasionId[] = [
   "fathersday",
   "mothersday",
   "loveday",
-  "custom",
+  "custom", "anniversary", "friendship", "congratulations", "romantic", "justbecause",
 ];
 
 // ── Display metadata ──────────────────────────────────────────────────────
@@ -24,6 +24,11 @@ export const OCCASION_META: Record<
   OccasionId,
   { label: string; emoji: string; heroLabel: string }
 > = {
+  anniversary: { label: "Anniversary", emoji: "", heroLabel: "Anniversary" },
+  friendship: { label: "Friendship", emoji: "", heroLabel: "Friendship" },
+  congratulations: { label: "Congratulations", emoji: "", heroLabel: "Congratulations" },
+  romantic: { label: "Romantic", emoji: "", heroLabel: "Romantic" },
+  justbecause: { label: "Just Because", emoji: "", heroLabel: "Just Because" },
   birthday:      { label: "Birthday",      emoji: "🎂", heroLabel: "Birthday" },
   rakshabandhan: { label: "Rakshabandhan", emoji: "🪢", heroLabel: "Rakhi" },
   fathersday:    { label: "Father's Day",  emoji: "👨‍👧", heroLabel: "Father's Day" },
@@ -38,6 +43,11 @@ export const OCCASION_DEFAULTS: Record<
   OccasionId,
   { title: string; message: string; buttonText: string; siblingName?: string }
 > = {
+  anniversary: { title: "Happy Anniversary", message: "A little reminder of how much you mean to me.", buttonText: "Continue" },
+  friendship: { title: "Happy Friendship", message: "A little reminder of how much you mean to me.", buttonText: "Continue" },
+  congratulations: { title: "Congratulations", message: "A little reminder of how much you mean to me.", buttonText: "Continue" },
+  romantic: { title: "Romantic", message: "A little reminder of how much you mean to me.", buttonText: "Continue" },
+  justbecause: { title: "Just Because", message: "A little reminder of how much you mean to me.", buttonText: "Continue" },
   birthday: {
     title: "Happy Birthday! 🎂",
     message: "Aaj ka din sirf tumhara hai. Dil se dua hai ki ye saal tumhare liye bahut khaas ho.",

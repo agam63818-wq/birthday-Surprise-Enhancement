@@ -1,4 +1,4 @@
-import type { Config } from "@/config";
+import type { SurpriseConfig as Config } from "@/lib/v2/schema";
 
 // Mirrors the `public.surprises` row shape (table/RLS/trigger already
 // exist in Supabase — this is a read/write client-side type only).

@@ -14,7 +14,9 @@ import AudioField from "@/components/dashboard/AudioField";
 import PaywallLock from "@/components/dashboard/PaywallLock";
 import FontPicker from "@/components/dashboard/FontPicker";
 import { supabase } from "@/lib/supabase";
-import type { Config } from "@/config";
+import type { SurpriseConfig as Config } from "@/lib/v2/schema";
+import V2ExperienceEditor from "./V2ExperienceEditor";
+import { validateV2Config } from "../../../supabase/functions/_shared/configPatch";
 import type { SurpriseRow } from "@/types/surprise";
 import type { FontPresetId } from "@/lib/fontPresets";
 import {
@@ -234,63 +236,24 @@ export default function CustomizeForm({
   surprise,
   onSurpriseChange,
   onSaved,
+  config,
+  onConfigChange,
 }: {
   surprise: SurpriseRow;
+  config: Config;
+  onConfigChange: (config: Config) => void;
   onSurpriseChange: (updated: SurpriseRow) => void;
   onSaved: (updated: SurpriseRow) => void;
 }) {
-  // On mount, restore a saved draft if one exists and differs from the DB config.
-  const [config, setConfig] = useState<Config>(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY(surprise.id));
-      if (raw) {
-        const draft = JSON.parse(raw) as Config;
-        if (JSON.stringify(draft) !== JSON.stringify(surprise.config)) {
-          return draft; // will show the "restored" banner below
-        }
-      }
-    } catch { /* ignore corrupt draft */ }
-    return structuredClone(surprise.config);
-  });
-
+  const setConfig = (next: Config | ((current: Config) => Config)) => onConfigChange(typeof next === "function" ? next(config) : next);
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<string[]>(["name"]);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
-  // Show the "restored draft" notice only when we actually loaded a draft.
-  const [draftRestored, setDraftRestored] = useState<boolean>(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY(surprise.id));
-      if (raw) {
-        const draft = JSON.parse(raw) as Config;
-        return JSON.stringify(draft) !== JSON.stringify(surprise.config);
-      }
-    } catch { /* ignore */ }
-    return false;
-  });
-
-  // Debounced autosave to localStorage (~500 ms after last change).
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      try {
-        localStorage.setItem(DRAFT_KEY(surprise.id), JSON.stringify(config));
-      } catch { /* storage full — ignore */ }
-    }, 500);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [config, surprise.id]);
-
-  const clearDraft = () => {
-    try { localStorage.removeItem(DRAFT_KEY(surprise.id)); } catch { /* ignore */ }
-    setDraftRestored(false);
-  };
-
-  const discardDraft = () => {
-    clearDraft();
-    setConfig(structuredClone(surprise.config));
-  };
+  const draftRestored = false; // Restoration is owned by Dashboard's canonical draft.
+  const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY(surprise.id)); } catch { /* storage unavailable */ } };
+  const discardDraft = () => { clearDraft(); setConfig(structuredClone(surprise.config)); };
 
   // Local edits vs the saved row — drives the save-status pill and the
   // smart Save button (same comparison the beforeunload guard uses).
@@ -333,10 +296,10 @@ export default function CustomizeForm({
 
   // occasionType and themeId are also OPTIONAL top-level keys.
   const setOccasionType = (value: NonNullable<Config["occasionType"]>) => {
-    setConfig((c) => ({ ...c, occasionType: value }));
+    setConfig((c) => ({ ...c, occasionType: value, ...(c._version === 2 ? { occasionId: value } : {}) }));
   };
   const setThemeId = (value: ThemePresetId) => {
-    setConfig((c) => ({ ...c, themeId: value }));
+    setConfig((c) => ({ ...c, themeId: value, ...(c._version === 2 ? { themePreset: value } : {}) }));
   };
 
   // occasionContent is an OPTIONAL top-level key with nested occasion sub-keys.
@@ -385,14 +348,16 @@ export default function CustomizeForm({
   const completedCount = Object.values(completion).filter(Boolean).length;
 
   const handleSave = async () => {
+    if (saving) return;
+    try { validateV2Config(config); } catch (e) { setValidationError((e as Error).message); return; }
     const missing: string[] = [];
     if (!config.name.trim()) missing.push("Name");
-    if (!config.landing.title.trim()) missing.push("Landing title");
-    if (!config.landing.subtitle.trim()) missing.push("Landing subtitle");
-    if (!config.intro.heading.trim()) missing.push("Intro heading");
-    if (!config.intro.message.trim()) missing.push("Intro message");
-    if (!config.lastNote.finalLine1.trim()) missing.push("Last note — final line 1");
-    if (!config.lastNote.finalLine2.trim()) missing.push("Last note — final line 2");
+    if (config._version !== 2 && !config.landing.title.trim()) missing.push("Landing title");
+    if (config._version !== 2 && !config.landing.subtitle.trim()) missing.push("Landing subtitle");
+    if (config._version !== 2 && !config.intro.heading.trim()) missing.push("Intro heading");
+    if (config._version !== 2 && !config.intro.message.trim()) missing.push("Intro message");
+    if (config._version !== 2 && !config.lastNote.finalLine1.trim()) missing.push("Last note — final line 1");
+    if (config._version !== 2 && !config.lastNote.finalLine2.trim()) missing.push("Last note — final line 2");
 
     if (missing.length > 0) {
       setValidationError(`Please fill in: ${missing.join(", ")}.`);
@@ -401,22 +366,22 @@ export default function CustomizeForm({
     setValidationError(null);
     setSaving(true);
 
-    const photo_urls = config.memoryWall.photos.map((p) => p.src).filter(Boolean);
+    const photo_urls = [...new Set([...config.memoryWall.photos.map((p) => p.src), config.giftReveal?.photoUrl, ...(config.notebook?.pages ?? []).flatMap(p => p.type === "memory" ? [p.image] : [])].filter((url): url is string => !!url))];
     const audio_urls = [config.audio.backgroundMusic, config.audio.birthdaySong].filter(Boolean);
 
-    const { data, error } = await supabase
-      .from("surprises")
-      .update({ config, photo_urls, audio_urls })
-      .eq("id", surprise.id)
-      .select()
-      .single();
-
-    setSaving(false);
-
-    if (error) {
-      toast.error("Couldn't save your changes. Please try again.");
+    let data: unknown;
+    try {
+      let query = supabase.from("surprises").update({ config, photo_urls, audio_urls })
+        .eq("id", surprise.id).eq("user_id", surprise.user_id);
+      // Optimistic concurrency: do not overwrite a newer save from another tab.
+      if (surprise.updated_at) query = query.eq("updated_at", surprise.updated_at);
+      const result = await query.select().single();
+      if (result.error || !result.data) throw new Error("save_failed");
+      data = result.data;
+    } catch {
+      toast.error("Couldn't save. Check your connection; if another tab saved newer changes, reload before retrying. Your draft is retained.");
       return;
-    }
+    } finally { setSaving(false); }
 
     setLastSavedAt(new Date());
     clearDraft();
@@ -440,6 +405,7 @@ export default function CustomizeForm({
 
   return (
     <div className="customize-shell" style={{ maxWidth: "560px", width: "100%", margin: "0 auto", padding: "0 4px" }}>
+      <fieldset disabled={saving} style={{ border: 0, padding: 0, minWidth: 0 }}><V2ExperienceEditor config={config} onChange={onConfigChange} /></fieldset>
       {/* Draft-restored notice */}
       {draftRestored && (
         <div
@@ -483,8 +449,8 @@ export default function CustomizeForm({
         {/* ── Occasion & Theme — always at the top ─────────────── */}
         {item("occasionAndTheme", "Occasion & Theme", undefined, (
           <OccasionAndThemeSection
-            occasionType={config.occasionType}
-            themeId={config.themeId}
+            occasionType={config.occasionId ?? config.occasionType}
+            themeId={config.themePreset ?? config.themeId}
             onOccasionChange={setOccasionType}
             onThemeChange={setThemeId}
           />

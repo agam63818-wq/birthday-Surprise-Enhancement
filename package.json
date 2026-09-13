@@ -1,0 +1,17 @@
+{
+  "name": "birthday-surprise-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "typecheck": "tsc -p artifacts/birthday-surprise/tsconfig.json --noEmit",
+    "build": "pnpm typecheck && PORT=3000 BASE_PATH=/ pnpm --filter @workspace/birthday-surprise build",
+    "test": "vitest run --config vitest.config.ts",
+    "test:browser": "playwright test --config playwright.config.ts"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "3.2.6",
+    "@playwright/test": "1.58.2"
+  }
+}

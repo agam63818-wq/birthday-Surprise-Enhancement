@@ -17,6 +17,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { SceneComponentProps } from "@/lib/v2/registry";
+import { OCCASION_DEFAULTS } from "@/lib/occasions";
 import { useNormalizedConfig } from "@/contexts/ConfigContext";
 
 interface Balloon {
@@ -39,12 +40,15 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
   const [opened, setOpened] = useState(false);
   const [typed, setTyped] = useState("");
   const [showNext, setShowNext] = useState(false);
+  const cleanupRef = useRef<(() => void) | undefined>(undefined);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const later = (fn: () => void, ms: number) => { const t = setTimeout(fn, ms); timersRef.current.push(t); return t; };
   const typingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const particleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const recipientName = normalized.giftReveal.recipientName ?? normalized.recipient.name ?? "You";
   const senderName = normalized.giftReveal.senderName ?? "";
-  const occasionText = normalized.giftReveal.occasionText ?? "Happy Birthday! 🎂";
+  const occasionText = normalized.giftReveal.occasionText ?? OCCASION_DEFAULTS[normalized.occasion].title;
   const message = normalized.giftReveal.message ?? normalized.raw.cake?.message ?? "Wishing you all the happiness in the world. ❤️";
   const photoUrl = normalized.giftReveal.photoUrl ?? (normalized.raw.memoryWall?.photos?.[0]?.src ?? "");
 
@@ -160,7 +164,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
 
     // Spawn balloons periodically
     for (let i = 0; i < 5; i++) {
-      setTimeout(() => { if (mountedRef.current) createBalloon(); }, i * 400);
+      later(() => { if (mountedRef.current) createBalloon(); }, i * 400);
     }
     const interval = setInterval(() => {
       if (mountedRef.current) createBalloon();
@@ -169,7 +173,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
 
     rafRef.current = requestAnimationFrame(loop);
 
-    return () => {
+    cleanupRef.current = () => {
       window.removeEventListener("resize", resize);
       clearInterval(interval);
     };
@@ -186,7 +190,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
         typingRef.current = setTimeout(typeNext, 28);
       } else {
         // Show continue after typing completes
-        setTimeout(() => {
+        later(() => {
           if (mountedRef.current) setShowNext(true);
         }, 1200);
       }
@@ -197,7 +201,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
   const handleOpen = useCallback(() => {
     if (opened) return;
     setOpened(true);
-    setTimeout(() => {
+    later(() => {
       if (mountedRef.current) startBalloons();
       startTyping(message);
     }, 600);
@@ -207,11 +211,13 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      cleanupRef.current?.();
+      timersRef.current.forEach(clearTimeout);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (typingRef.current) clearTimeout(typingRef.current);
       if (particleIntervalRef.current) clearInterval(particleIntervalRef.current);
     };
-  }, []);
+  }, [reducedMotion]);
 
   if (reducedMotion) {
     return (
@@ -286,7 +292,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
             alignItems: "center",
             gap: "20px",
             cursor: "pointer",
-            animation: "giftFloat 3s ease-in-out infinite",
+            animation: "gift-giftFloat 3s ease-in-out infinite",
           }}
           onClick={handleOpen}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleOpen(); }}
@@ -352,7 +358,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
             color: "rgba(255,255,255,0.7)",
             fontSize: "clamp(0.85rem, 2.5vw, 1rem)",
             letterSpacing: "0.05em",
-            animation: "pulse 2s ease-in-out infinite",
+            animation: "gift-pulse 2s ease-in-out infinite",
           }}>
             Tap to open your surprise... 🎁
           </p>
@@ -373,7 +379,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           boxShadow: "0 0 60px rgba(255,51,119,0.15), 0 30px 60px rgba(0,0,0,0.5)",
-          animation: "cardReveal 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards",
+          animation: "gift-cardReveal 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards",
           textAlign: "center",
         }}>
           <div style={{ fontSize: "2.5rem", marginBottom: "8px" }}>🎉</div>
@@ -424,7 +430,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
             textAlign: "left",
           }}>
             {typed}
-            <span style={{ animation: "blink 1s step-end infinite", opacity: typed.length < message.length ? 1 : 0 }}>|</span>
+            <span style={{ animation: "gift-blink 1s step-end infinite", opacity: typed.length < message.length ? 1 : 0 }}>|</span>
           </p>
 
           {senderName && (
@@ -452,7 +458,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
                 color: "#fff",
                 fontSize: "1rem",
                 cursor: "pointer",
-                animation: "fadeInUp 0.5s ease forwards",
+                animation: "gift-fadeInUp 0.5s ease forwards",
               }}
             >
               Continue ✨
@@ -462,23 +468,23 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
       )}
 
       <style>{`
-        @keyframes giftFloat {
+        @keyframes gift-giftFloat {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-12px); }
         }
-        @keyframes cardReveal {
+        @keyframes gift-cardReveal {
           from { opacity: 0; transform: scale(0.85) translateY(20px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
-        @keyframes fadeInUp {
+        @keyframes gift-fadeInUp {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes pulse {
+        @keyframes gift-pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.6; }
         }
-        @keyframes blink {
+        @keyframes gift-blink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0; }
         }

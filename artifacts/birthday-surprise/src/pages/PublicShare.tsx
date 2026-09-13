@@ -3,7 +3,7 @@ import { supabase, supabaseConfigError } from "@/lib/supabase";
 import BirthdayExperience from "@/BirthdayExperience";
 import LoadingPrelude from "@/components/LoadingPrelude";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import type { Config } from "@/config";
+import type { SurpriseConfig as Config } from "@/lib/v2/schema";
 
 // Public, unauthenticated share page. Renders the full birthday
 // experience with zero dashboard chrome, using only the

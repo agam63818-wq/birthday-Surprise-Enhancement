@@ -55,6 +55,7 @@ export type LegacySceneId =
 
 // New cinematic scenes (v2 only, opt-in):
 export type NewSceneId =
+  | "letters"
   | "butterfly"
   | "giftReveal"
   | "youAndMe"
@@ -65,6 +66,12 @@ export type SceneId = LegacySceneId | NewSceneId;
 
 // ── Feature flags ────────────────────────────────────────────────────────
 export interface FeatureFlags {
+  letters?: boolean;
+  landing?: boolean;
+  cake?: boolean;
+  rakhiHero?: boolean;
+  familyHero?: boolean;
+  loveDayHero?: boolean;
   // Legacy features (always true for v1 records)
   intro: boolean;
   cutenessMeter: boolean;

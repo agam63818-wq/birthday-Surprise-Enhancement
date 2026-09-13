@@ -33,56 +33,7 @@ function makeLegacyConfig(overrides: Partial<SurpriseConfig> = {}): SurpriseConf
   return { ...defaultConfig, ...overrides } as SurpriseConfig;
 }
 
-// ── Test runner (minimal, no external deps) ──────────────────────────────
-type TestResult = { name: string; passed: boolean; error?: string };
-const results: TestResult[] = [];
-
-function test(name: string, fn: () => void) {
-  try {
-    fn();
-    results.push({ name, passed: true });
-  } catch (e) {
-    results.push({ name, passed: false, error: String(e) });
-  }
-}
-
-function expect(actual: unknown) {
-  return {
-    toBe(expected: unknown) {
-      if (actual !== expected) {
-        throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
-      }
-    },
-    toEqual(expected: unknown) {
-      if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-        throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
-      }
-    },
-    toBeTruthy() {
-      if (!actual) throw new Error(`Expected truthy, got ${JSON.stringify(actual)}`);
-    },
-    toBeFalsy() {
-      if (actual) throw new Error(`Expected falsy, got ${JSON.stringify(actual)}`);
-    },
-    toContain(item: unknown) {
-      if (!Array.isArray(actual) || !actual.includes(item)) {
-        throw new Error(`Expected array to contain ${JSON.stringify(item)}`);
-      }
-    },
-    not: {
-      toBe(expected: unknown) {
-        if (actual === expected) {
-          throw new Error(`Expected not ${JSON.stringify(expected)}`);
-        }
-      },
-      toContain(item: unknown) {
-        if (Array.isArray(actual) && actual.includes(item)) {
-          throw new Error(`Expected array not to contain ${JSON.stringify(item)}`);
-        }
-      },
-    },
-  };
-}
+import { test, expect } from "vitest";
 
 // ── Migration tests ───────────────────────────────────────────────────────
 
@@ -452,9 +403,3 @@ test("computeActiveSequence: invalid scene IDs are filtered", () => {
   expect(active).toContain("landing");
 });
 
-// ── Run and report ────────────────────────────────────────────────────────
-export function runMigrationTests(): { passed: number; failed: number; results: TestResult[] } {
-  const passed = results.filter((r) => r.passed).length;
-  const failed = results.filter((r) => !r.passed).length;
-  return { passed, failed, results };
-}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, type ReactNode } from "react";
+import { useState, useCallback, useMemo, useEffect, type ReactNode, type CSSProperties } from "react";
 import Background from "@/components/Background";
 import MusicToggle, { useBackgroundMusic } from "@/components/MusicPlayer";
 import SurprisePopup from "@/components/SurprisePopup";
@@ -18,7 +18,8 @@ import PageBeforeYouLeave from "@/pages/PageBeforeYouLeave";
 import PageLastNote from "@/pages/PageLastNote";
 import defaultConfig, { type Config } from "@/config";
 import { ConfigProvider, useConfig, useNormalizedConfig } from "@/contexts/ConfigContext";
-import { applyTheme } from "@/lib/themePresets";
+import { FONT_PRESETS } from "@/lib/fontPresets";
+import { THEME_PRESETS } from "@/lib/themePresets";
 import type { SurpriseConfig } from "@/lib/v2/schema";
 import SceneEngine from "@/scenes/SceneEngine";
 
@@ -95,14 +96,21 @@ export default function BirthdayExperience({
   config = defaultConfig,
   landingFooter,
 }: {
-  config?: Config;
+  config?: SurpriseConfig;
   landingFooter?: ReactNode;
 }) {
   return (
     <ConfigProvider config={config}>
-      <BirthdayExperienceInner landingFooter={landingFooter} />
+      <ExperienceTheme><BirthdayExperienceInner landingFooter={landingFooter} /></ExperienceTheme>
     </ConfigProvider>
   );
+}
+
+function ExperienceTheme({ children }: { children: ReactNode }) {
+  const normalized = useNormalizedConfig();
+  const vars = THEME_PRESETS[normalized.theme.preset]?.vars ?? THEME_PRESETS.midnightPurple.vars;
+  return <div className={normalized.version === 2 ? "experience-root cinematic-experience" : "experience-root"}
+    data-theme={normalized.theme.preset} style={{ ...vars, ...(normalized.raw.textStyles?.global ? { "--v2-body-font": FONT_PRESETS[normalized.raw.textStyles.global].fontFamily } : {}), background: "var(--bg-deep)", color: "var(--ink)", minHeight: "100dvh", isolation: "isolate" } as CSSProperties}>{children}</div>;
 }
 
 function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode }) {
@@ -112,27 +120,6 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
   const [transitioning, setTransitioning] = useState(false);
   const { start, stop, playing, playCakeSong } = useBackgroundMusic();
   const [musicStarted, setMusicStarted] = useState(false);
-
-  // Apply the saved color theme once on mount and whenever themeId changes.
-  // "midnightPurple" is the default — identical to the current live CSS —
-  // so existing users see zero visual change.
-  // For v2 configs with midnightRose, applyTheme handles the legacy presets;
-  // midnightRose is applied separately via CSS vars on the experience root.
-  useEffect(() => {
-    const themePreset = normalized.theme.preset;
-    if (themePreset === "midnightRose") {
-      // midnightRose: apply to document root for now (scoped to experience)
-      // Full scoping to element is Part 2 (requires experience container ref)
-      import("@/lib/v2/midnightRose").then(({ MIDNIGHT_ROSE_VARS }) => {
-        const root = document.documentElement;
-        for (const [prop, value] of Object.entries(MIDNIGHT_ROSE_VARS)) {
-          root.style.setProperty(prop, value);
-        }
-      });
-    } else {
-      applyTheme((themePreset as Parameters<typeof applyTheme>[0]) ?? "midnightPurple");
-    }
-  }, [normalized.theme.preset]);
 
   const goTo = useCallback((next: Page) => {
     if (transitioning) return;
@@ -151,13 +138,15 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
   // Selects the correct hero page for the "cake" step based on occasionType.
   // Birthday (default) and custom both render PageCake — no behaviour change.
   const renderHeroPage = (onNext: () => void, playCakeSongFn?: () => void) => {
-    switch (config.occasionType) {
+    switch (normalized.occasion) {
       case "rakshabandhan":
         return <PageRakhi onNext={onNext} playCakeSong={playCakeSongFn} />;
       case "fathersday":
         return <PageFamilyDay occasion="fathersday" onNext={onNext} playCakeSong={playCakeSongFn} />;
       case "mothersday":
         return <PageFamilyDay occasion="mothersday" onNext={onNext} playCakeSong={playCakeSongFn} />;
+      case "romantic":
+      case "anniversary":
       case "loveday":
         return <PageLoveDay onNext={onNext} playCakeSong={playCakeSongFn} />;
       case "birthday":
@@ -188,7 +177,7 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
   // ── v2 path: use SceneEngine for configs with explicit scene sequences ──
   // Legacy v1 configs (no _version or _version===1) always use the fixed
   // legacy sequence below — zero behaviour change for existing records.
-  if (normalized.version === 2 && Array.isArray((config as SurpriseConfig).scenes) && ((config as SurpriseConfig).scenes?.length ?? 0) > 0) {
+  if (normalized.version === 2) {
     // Legacy scene renderer: maps scene IDs to existing page components.
     // The SceneEngine calls this for any non-heavy scene in the sequence.
     const renderLegacyScene = (sceneId: string, onNext: () => void) => {
@@ -200,7 +189,7 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
         case "cake":
         case "rakhiHero":
         case "familyHero":
-        case "loveDayHero":  return renderHeroPage(onNext, playCakeSong);
+        case "loveDayHero":  return renderHeroPage(onNext, () => { if (playing) playCakeSong(); });
         case "whyYouMatter": return <PageWhyYouMatter onNext={onNext} />;
         case "ourStory":     return <PageOurStory onNext={onNext} />;
         case "memoryWall":   return <PageMemoryWall onNext={onNext} />;
@@ -216,12 +205,12 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
           href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
-        <Background />
-        <AmbientFX />
+
         <MusicToggle playing={playing} onToggle={toggleMusic} />
         <SceneEngine
           normalizedConfig={normalized}
           globalMuted={!playing}
+          onInteract={() => { if (!musicStarted) { start(); setMusicStarted(true); } }}
           renderLegacyScene={renderLegacyScene}
         />
       </>

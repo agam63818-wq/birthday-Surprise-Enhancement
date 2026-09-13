@@ -22,6 +22,10 @@ build/
 # Logs
 *.log
 
+# Browser QA artifacts (may contain personalized fixture content)
+test-results/
+playwright-report/
+
 # Coverage reports
 coverage/
 htmlcov/
