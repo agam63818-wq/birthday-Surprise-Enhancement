@@ -15,6 +15,7 @@
 //  - New cinematic scenes only for explicit new configuration
 // ============================================================
 
+export type { AudioPlaybackSettings, AudioPlaybackMap, AudioTrackId } from "../../../supabase/functions/_shared/audioPlayback";
 import type { Config } from "@/config";
 import type { ThemePresetId } from "@/lib/themePresets";
 import type { FontPresetId } from "@/lib/fontPresets";

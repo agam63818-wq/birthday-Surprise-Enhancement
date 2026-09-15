@@ -1385,3 +1385,27 @@ button.dash-mobile-dropdown-item.is-current:hover {
 .canonical-status { position: relative; z-index: 6; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; padding: 10px 16px; background: #160e15; color: #e5d3dc; font: 12px Inter, sans-serif; }
 .cinematic-experience p { font-family: var(--v2-body-font, Inter, sans-serif) !important; }
 .cinematic-experience .scene-content h1, .cinematic-experience .scene-content h2 { font-family: 'Playfair Display', Georgia, serif; }
+
+/* Per-track controls extend the existing Music section without global retheming. */
+.music-control-card { padding: 18px; margin: 0 0 18px; border: 1px solid rgba(209,180,233,.2); border-radius: 16px; background: linear-gradient(145deg, rgba(42,24,55,.85), rgba(16,9,27,.9)); color: #f6effa; min-width: 0; }
+.music-control-card header, .music-upload-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.music-control-card h3 { font-size: 14px; font-weight: 600; }
+.music-duration { font-size: 11px; color: #dfc89e; font-variant-numeric: tabular-nums; }
+.music-upload-row { margin-top: 14px; justify-content: flex-start; }
+.music-upload-row audio { max-width: 100%; width: 260px; height: 36px; }
+.music-control-card fieldset { padding: 0; border: 0; min-width: 0; }
+.music-settings { display: grid; gap: 14px; margin-top: 18px; }
+.music-settings label { display: grid; gap: 6px; font-size: 12px; color: #e6dbea; }
+.music-settings input[type=number], .music-settings select { width: 100%; min-width: 0; min-height: 44px; padding: 10px; color: #f8f1fc; background: #170e23; border: 1px solid #695275; border-radius: 9px; }
+.music-settings input:focus-visible, .music-settings select:focus-visible, .music-control-card button:focus-visible { outline: 2px solid #dcc39b; outline-offset: 3px; }
+.music-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.music-control-card .music-checkbox { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.music-settings button, .music-control-card > button { min-height: 44px; padding: 10px 14px; border: 1px solid #695275; background: #392541; border-radius: 10px; font-size: 12px; }
+.music-control-card button { cursor: pointer; }
+.music-control-card fieldset:disabled { opacity: .6; }
+.music-help { font-size: 11px; line-height: 1.6; color: #c6b7d0; margin-top: 9px; }
+.music-end { font-size: 12px; color: #e6d1ad; }
+.music-error { font-size: 12px; color: #ffc2c2; margin-top: 10px; }
+.music-save-status { font-size: 11px; color: #b2e8cf; margin-top: 12px; }
+.audio-runtime-notice { position: fixed; bottom: 82px; right: 18px; max-width: min(300px, 85vw); z-index: 600; background: #170e23e8; color: #eee1f2; border: 1px solid #695275; padding: 12px; border-radius: 10px; font-size: 12px; }
+@media(max-width: 390px) { .music-control-card { padding: 12px; } .music-grid { gap: 8px; } }

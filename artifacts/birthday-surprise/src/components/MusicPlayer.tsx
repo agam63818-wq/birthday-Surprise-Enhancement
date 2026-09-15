@@ -17,7 +17,8 @@
  * used if the real files fail to play; when false, audio fails silently.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { SceneAudioRuntime } from "@/lib/v2/audioRuntime";
 import { useConfig } from "@/contexts/ConfigContext";
 
 // ─── Module-level singletons ───────────────────────────────────────
@@ -119,12 +120,13 @@ function stopBgTones() {
 }
 
 // ─── Hook ───────────────────────────────────────────────────────────────
-export function useBackgroundMusic() {
+function useLegacyBackgroundMusic(enabled: boolean) {
   const config = useConfig();
   const [playing, setPlaying] = useState(_bgPlaying);
   const fallbackAllowed = config.audio.useFallbackTones !== false;
 
   const start = useCallback(() => {
+    if (!enabled) return;
     // Guard: never create more than one background audio
     if (_bgStarted) {
       if (_bgAudio && _bgAudio.paused) {
@@ -164,7 +166,7 @@ export function useBackgroundMusic() {
           setPlaying(false);
         }
       });
-  }, [config.audio.backgroundMusic, fallbackAllowed]);
+  }, [config.audio.backgroundMusic, fallbackAllowed, enabled]);
 
   const stop = useCallback(() => {
     if (_bgAudio) {
@@ -186,6 +188,7 @@ export function useBackgroundMusic() {
   }, []);
 
   const playCakeSong = useCallback(() => {
+    if (!enabled) return;
     const generation = _generation;
     // 1. Kill any existing song instance
     if (_songAudio) {
@@ -232,9 +235,10 @@ export function useBackgroundMusic() {
       }
       if (_bgAudio) fadeTo(_bgAudio, BG_VOL, 2200);
     }, 35000);
-  }, [config.audio.birthdaySong, fallbackAllowed]);
+  }, [config.audio.birthdaySong, fallbackAllowed, enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
     setPlaying(false);
     return () => {
       _generation++;
@@ -244,12 +248,13 @@ export function useBackgroundMusic() {
       _pendingTimers.forEach(clearTimeout); _pendingTimers.clear();
       stopBgTones(); void _birthdayCtx?.close().catch(() => {}); _birthdayCtx = null;
     };
-  }, [config.audio.backgroundMusic, config.audio.birthdaySong]);
+  }, [config.audio.backgroundMusic, config.audio.birthdaySong, enabled]);
 
   // Fix H: recover music after the page is backgrounded and resumed.
   // Mobile browsers may pause audio when the tab is hidden; resume it
   // when the page becomes visible again (only if we were playing).
   useEffect(() => {
+    if (!enabled) return;
     const handleVisibility = () => {
       if (document.visibilityState === "visible" && _bgPlaying && _bgAudio && _bgAudio.paused) {
         _bgAudio.play().catch(() => {
@@ -260,9 +265,40 @@ export function useBackgroundMusic() {
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [fallbackAllowed]);
+  }, [fallbackAllowed, enabled]);
 
   return { start, stop, playing, playCakeSong };
+}
+
+/** Missing settings stays on the original audio path, including legacy fallback tones. */
+export function useBackgroundMusic() {
+  const config = useConfig();
+  const controlled = !!config.audio.playback && Object.keys(config.audio.playback).length > 0;
+  const legacy = useLegacyBackgroundMusic(!controlled);
+  const runtime = useRef<SceneAudioRuntime | null>(null);
+  const current = useRef<{ scene?: string; scenes: readonly string[] }>({ scenes: [] });
+  const [enabled, setEnabled] = useState(false);
+  const [audioError, setAudioError] = useState("");
+  const signature = JSON.stringify(config.audio);
+  useEffect(() => {
+    if (!controlled) return;
+    const engine = new SceneAudioRuntime(config.audio, setAudioError);
+    runtime.current = engine;
+    engine.sceneChanged(current.current.scene, current.current.scenes);
+    setEnabled(false); setAudioError("");
+    return () => { engine.dispose(); runtime.current = null; };
+  }, [controlled, signature]);
+  const onSceneChange = useCallback((scene: string | undefined, scenes: readonly string[]) => {
+    current.current = { scene, scenes }; runtime.current?.sceneChanged(scene, scenes);
+  }, []);
+  return {
+    start: () => { if (!controlled) legacy.start(); else { setAudioError(""); runtime.current?.start(); setEnabled(true); } },
+    stop: () => { if (!controlled) legacy.stop(); else { runtime.current?.mute(); setEnabled(false); } },
+    playCakeSong: () => controlled ? runtime.current?.cake() : legacy.playCakeSong(),
+    playing: controlled ? enabled : legacy.playing,
+    audioError: controlled ? audioError : "",
+    onSceneChange,
+  };
 }
 
 /**
