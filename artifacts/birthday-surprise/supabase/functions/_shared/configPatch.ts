@@ -1,3 +1,4 @@
+import { validateAudioPlayback } from "./audioPlayback.ts";
 /** Dependency-free contract shared by the browser and Deno. Never executes model code. */
 export const SCENE_IDS = ["letters", "landing", "intro", "cuteness", "celebration", "cake", "rakhiHero", "familyHero", "loveDayHero", "whyYouMatter", "ourStory", "memoryWall", "beforeLeave", "lastNote", "butterfly", "giftReveal", "youAndMe", "notebook", "roseBloom"] as const;
 export const FEATURE_IDS = ["letters", "landing", "intro", "cutenessMeter", "celebration", "cake", "rakhiHero", "familyHero", "loveDayHero", "whyYouMatter", "ourStory", "memoryWall", "beforeLeave", "lastNote", "butterfly", "giftReveal", "youAndMe", "notebook", "roseBloom"] as const;
@@ -109,6 +110,7 @@ export function configToPatch(input: unknown): ConfigPatch {
 }
 /** V2 validation at save boundaries; legacy/unknown extension fields remain untouched. */
 export function validateV2Config(input: unknown): void {
+  if (object(input)) validateAudioPlayback(input.audio, SCENE_IDS);
   if (!object(input) || input._version !== 2) return;
   for (const root of ["occasionId", "themePreset", "scenes", "features", "notebook", "roseBloom", "butterfly", "giftReveal", "youAndMe", "textStyles"]) {
     if (!own(input, root)) continue;

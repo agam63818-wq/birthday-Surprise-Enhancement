@@ -137,6 +137,7 @@ interface SceneEngineProps {
   globalMuted: boolean;
   onExperienceComplete?: () => void;
   onInteract?: () => void;
+  onSceneChange?: (scene: string | undefined, activeScenes: readonly string[]) => void;
   /**
    * Optional renderer for legacy (non-heavy) scenes.
    * Called when the active scene is a legacy scene ID.
@@ -151,6 +152,7 @@ export default function SceneEngine({
   globalMuted,
   onExperienceComplete,
   onInteract,
+  onSceneChange,
   renderLegacyScene,
 }: SceneEngineProps) {
   const reducedMotion = useReducedMotion();
@@ -174,6 +176,8 @@ export default function SceneEngine({
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [sequenceKey]);
+
+  useEffect(() => { onSceneChange?.(currentSceneId, activeScenes); }, [currentSceneId, sequenceKey, onSceneChange]);
 
   const navigate = useCallback((index: number) => {
     if (transitioning || !mountedRef.current) return;
@@ -243,7 +247,7 @@ export default function SceneEngine({
   };
 
   return (
-    <div data-scene={currentSceneId} style={{
+    <div onPointerDownCapture={() => { if (normalizedConfig.raw.audio.playback) onInteract?.(); }} onKeyDownCapture={e => { if (normalizedConfig.raw.audio.playback && (e.key === "Enter" || e.key === " ")) onInteract?.(); }} data-scene={currentSceneId} style={{
       position: "relative",
       opacity: transitioning ? 0 : 1,
       transform: !reducedMotion && transitioning ? "scale(0.97) translateY(12px)" : "scale(1) translateY(0)",

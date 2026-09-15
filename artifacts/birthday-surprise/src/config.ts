@@ -3,6 +3,7 @@
 //  Edit this file to personalize the experience!
 // ============================================================
 
+import type { AudioPlaybackMap } from "../supabase/functions/_shared/audioPlayback";
 import type { FontPresetId } from "@/lib/fontPresets";
 import type { ThemePresetId } from "@/lib/themePresets";
 
@@ -165,6 +166,8 @@ type BaseConfig = typeof config;
 // working without a database migration. Everything is stored inside the
 // existing `config` jsonb column.
 export type Config = BaseConfig & {
+  /** Optional per-track controls; absent retains the original audio behavior. */
+  audio: BaseConfig["audio"] & { playback?: AudioPlaybackMap };
   // Per-page font-style overrides (Part 1 — Font Picker).
   textStyles?: Partial<Record<
     "landing" | "intro" | "cutenessMeter" | "celebration" | "cake" |

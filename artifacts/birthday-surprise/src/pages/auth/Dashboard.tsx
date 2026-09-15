@@ -9,6 +9,8 @@ import DashboardTopBar, { type DashboardTab } from "@/components/dashboard/Dashb
 import CustomizeForm from "@/components/dashboard/CustomizeForm";
 import AIAssistantChat from "@/components/dashboard/AIAssistantChat";
 import type { SurpriseConfig } from "@/lib/v2/schema";
+import { playbackError, validDuration, type AudioTrackId, type AudioPlaybackSettings } from "../../../supabase/functions/_shared/audioPlayback";
+import { SCENE_IDS } from "../../../supabase/functions/_shared/configPatch";
 import { validateV2Config } from "../../../supabase/functions/_shared/configPatch";
 import type { SurpriseRow } from "@/types/surprise";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -50,6 +52,35 @@ export default function Dashboard() {
   const config = draft ?? surprise?.config;
   const configRef = useRef(config);
   configRef.current = config;
+  const savedRowRef = useRef(surprise);
+  savedRowRef.current = surprise;
+  const audioQueue = useRef<Promise<void>>(Promise.resolve());
+  const [audioPending, setAudioPending] = useState(0);
+  const saveAudioPlayback = (track: AudioTrackId, url: string, settings: AudioPlaybackSettings, actualDuration?: number): Promise<void> => {
+    const validation = playbackError(settings, SCENE_IDS, actualDuration);
+    if (validation || (settings.mode === "custom" && !validDuration(actualDuration))) return Promise.reject(new Error(validation ?? "Audio duration must be known for custom timing."));
+    const current = configRef.current;
+    if (!current || current.audio[track] !== url) return Promise.reject(new Error("The audio file changed. Please retry for the current track."));
+    const next = { ...current, audio: { ...current.audio, playback: { ...current.audio.playback, [track]: settings } } };
+    // This is the same canonical draft used by Customize, AI and Preview.
+    configRef.current = next; setDraft(next); setHistory(null); setAudioPending(n => n + 1);
+    const operation = audioQueue.current.catch(() => {}).then(async () => {
+      const row = savedRowRef.current;
+      if (!row || row.user_id !== user?.id || configRef.current?.audio[track] !== url) throw new Error("Audio or account changed. Your settings remain in the draft.");
+      // Merge only the selected audio file + its controls over the SAVED config.
+      // Never auto-publish unrelated draft text, photos, themes or scene changes.
+      const savedConfig = { ...row.config, audio: { ...row.config.audio, [track]: url, playback: { ...row.config.audio.playback, [track]: settings } } };
+      const audio_urls = [savedConfig.audio.backgroundMusic, savedConfig.audio.birthdaySong].filter(Boolean);
+      let query = supabase.from("surprises").update({ config: savedConfig, audio_urls }).eq("id", row.id).eq("user_id", row.user_id);
+      if (row.updated_at) query = query.eq("updated_at", row.updated_at);
+      const { data, error } = await query.select().single();
+      if (error || !data) throw new Error("Playback was not saved. Check your connection or reload if another tab saved newer changes. Your draft is retained.");
+      savedRowRef.current = data as SurpriseRow;
+      setSurprise(data as SurpriseRow);
+    }).finally(() => setAudioPending(n => n - 1));
+    audioQueue.current = operation;
+    return operation;
+  };
   const dirty = !!surprise && !!config && JSON.stringify(config) !== JSON.stringify(surprise.config);
   const canUndo = !!history && JSON.stringify(config) === history.after;
   const undoAI = () => {
@@ -201,8 +232,8 @@ export default function Dashboard() {
       <div style={{ paddingTop: "calc(56px + env(safe-area-inset-top, 0px))" }}>
         <div className="canonical-status" role="status"><span>{dirty ? "Unsaved draft · Preview includes your changes" : "Saved experience"}</span>
           {dirty && <button type="button" onClick={() => setTab("customize")}>Save in Customize</button>}
-          {dirty && <button type="button" onClick={() => { if (window.confirm("Discard all unsaved changes?")) { setDraft(surprise.config); setHistory(null); } }}>Discard draft</button>}
-          {history && <button type="button" disabled={!canUndo} title={canUndo ? "Restore the exact pre-AI draft" : "Undo blocked because newer changes exist"} onClick={undoAI}>Undo last AI change</button>}
+          {dirty && <button type="button" disabled={audioPending > 0} onClick={() => { if (window.confirm("Discard all unsaved changes?")) { setDraft(surprise.config); setHistory(null); } }}>Discard draft</button>}
+          {history && <button type="button" disabled={!canUndo || audioPending > 0} title={canUndo ? "Restore the exact pre-AI draft" : "Undo blocked because newer changes exist"} onClick={undoAI}>Undo last AI change</button>}
         </div>
         {tab === "preview" ? (
           <BirthdayExperience config={config} />
@@ -220,10 +251,13 @@ export default function Dashboard() {
               surprise={surprise}
               config={config}
               onConfigChange={setDraft}
+              onAudioPlaybackSave={saveAudioPlayback}
+              audioSaving={audioPending > 0}
               onSurpriseChange={setSurprise}
               onSaved={(updated) => {
                 setSurprise(updated);
-                setDraft(updated.config);
+                savedRowRef.current = updated;
+                setDraft(current => JSON.stringify(current) === JSON.stringify(config) ? updated.config : current);
                 setTab("preview");
               }}
             />

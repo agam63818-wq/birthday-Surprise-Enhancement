@@ -235,3 +235,97 @@ test("every scene can be independently disabled without loading it", async ({ pa
   await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "roseBloom");
   expect(qa.errors).toEqual([]);
 });
+
+function audioFixture(seconds = 12) {
+  const rate = 8000; const size = seconds * rate * 2; const data = Buffer.alloc(44 + size);
+  data.write("RIFF", 0); data.writeUInt32LE(36 + size, 4); data.write("WAVEfmt ", 8); data.writeUInt32LE(16, 16);
+  data.writeUInt16LE(1, 20); data.writeUInt16LE(1, 22); data.writeUInt32LE(rate, 24); data.writeUInt32LE(rate * 2, 28);
+  data.writeUInt16LE(2, 32); data.writeUInt16LE(16, 34); data.write("data", 36); data.writeUInt32LE(size, 40);
+  return data;
+}
+async function observeAudio(page: Page) {
+  await page.addInitScript(() => {
+    const Native = window.Audio; const observed: HTMLAudioElement[] = [];
+    (window as any).__qaAudio = observed;
+    (window as any).Audio = function(...args: any[]) {
+      const audio = new Native(...args); observed.push(audio);
+      const pause = audio.pause.bind(audio);
+      audio.pause = () => { (audio as any).__pausedAt = audio.currentTime; pause(); };
+      return audio;
+    };
+    (window as any).Audio.prototype = Native.prototype;
+  });
+}
+
+test("music controls autosave isolated settings and enforce the same custom segment in Preview and public playback", async ({ page }) => {
+  const config = fixture(); config.audio.backgroundMusic = "/qa-track.wav";
+  const qa = await setup(page, config);
+  await page.route("**/qa-track.wav", route => route.fulfill({ status: 200, contentType: "audio/wav", body: audioFixture() }));
+  await observeAudio(page);
+  await page.goto("/dashboard?intent=customize");
+  await page.getByLabel("Recipient name", { exact: true }).fill("Unpublished music test name");
+  expect(qa.loaded.filter(url => url.includes("qa-track.wav"))).toHaveLength(0);
+  await page.getByRole("button", { name: /Music.*1 of 2 songs set/ }).click();
+  const card = page.getByRole("region", { name: "Background music controls", exact: true });
+  await expect(card.getByText("0:12", { exact: true })).toBeVisible();
+  await expect(card.getByRole("button", { name: "Replace", exact: true })).toBeVisible();
+  const mode = page.getByLabel("Background music Playback Mode", { exact: true });
+  await mode.selectOption("custom");
+  await expect(card.getByText("Playback saved", { exact: true })).toBeVisible();
+  expect(qa.saved().name).toBe("QA Recipient");
+  const start = page.getByLabel("Background music Start Time (seconds)", { exact: true });
+  const duration = page.getByLabel("Background music Play Duration (seconds)", { exact: true });
+  await start.fill("2"); await start.press("Tab");
+  await expect(card.getByText("Playback saved", { exact: true })).toBeVisible();
+  await duration.fill("1"); await duration.press("Tab");
+  await expect(card.getByText("Playback saved", { exact: true })).toBeVisible();
+  await expect(card.getByText("0:03", { exact: true })).toBeVisible();
+  expect(qa.saved().audio.playback?.backgroundMusic).toMatchObject({ mode: "custom", startTime: 2, duration: 1 });
+  const writes = qa.writes.length;
+  await duration.fill("99"); await duration.press("Tab");
+  await expect(card.getByRole("alert")).toContainText("available audio length"); expect(qa.writes).toHaveLength(writes);
+  await duration.fill("1"); await duration.press("Tab");
+  await page.setViewportSize({ width: 360, height: 850 }); await noOverflow(page);
+  await card.screenshot({ path: "test-results/music-controls-360.png" });
+  await page.setViewportSize({ width: 1280, height: 850 });
+  await tab(page, "Preview");
+  await page.getByRole("button", { name: "Play music", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__qaAudio.some((a: any) => !a.paused && a.currentTime >= 2))).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__qaAudio.some((a: any) => a.paused && a.__pausedAt >= 3 && a.__pausedAt < 3.2))).toBe(true);
+  await page.goto("/s/qa-surprise");
+  await page.getByRole("button", { name: "Play music", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__qaAudio.some((a: any) => !a.paused && a.currentTime >= 2))).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__qaAudio.some((a: any) => a.paused && a.__pausedAt >= 3 && a.__pausedAt < 3.2))).toBe(true);
+  expect(qa.errors).toEqual([]);
+});
+
+test("music reset, missing metadata, autosave failure and retry retain the canonical draft", async ({ page }) => {
+  const config = fixture(); config.audio.backgroundMusic = "/qa-track.wav"; config.audio.birthdaySong = "/bad-audio.wav";
+  const qa = await setup(page, config);
+  await page.route("**/qa-track.wav", route => route.fulfill({ status: 200, contentType: "audio/wav", body: audioFixture() }));
+  await page.route("**/bad-audio.wav", route => route.fulfill({ status: 404, body: "Missing" }));
+  let fail = true;
+  await page.route("https://qa.invalid/rest/v1/surprises**", async route => {
+    if (route.request().method() === "PATCH" && fail) { fail = false; return route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ message: "Conflict" }) }); }
+    return route.fallback();
+  });
+  await page.goto("/dashboard?intent=customize");
+  await page.getByRole("button", { name: /Music.*2 of 2 songs set/ }).click();
+  const card = page.getByRole("region", { name: "Background music controls", exact: true });
+  await page.getByLabel("Background music Playback Mode", { exact: true }).selectOption("loop");
+  await expect(card.getByRole("alert")).toContainText("not saved");
+  expect(qa.writes).toHaveLength(0);
+  await card.getByRole("button", { name: "Retry playback save" }).click();
+  await expect(card.getByText("Playback saved", { exact: true })).toBeVisible();
+  expect(qa.saved().audio.playback?.backgroundMusic?.mode).toBe("loop");
+  await card.getByRole("button", { name: "Reset to Full Song" }).click();
+  await expect(card.getByText("Playback saved", { exact: true })).toBeVisible();
+  expect(qa.saved().audio.playback?.backgroundMusic?.mode).toBe("full");
+  await expect(page.getByLabel("Background music Start Time (seconds)", { exact: true })).toHaveCount(0);
+  const bad = page.getByRole("region", { name: "Birthday song (plays after cutting the cake) controls", exact: true });
+  await expect(bad.getByText("Metadata could not be read.", { exact: false })).toBeVisible();
+  await expect(bad.locator('option[value="custom"]')).toBeDisabled();
+  await bad.getByRole("button", { name: "Reset to Full Song" }).click();
+  await expect(bad.getByText("Playback saved", { exact: true })).toBeVisible();
+  expect(qa.saved().audio.birthdaySong).toBe("/bad-audio.wav"); expect(qa.errors).toEqual([]);
+});

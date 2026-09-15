@@ -10,6 +10,12 @@ import { TextField, TextAreaField, CheckboxField } from "@/components/dashboard/
 import CardListEditor from "@/components/dashboard/CardListEditor";
 import LinesListEditor from "@/components/dashboard/LinesListEditor";
 import PhotoListEditor from "@/components/dashboard/PhotoListEditor";
+import { readActualAudioDuration } from "@/lib/v2/audioRuntime";
+import { AUDIO_TRACK_IDS, playbackError } from "../../../supabase/functions/_shared/audioPlayback";
+import { SCENE_IDS } from "../../../supabase/functions/_shared/configPatch";
+import { normalizeConfig } from "@/lib/v2/migrate";
+import { computeActiveSequence } from "@/lib/v2/registry";
+import type { AudioTrackId, AudioPlaybackSettings } from "@/lib/v2/schema";
 import AudioField from "@/components/dashboard/AudioField";
 import PaywallLock from "@/components/dashboard/PaywallLock";
 import FontPicker from "@/components/dashboard/FontPicker";
@@ -238,13 +244,19 @@ export default function CustomizeForm({
   onSaved,
   config,
   onConfigChange,
+  onAudioPlaybackSave,
+  audioSaving = false,
 }: {
   surprise: SurpriseRow;
   config: Config;
   onConfigChange: (config: Config) => void;
+  onAudioPlaybackSave: (track: AudioTrackId, url: string, settings: AudioPlaybackSettings, duration?: number) => Promise<void>;
+  audioSaving?: boolean;
   onSurpriseChange: (updated: SurpriseRow) => void;
   onSaved: (updated: SurpriseRow) => void;
 }) {
+  const normalizedAudioConfig = normalizeConfig(config);
+  const audioScenes = computeActiveSequence(normalizedAudioConfig.scenes, normalizedAudioConfig.features);
   const setConfig = (next: Config | ((current: Config) => Config)) => onConfigChange(typeof next === "function" ? next(config) : next);
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -348,7 +360,7 @@ export default function CustomizeForm({
   const completedCount = Object.values(completion).filter(Boolean).length;
 
   const handleSave = async () => {
-    if (saving) return;
+    if (saving || audioSaving) return;
     try { validateV2Config(config); } catch (e) { setValidationError((e as Error).message); return; }
     const missing: string[] = [];
     if (!config.name.trim()) missing.push("Name");
@@ -365,6 +377,15 @@ export default function CustomizeForm({
     }
     setValidationError(null);
     setSaving(true);
+    try {
+      for (const track of AUDIO_TRACK_IDS) {
+        const settings = config.audio.playback?.[track];
+        if (settings?.mode !== "custom") continue;
+        const length = await readActualAudioDuration(config.audio[track]);
+        const problem = playbackError(settings, SCENE_IDS, length);
+        if (problem) throw new Error(problem);
+      }
+    } catch (error) { setValidationError((error as Error).message); setSaving(false); return; }
 
     const photo_urls = [...new Set([...config.memoryWall.photos.map((p) => p.src), config.giftReveal?.photoUrl, ...(config.notebook?.pages ?? []).flatMap(p => p.type === "memory" ? [p.image] : [])].filter((url): url is string => !!url))];
     const audio_urls = [config.audio.backgroundMusic, config.audio.birthdaySong].filter(Boolean);
@@ -728,12 +749,22 @@ export default function CustomizeForm({
           <>
             <AudioField
               label="Background music"
+              playback={config.audio.playback?.backgroundMusic}
+              onPlaybackChange={(settings, duration) => onAudioPlaybackSave("backgroundMusic", config.audio.backgroundMusic, settings, duration)}
+              visible={isOpen("audio")}
+              disabled={saving || audioSaving}
+              activeScenes={audioScenes}
               value={config.audio.backgroundMusic}
               onChange={(url) => set("audio", { backgroundMusic: url })}
               userId={surprise.user_id}
             />
             <AudioField
               label="Birthday song (plays after cutting the cake)"
+              playback={config.audio.playback?.birthdaySong}
+              onPlaybackChange={(settings, duration) => onAudioPlaybackSave("birthdaySong", config.audio.birthdaySong, settings, duration)}
+              visible={isOpen("audio")}
+              disabled={saving || audioSaving}
+              activeScenes={audioScenes}
               value={config.audio.birthdaySong}
               onChange={(url) => set("audio", { birthdaySong: url })}
               userId={surprise.user_id}
@@ -765,7 +796,7 @@ export default function CustomizeForm({
         >
           <ProgressIndicator completed={completedCount} total={totalSections} />
           <SaveStatusIndicator dirty={dirty} saving={saving} lastSavedAt={lastSavedAt} />
-          <Button className="w-full" size="lg" disabled={saving || !dirty} onClick={handleSave}>
+          <Button className="w-full" size="lg" disabled={saving || audioSaving || !dirty} onClick={handleSave}>
             {saving ? (
               <>
                 <Spinner /> Saving…

@@ -118,7 +118,7 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
   const normalized = useNormalizedConfig();
   const [page, setPage] = useState<Page>("landing");
   const [transitioning, setTransitioning] = useState(false);
-  const { start, stop, playing, playCakeSong } = useBackgroundMusic();
+  const { start, stop, playing, playCakeSong, onSceneChange, audioError } = useBackgroundMusic();
   const [musicStarted, setMusicStarted] = useState(false);
 
   const goTo = useCallback((next: Page) => {
@@ -133,7 +133,8 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
     }, 750);
   }, [transitioning, musicStarted, start]);
 
-  const toggleMusic = () => playing ? stop() : start();
+  const toggleMusic = () => { setMusicStarted(true); playing ? stop() : start(); };
+  useEffect(() => { if (normalized.version !== 2) onSceneChange(page, PAGES); }, [page, normalized.version, onSceneChange]);
 
   // Selects the correct hero page for the "cake" step based on occasionType.
   // Birthday (default) and custom both render PageCake — no behaviour change.
@@ -207,9 +208,11 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
         />
 
         <MusicToggle playing={playing} onToggle={toggleMusic} />
+        {audioError && <p role="status" className="audio-runtime-notice">{audioError}</p>}
         <SceneEngine
           normalizedConfig={normalized}
           globalMuted={!playing}
+          onSceneChange={onSceneChange}
           onInteract={() => { if (!musicStarted) { start(); setMusicStarted(true); } }}
           renderLegacyScene={renderLegacyScene}
         />
@@ -228,6 +231,7 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
       <AmbientFX />
       <FunLayer page={page} />
       <MusicToggle playing={playing} onToggle={toggleMusic} />
+        {audioError && <p role="status" className="audio-runtime-notice">{audioError}</p>}
       <SurprisePopup message="You are my favorite person in this entire world. Just wanted you to know that. ❤️" />
 
       {/* Progress pill — glassmorphism, safe-area aware, hidden on landing */}
