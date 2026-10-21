@@ -43,7 +43,7 @@ function useReducedMotion(): boolean {
 // Lazy components are cached so they're only imported once.
 const lazyCache = new Map<string, ComponentType<SceneComponentProps>>();
 
-function getLazyScene(sceneId: string): ComponentType<SceneComponentProps> | null {
+export function getLazyScene(sceneId: string): ComponentType<SceneComponentProps> | null {
   const loader = SCENE_LAZY_LOADERS[sceneId as keyof typeof SCENE_LAZY_LOADERS];
   if (!loader) return null;
 

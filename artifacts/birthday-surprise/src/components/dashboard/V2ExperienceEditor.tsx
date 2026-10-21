@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { TextField, TextAreaField, CheckboxField } from "./FormFields";
 import FontPicker from "./FontPicker";
+import SceneStickersEditor from "@/components/stickers/SceneStickersEditor";
 import { OCCASION_IDS, OCCASION_META } from "@/lib/occasions";
 import { THEME_PRESETS } from "@/lib/themePresets";
 import { SCENE_REGISTRY } from "@/lib/v2/registry";
 import { normalizeConfig, promoteToCinematic, DEFAULT_V2_SCENE_SEQUENCE, sceneReorder, notebookAddPage, notebookEditPage, notebookDeletePage, notebookReorderPages } from "@/lib/v2/migrate";
-import type { SurpriseConfig, SceneId, NotebookPageType, NotebookPage } from "@/lib/v2/schema";
+import type { SurpriseConfig, SceneId, SceneKey, NotebookPageType, NotebookPage } from "@/lib/v2/schema";
 import { applyConfigPatch, PAGE_TYPES } from "../../../supabase/functions/_shared/configPatch";
 
 interface Props { config: SurpriseConfig; onChange: (config: SurpriseConfig) => void }
@@ -13,7 +14,23 @@ export default function V2ExperienceEditor({ config, onChange }: Props) {
   const [dragged, setDragged] = useState<number | null>(null);
   const [pageType, setPageType] = useState<NotebookPageType>("letter");
   const [error, setError] = useState("");
+  const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({});
   const n = normalizeConfig(config);
+  const handleDetailsToggle = (key: string) => (e: React.SyntheticEvent<HTMLDetailsElement>) => {
+    const open = e.currentTarget.open;
+    setOpenDetails((prev) => ({ ...prev, [key]: open }));
+  };
+  const updateConfig = (next: SurpriseConfig | ((prev: SurpriseConfig) => SurpriseConfig)) =>
+    onChange(typeof next === "function" ? next(config) : next);
+  const v2Stickers = (sceneKey: SceneKey, label: string) => (
+    <SceneStickersEditor
+      sceneKey={sceneKey}
+      sceneLabel={label}
+      config={config}
+      onChange={updateConfig}
+      panelOpen={Boolean(openDetails[sceneKey])}
+    />
+  );
   const patch = (path: string, value: unknown) => {
     try { onChange(applyConfigPatch(config, { changes: [{ path, value }] })); setError(""); }
     catch { setError("Please use a valid value (media must be an http(s) URL or a local /path). Text may be up to 6,000 characters."); }
@@ -60,20 +77,26 @@ export default function V2ExperienceEditor({ config, onChange }: Props) {
         </li>;
       })}</ol>
     </section>
-    <details className="v2-panel"><summary>Butterfly reveal</summary><CheckboxField label="Enable Butterfly" checked={enabled("butterfly")} onChange={v => toggle("butterfly", v)} />
-      {text("Butterfly message", "butterfly.message", config.butterfly?.message, "A little magic, just for you", true)}{text("Butterfly sub-message", "butterfly.subMessage", config.butterfly?.subMessage, "", true)}
+    <details className="v2-panel" onToggle={handleDetailsToggle("letters")}><summary>Interactive letters</summary><CheckboxField label="Enable Letters" checked={enabled("letters")} onChange={v => toggle("letters", v)} />
+      {v2Stickers("letters", "Interactive letters")}
     </details>
-    <details className="v2-panel"><summary>Gift reveal</summary><CheckboxField label="Enable Gift Reveal" checked={enabled("giftReveal")} onChange={v => toggle("giftReveal", v)} />
+    <details className="v2-panel" onToggle={handleDetailsToggle("butterfly")}><summary>Butterfly reveal</summary><CheckboxField label="Enable Butterfly" checked={enabled("butterfly")} onChange={v => toggle("butterfly", v)} />
+      {text("Butterfly message", "butterfly.message", config.butterfly?.message, "A little magic, just for you", true)}{text("Butterfly sub-message", "butterfly.subMessage", config.butterfly?.subMessage, "", true)}
+      {v2Stickers("butterfly", "Butterfly reveal")}
+    </details>
+    <details className="v2-panel" onToggle={handleDetailsToggle("giftReveal")}><summary>Gift reveal</summary><CheckboxField label="Enable Gift Reveal" checked={enabled("giftReveal")} onChange={v => toggle("giftReveal", v)} />
       {text("Gift occasion text", "giftReveal.occasionText", config.giftReveal?.occasionText, `Uses ${OCCASION_META[n.occasion].label} when unset`)}
       {text("Gift recipient override", "giftReveal.recipientName", config.giftReveal?.recipientName, config.name)}
       <button type="button" onClick={() => { const giftReveal = { ...config.giftReveal }; delete giftReveal.recipientName; onChange({ ...config, giftReveal }); }}>Use main recipient name</button>
       {text("Gift sender", "giftReveal.senderName", config.giftReveal?.senderName)}
       {text("Gift message", "giftReveal.message", config.giftReveal?.message, "", true)}{text("Gift photo URL", "giftReveal.photoUrl", config.giftReveal?.photoUrl, "https://…")}
+      {v2Stickers("giftReveal", "Gift reveal")}
     </details>
-    <details className="v2-panel"><summary>You & Me</summary><CheckboxField label="Enable You & Me" checked={enabled("youAndMe")} onChange={v => toggle("youAndMe", v)} />
+    <details className="v2-panel" onToggle={handleDetailsToggle("youAndMe")}><summary>You & Me</summary><CheckboxField label="Enable You & Me" checked={enabled("youAndMe")} onChange={v => toggle("youAndMe", v)} />
       {text("First name", "youAndMe.name1", config.youAndMe?.name1, n.sender.name)}{text("Second name", "youAndMe.name2", config.youAndMe?.name2, config.name)}
+      {v2Stickers("youAndMe", "You & Me")}
     </details>
-    <details className="v2-panel"><summary>Interactive notebook</summary><CheckboxField label="Enable Notebook" checked={enabled("notebook")} onChange={v => toggle("notebook", v)} />
+    <details className="v2-panel" onToggle={handleDetailsToggle("notebook")}><summary>Interactive notebook</summary><CheckboxField label="Enable Notebook" checked={enabled("notebook")} onChange={v => toggle("notebook", v)} />
       <p>Empty notebooks show a reading-only fallback. If all your custom pages are disabled, none are shown.</p>
       <label>New page type<select aria-label="New page type" value={pageType} onChange={e => setPageType(e.target.value as NotebookPageType)}>{PAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></label>
       <button type="button" disabled={notebook.pages.length >= 40} onClick={() => patch("notebook.pages", notebookAddPage(notebook, pageType).pages)}>Add notebook page</button>
@@ -86,12 +109,14 @@ export default function V2ExperienceEditor({ config, onChange }: Props) {
         {page.type === "memory" && <><TextField label="Memory image URL" value={page.image ?? ""} onChange={image => editPage(page.id, { image })} /><TextAreaField label="Memory caption" value={page.caption ?? ""} onChange={caption => editPage(page.id, { caption })} /></>}
         <div className="v2-actions"><button type="button" aria-label={`Move page ${index + 1} up`} disabled={index === 0} onClick={() => patch("notebook.pages", notebookReorderPages(notebook, index, index - 1).pages)}>Up</button><button type="button" aria-label={`Move page ${index + 1} down`} disabled={index === notebook.pages.length - 1} onClick={() => patch("notebook.pages", notebookReorderPages(notebook, index, index + 1).pages)}>Down</button><button type="button" onClick={() => patch("notebook.pages", notebookDeletePage(notebook, page.id).pages)}>Delete page</button></div>
       </fieldset>)}
+      {v2Stickers("notebook", "Interactive notebook")}
     </details>
-    <details className="v2-panel"><summary>Rose bloom finale</summary><CheckboxField label="Enable Rose Bloom" checked={enabled("roseBloom")} onChange={v => toggle("roseBloom", v)} />
+    <details className="v2-panel" onToggle={handleDetailsToggle("roseBloom")}><summary>Rose bloom finale</summary><CheckboxField label="Enable Rose Bloom" checked={enabled("roseBloom")} onChange={v => toggle("roseBloom", v)} />
       {text("Rose final text", "roseBloom.text", config.roseBloom?.text, "", true)}
       <label>Bloom speed<select value={n.roseBloom.speed} onChange={e => patch("roseBloom.speed", e.target.value)}>{["slow", "normal", "fast"].map(v => <option key={v}>{v}</option>)}</select></label>
       <label>Bloom intensity<select value={n.roseBloom.intensity} onChange={e => patch("roseBloom.intensity", e.target.value)}>{["subtle", "normal", "dramatic"].map(v => <option key={v}>{v}</option>)}</select></label>
       <CheckboxField label="Falling petals" checked={n.roseBloom.fallingPetals !== false} onChange={v => patch("roseBloom.fallingPetals", v)} /><CheckboxField label="Rose sound (respects global mute)" checked={n.roseBloom.soundEnabled !== false} onChange={v => patch("roseBloom.soundEnabled", v)} />
+      {v2Stickers("roseBloom", "Rose bloom finale")}
     </details>
     <section className="v2-panel"><h3>Typography</h3><p>Global reading style. Individual page choices below still take priority.</p><FontPicker value={config.textStyles?.global ?? "storybook"} onChange={v => patch("textStyles.global", v)} /></section>
   </div>;

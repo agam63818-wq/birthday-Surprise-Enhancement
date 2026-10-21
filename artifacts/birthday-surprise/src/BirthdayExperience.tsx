@@ -145,6 +145,49 @@ function ExperienceTheme({ children }: { children: ReactNode }) {
     data-theme={normalized.theme.preset} style={{ ...vars, ...(normalized.raw.textStyles?.global ? { "--v2-body-font": FONT_PRESETS[normalized.raw.textStyles.global].fontFamily } : {}), background: "var(--bg-deep)", color: "var(--ink)", minHeight: "100dvh", isolation: "isolate" } as CSSProperties}>{children}</div>;
 }
 
+export function renderLegacySceneById(
+  sceneId: string,
+  occasion: string | undefined,
+  onNext: () => void,
+  playCakeSongFn?: () => void,
+) {
+  const renderHero = () => {
+    switch (occasion) {
+      case "rakshabandhan":
+        return <PageRakhi onNext={onNext} playCakeSong={playCakeSongFn} />;
+      case "fathersday":
+        return <PageFamilyDay occasion="fathersday" onNext={onNext} playCakeSong={playCakeSongFn} />;
+      case "mothersday":
+        return <PageFamilyDay occasion="mothersday" onNext={onNext} playCakeSong={playCakeSongFn} />;
+      case "romantic":
+      case "anniversary":
+      case "loveday":
+        return <PageLoveDay onNext={onNext} playCakeSong={playCakeSongFn} />;
+      case "birthday":
+      case "custom":
+      default:
+        return <PageCake onNext={onNext} playCakeSong={playCakeSongFn} />;
+    }
+  };
+
+  switch (sceneId) {
+    case "landing":      return <PageLanding onNext={onNext} />;
+    case "intro":        return <PageIntro onNext={onNext} />;
+    case "cuteness":     return <PageCutenessMeter onNext={onNext} />;
+    case "celebration":  return <PageCelebration onNext={onNext} />;
+    case "cake":
+    case "rakhiHero":
+    case "familyHero":
+    case "loveDayHero":  return renderHero();
+    case "whyYouMatter": return <PageWhyYouMatter onNext={onNext} />;
+    case "ourStory":     return <PageOurStory onNext={onNext} />;
+    case "memoryWall":   return <PageMemoryWall onNext={onNext} />;
+    case "beforeLeave":  return <PageBeforeYouLeave onNext={onNext} />;
+    case "lastNote":     return <PageLastNote />;
+    default:             return null;
+  }
+}
+
 function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode }) {
   const config = useConfig();
   const normalized = useNormalizedConfig();
@@ -311,7 +354,7 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
         transition: `opacity ${transitioning ? "0.4" : "0.55"}s ease, transform ${transitioning ? "0.4" : "0.55"}s cubic-bezier(0.22,1,0.36,1)`,
         willChange: "opacity, transform",
       }}>
-        <div key={page} data-scene={activeLegacySceneKey} style={{ position: "relative" }}>
+        <div key={page} style={{ position: "relative" }}>
           {renderPage()}
           <StickerLayer sceneKey={activeLegacySceneKey} />
         </div>

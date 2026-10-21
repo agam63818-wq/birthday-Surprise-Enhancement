@@ -191,4 +191,56 @@ describe("StickerLayer component", () => {
     expect(afterNodes[0]).toBe(beforeNodes[0]);
     expect(afterNodes[1]).toBe(beforeNodes[1]);
   });
+
+  it("exposes selection outline & handles ONLY in editable mode and commits drag once on pointerup", () => {
+    const seeded = createSeededStickerFixture("v2");
+    const onCommit = vi.fn();
+    const onSelect = vi.fn();
+
+    const { container } = render(
+      <ConfigProvider config={seeded}>
+        <StickerLayer
+          sceneKey="intro"
+          reducedMotion
+          editable
+          selectedUid="fix-intro-1"
+          onSelectUid={onSelect}
+          onCommitPlacement={onCommit}
+        />
+      </ConfigProvider>,
+    );
+
+    const layer = container.querySelector(".sticker-layer--editable") as HTMLElement;
+    vi.spyOn(layer, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 390,
+      height: 660,
+      right: 390,
+      bottom: 660,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    const selected = container.querySelector('[data-sticker-uid="fix-intro-1"]') as HTMLElement;
+    const unselected = container.querySelector('[data-sticker-uid="fix-intro-2"]') as HTMLElement;
+
+    // Only selected sticker has touch-action: none and handles; unselected permits vertical scroll
+    expect(selected.style.touchAction).toBe("none");
+    expect(unselected.style.touchAction).toBe("pan-y");
+    expect(selected.querySelector(".sticker-editor-outline")).not.toBeNull();
+    expect(unselected.querySelector(".sticker-editor-outline")).toBeNull();
+
+    // Pointer drag updates DOM inline without calling onCommit until pointerup
+    selected.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1, clientX: 70, clientY: 165 }));
+    selected.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerId: 1, clientX: 109, clientY: 231 }));
+    expect(onCommit).toHaveBeenCalledTimes(0);
+
+    selected.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 1, clientX: 109, clientY: 231 }));
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    expect(onCommit.mock.calls[0][0]).toBe("fix-intro-1");
+    expect(onCommit.mock.calls[0][1].x).toBeCloseTo(0.28, 2);
+    expect(onCommit.mock.calls[0][1].y).toBeCloseTo(0.35, 2);
+  });
 });

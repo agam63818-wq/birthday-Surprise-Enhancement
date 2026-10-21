@@ -250,7 +250,12 @@ export default function Dashboard() {
             <CustomizeForm
               surprise={surprise}
               config={config}
-              onConfigChange={setDraft}
+              onConfigChange={(next) =>
+                setDraft((prev) => {
+                  const base = prev ?? surprise.config;
+                  return typeof next === "function" ? next(base) : next;
+                })
+              }
               onAudioPlaybackSave={saveAudioPlayback}
               audioSaving={audioPending > 0}
               onSurpriseChange={setSurprise}
