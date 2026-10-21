@@ -65,6 +65,41 @@ export type NewSceneId =
 
 export type SceneId = LegacySceneId | NewSceneId;
 
+/** Canonical scene key covering all legacy pages, occasion heroes, and v2 scenes. */
+export type SceneKey = SceneId;
+
+// ── Stickers config (additive across v1 + v2) ────────────────────────────
+export type StickerEntryMode = "none" | "fade" | "pop";
+
+export interface StickerPlacement {
+  uid: string;
+  stickerId: string;
+  /** Horizontal center position relative to scene box (0..1). */
+  x: number;
+  /** Vertical center position relative to scene box (0..1). */
+  y: number;
+  /** Width as fraction of scene width (0.05..0.9); height derived from manifest aspect. */
+  w: number;
+  /** Rotation angle in degrees (-180..180). */
+  rotate: number;
+  /** Layer stacking index within the scene's StickerLayer. */
+  z: number;
+  /** Optional horizontal mirror flip. */
+  flipX?: boolean;
+  /** Optional entry animation mode (only "fade" implemented in Part 2; "none" skips fade). */
+  entry?: StickerEntryMode;
+}
+
+export interface SceneStickersConfig {
+  enabled: boolean;
+  items: StickerPlacement[];
+}
+
+export interface StickersConfig {
+  version: 1;
+  scenes: Partial<Record<SceneKey, SceneStickersConfig>>;
+}
+
 // ── Feature flags ────────────────────────────────────────────────────────
 export interface FeatureFlags {
   letters?: boolean;
@@ -212,6 +247,9 @@ export interface SurpriseConfigV2Extension {
 
   /** Per-page font overrides (extended to include new scenes). */
   textStyles?: Partial<Record<string, FontPresetId>>;
+
+  /** Optional per-scene sticker placements (additive across both v1 and v2 configs). */
+  stickers?: StickersConfig;
 
   /** Unknown extension data preserved without execution. */
   _ext?: Record<string, unknown>;

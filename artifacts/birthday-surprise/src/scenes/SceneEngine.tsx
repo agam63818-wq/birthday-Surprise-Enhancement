@@ -22,6 +22,8 @@ import React, {
 import { computeActiveSequence, SCENE_LAZY_LOADERS, SCENE_REGISTRY } from "@/lib/v2/registry";
 import type { NormalizedConfig } from "@/lib/v2/schema";
 import type { SceneComponentProps } from "@/lib/v2/registry";
+import StickerLayer from "@/components/stickers/StickerLayer";
+import { resolveActiveSceneKey } from "@/lib/stickers/model";
 
 // ── Reduced motion detection ─────────────────────────────────────────────
 function useReducedMotion(): boolean {
@@ -41,7 +43,7 @@ function useReducedMotion(): boolean {
 // Lazy components are cached so they're only imported once.
 const lazyCache = new Map<string, ComponentType<SceneComponentProps>>();
 
-function getLazyScene(sceneId: string): ComponentType<SceneComponentProps> | null {
+export function getLazyScene(sceneId: string): ComponentType<SceneComponentProps> | null {
   const loader = SCENE_LAZY_LOADERS[sceneId as keyof typeof SCENE_LAZY_LOADERS];
   if (!loader) return null;
 
@@ -293,7 +295,13 @@ export default function SceneEngine({
           <span aria-hidden="true">→</span>
         </button>
       </nav>
-      <div key={currentSceneId} className="scene-content">{renderScene()}</div>
+      <div key={currentSceneId} className="scene-content" style={{ position: "relative" }}>
+        {renderScene()}
+        <StickerLayer
+          sceneKey={resolveActiveSceneKey(currentSceneId, normalizedConfig.occasion) ?? currentSceneId}
+          reducedMotion={reducedMotion}
+        />
+      </div>
     </div>
   );
 }

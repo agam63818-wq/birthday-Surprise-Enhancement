@@ -1,6 +1,7 @@
 import { defineConfig } from "vitest/config";
 import path from "node:path";
 export default defineConfig({
+  esbuild: { jsx: "automatic" },
   resolve: { alias: { "@": path.resolve("artifacts/birthday-surprise/src") } },
-  test: { globals: true, environment: "node", include: ["artifacts/birthday-surprise/src/**/*.test.ts"], maxWorkers: 2 },
+  test: { globals: true, environment: "node", include: ["artifacts/birthday-surprise/src/**/*.test.{ts,tsx}"], maxWorkers: 2 },
 });

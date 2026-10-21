@@ -19,8 +19,9 @@ import type { AudioTrackId, AudioPlaybackSettings } from "@/lib/v2/schema";
 import AudioField from "@/components/dashboard/AudioField";
 import PaywallLock from "@/components/dashboard/PaywallLock";
 import FontPicker from "@/components/dashboard/FontPicker";
+import SceneStickersEditor from "@/components/stickers/SceneStickersEditor";
 import { supabase } from "@/lib/supabase";
-import type { SurpriseConfig as Config } from "@/lib/v2/schema";
+import type { SceneKey, SurpriseConfig as Config } from "@/lib/v2/schema";
 import V2ExperienceEditor from "./V2ExperienceEditor";
 import { validateV2Config } from "../../../supabase/functions/_shared/configPatch";
 import type { SurpriseRow } from "@/types/surprise";
@@ -249,7 +250,7 @@ export default function CustomizeForm({
 }: {
   surprise: SurpriseRow;
   config: Config;
-  onConfigChange: (config: Config) => void;
+  onConfigChange: (config: Config | ((current: Config) => Config)) => void;
   onAudioPlaybackSave: (track: AudioTrackId, url: string, settings: AudioPlaybackSettings, duration?: number) => Promise<void>;
   audioSaving?: boolean;
   onSurpriseChange: (updated: SurpriseRow) => void;
@@ -257,7 +258,7 @@ export default function CustomizeForm({
 }) {
   const normalizedAudioConfig = normalizeConfig(config);
   const audioScenes = computeActiveSequence(normalizedAudioConfig.scenes, normalizedAudioConfig.features);
-  const setConfig = (next: Config | ((current: Config) => Config)) => onConfigChange(typeof next === "function" ? next(config) : next);
+  const setConfig = (next: Config | ((current: Config) => Config)) => onConfigChange(next);
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<string[]>(["name"]);
@@ -410,6 +411,16 @@ export default function CustomizeForm({
     onSaved(data as SurpriseRow);
   };
 
+  const sceneStickers = (sceneKey: SceneKey, sceneLabel: string, sectionKey: string = sceneKey) => (
+    <SceneStickersEditor
+      sceneKey={sceneKey}
+      sceneLabel={sceneLabel}
+      config={config}
+      onChange={setConfig}
+      panelOpen={isOpen(sectionKey)}
+    />
+  );
+
   const item = (key: string, title: string, subtitle: string | undefined, children: React.ReactNode, emojiOverride?: string) => (
     <AccordionEditorItem
       key={key}
@@ -487,6 +498,7 @@ export default function CustomizeForm({
             <TextField label="Title" value={config.landing.title} onChange={(v) => set("landing", { title: v })} />
             <TextField label="Subtitle" value={config.landing.subtitle} onChange={(v) => set("landing", { subtitle: v })} />
             <TextField label="Button text" value={config.landing.buttonText} onChange={(v) => set("landing", { buttonText: v })} />
+            {sceneStickers("landing", "Landing page")}
           </>
         ))}
 
@@ -497,6 +509,7 @@ export default function CustomizeForm({
             <TextAreaField label="Message" value={config.intro.message} onChange={(v) => set("intro", { message: v })} />
             <TextField label="Loading text" value={config.intro.loadingText} onChange={(v) => set("intro", { loadingText: v })} />
             <TextField label="Button text" value={config.intro.buttonText} onChange={(v) => set("intro", { buttonText: v })} />
+            {sceneStickers("intro", "Intro")}
           </>
         ))}
 
@@ -510,6 +523,7 @@ export default function CustomizeForm({
             <TextField label="Result headline" value={config.cutenessMeter.resultHeadline} onChange={(v) => set("cutenessMeter", { resultHeadline: v })} />
             <TextAreaField label="Result message" value={config.cutenessMeter.resultMessage} onChange={(v) => set("cutenessMeter", { resultMessage: v })} />
             <TextField label="Button text" value={config.cutenessMeter.buttonText} onChange={(v) => set("cutenessMeter", { buttonText: v })} />
+            {sceneStickers("cuteness", "Cuteness meter", "cutenessMeter")}
           </>
         ))}
 
@@ -522,6 +536,7 @@ export default function CustomizeForm({
             <TextField label="Badge" value={config.celebration.badge} onChange={(v) => set("celebration", { badge: v })} />
             <TextAreaField label="Message" value={config.celebration.message} onChange={(v) => set("celebration", { message: v })} />
             <TextField label="Button text" value={config.celebration.buttonText} onChange={(v) => set("celebration", { buttonText: v })} />
+            {sceneStickers("celebration", "Celebration")}
           </>
         ))}
 
@@ -537,7 +552,7 @@ export default function CustomizeForm({
             ? snip(config.cake.title)
             : snip(config.occasionContent?.[occ as keyof NonNullable<Config["occasionContent"]>]?.title ?? "");
 
-          const el = item("cake", sectionLabel, sectionSubtitle, (() => {
+          const heroFields = (() => {
             if (occ === "birthday" || occ === "custom") {
               // ── Birthday / Custom: existing fields unchanged ──────
               return (
@@ -682,7 +697,14 @@ export default function CustomizeForm({
             }
 
             return null;
-          })(), sectionEmoji);
+          })();
+
+          const el = item("cake", sectionLabel, sectionSubtitle, (
+            <>
+              {heroFields}
+              {sceneStickers("cake", sectionLabel)}
+            </>
+          ), sectionEmoji);
 
           return el;
         })()}
@@ -694,6 +716,7 @@ export default function CustomizeForm({
             <TextField label="Subtitle" value={config.whyYouMatter.subtitle} onChange={(v) => set("whyYouMatter", { subtitle: v })} />
             <TextField label="Button text" value={config.whyYouMatter.buttonText} onChange={(v) => set("whyYouMatter", { buttonText: v })} />
             <CardListEditor cards={config.whyYouMatter.cards} onChange={(cards) => set("whyYouMatter", { cards })} />
+            {sceneStickers("whyYouMatter", "Why you matter")}
           </>
         ))}
 
@@ -704,6 +727,7 @@ export default function CustomizeForm({
             <TextField label="Subtitle" value={config.ourStory.subtitle} onChange={(v) => set("ourStory", { subtitle: v })} />
             <TextField label="Button text" value={config.ourStory.buttonText} onChange={(v) => set("ourStory", { buttonText: v })} />
             <CardListEditor cards={config.ourStory.cards} onChange={(cards) => set("ourStory", { cards })} />
+            {sceneStickers("ourStory", "Our story")}
           </>
         ))}
 
@@ -718,6 +742,7 @@ export default function CustomizeForm({
               onChange={(photos) => set("memoryWall", { photos })}
               userId={surprise.user_id}
             />
+            {sceneStickers("memoryWall", "Memory wall")}
           </>
         ))}
 
@@ -726,6 +751,7 @@ export default function CustomizeForm({
             <FontPicker value={config.textStyles?.beforeLeave} onChange={(id) => setFont("beforeLeave", id)} />
             <TextAreaField label="Message" value={config.beforeLeave.message} onChange={(v) => set("beforeLeave", { message: v })} rows={2} />
             <TextField label="Button text" value={config.beforeLeave.buttonText} onChange={(v) => set("beforeLeave", { buttonText: v })} />
+            {sceneStickers("beforeLeave", "Before you leave")}
           </>
         ))}
 
@@ -742,6 +768,7 @@ export default function CustomizeForm({
               <TextAreaField label="Final line 2" value={config.lastNote.finalLine2} onChange={(v) => set("lastNote", { finalLine2: v })} rows={2} />
               <TextField label="Footer text" value={config.lastNote.footerText} onChange={(v) => set("lastNote", { footerText: v })} />
             </div>
+            {sceneStickers("lastNote", "Last note")}
           </>
         ))}
 
