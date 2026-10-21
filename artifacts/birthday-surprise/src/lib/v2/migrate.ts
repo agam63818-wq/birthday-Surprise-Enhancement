@@ -251,7 +251,7 @@ function detectVersion(raw: SurpriseConfig): ConfigVersion {
 const KNOWN_V2_KEYS = new Set([
   "_version", "occasionId", "scenes", "features", "themePreset",
   "notebook", "roseBloom", "butterfly", "giftReveal", "youAndMe",
-  "textStyles", "_ext",
+  "textStyles", "stickers", "_ext",
 ]);
 
 function preserveExtensionData(raw: SurpriseConfig): Record<string, unknown> {

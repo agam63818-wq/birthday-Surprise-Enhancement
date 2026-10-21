@@ -6,6 +6,7 @@
 import type { AudioPlaybackMap } from "../supabase/functions/_shared/audioPlayback";
 import type { FontPresetId } from "@/lib/fontPresets";
 import type { ThemePresetId } from "@/lib/themePresets";
+import type { StickersConfig } from "@/lib/v2/schema";
 
 const config = {
   // ── Person's name ──────────────────────────────────────────
@@ -210,4 +211,7 @@ export type Config = BaseConfig & {
       buttonText?: string;
     };
   };
+
+  // Optional per-scene decorative sticker placements (additive — absent on legacy rows).
+  stickers?: StickersConfig;
 };

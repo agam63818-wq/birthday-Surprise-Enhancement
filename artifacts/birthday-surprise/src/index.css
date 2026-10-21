@@ -1408,4 +1408,32 @@ button.dash-mobile-dropdown-item.is-current:hover {
 .music-error { font-size: 12px; color: #ffc2c2; margin-top: 10px; }
 .music-save-status { font-size: 11px; color: #b2e8cf; margin-top: 12px; }
 .audio-runtime-notice { position: fixed; bottom: 82px; right: 18px; max-width: min(300px, 85vw); z-index: 600; background: #170e23e8; color: #eee1f2; border: 1px solid #695275; padding: 12px; border-radius: 10px; font-size: 12px; }
+
+/* Decorative per-scene sticker overlay — never intercepts pointer events */
+@keyframes sticker-fade-in {
+  from { opacity: 0; scale: 0.94; }
+  to   { opacity: 1; scale: 1; }
+}
+.sticker-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sticker-layer-item {
+  position: absolute;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  transform-origin: center center;
+}
+.sticker-layer-item--fade {
+  animation: sticker-fade-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sticker-layer-item--fade {
+    animation: none !important;
+  }
+}
 @media(max-width: 390px) { .music-control-card { padding: 12px; } .music-grid { gap: 8px; } }

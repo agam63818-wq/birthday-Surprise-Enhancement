@@ -45,18 +45,22 @@ describe("Sticker manifest single source of truth", () => {
     expect(ids).toEqual([...STICKER_IDS]);
   });
 
-  it("ensures every referenced webp and webm file exists on disk with matching byte sizes", () => {
+  it("ensures every referenced webp, webm, and static poster file exists on disk with matching sizes", () => {
     for (const item of STICKER_MANIFEST) {
       const webpDiskPath = path.join(PUBLIC_DIR, item.webp.replace(/^\//, ""));
       const webmDiskPath = path.join(PUBLIC_DIR, item.webm.replace(/^\//, ""));
+      const posterDiskPath = path.join(PUBLIC_DIR, item.poster.replace(/^\//, ""));
 
       expect(fs.existsSync(webpDiskPath), `Missing WebP file for ${item.id}`).toBe(true);
       expect(fs.existsSync(webmDiskPath), `Missing WebM file for ${item.id}`).toBe(true);
+      expect(fs.existsSync(posterDiskPath), `Missing poster PNG for ${item.id}`).toBe(true);
 
       const webpStat = fs.statSync(webpDiskPath);
       const webmStat = fs.statSync(webmDiskPath);
+      const posterStat = fs.statSync(posterDiskPath);
       expect(webpStat.size).toBe(item.bytes);
       expect(webmStat.size).toBe(STICKER_WEBM_BYTES[item.id]);
+      expect(posterStat.size).toBeGreaterThan(0);
     }
   });
 
@@ -95,7 +99,7 @@ describe("Sticker manifest single source of truth", () => {
     const manifestPath = path.join(SRC_DIR, "lib/stickers/manifest.ts");
     const testDir = path.join(SRC_DIR, "lib/stickers/__tests__");
     const hardcodedStickerPathPattern = new RegExp(
-      `/${"stickers"}/|kitty-\\d{2}\\.(?:webp|webm)`,
+      `/${"stickers"}/(?:posters/)?[^"'\\s]+\\.(?:webp|webm|png)|kitty-\\d{2}\\.(?:webp|webm|png)`,
     );
 
     const offenders: string[] = [];

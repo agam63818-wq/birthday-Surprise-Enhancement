@@ -20,8 +20,10 @@ import defaultConfig, { type Config } from "@/config";
 import { ConfigProvider, useConfig, useNormalizedConfig } from "@/contexts/ConfigContext";
 import { FONT_PRESETS } from "@/lib/fontPresets";
 import { THEME_PRESETS } from "@/lib/themePresets";
-import type { SurpriseConfig } from "@/lib/v2/schema";
+import type { StickersConfig, SurpriseConfig } from "@/lib/v2/schema";
 import SceneEngine from "@/scenes/SceneEngine";
+import StickerLayer from "@/components/stickers/StickerLayer";
+import { resolveActiveSceneKey } from "@/lib/stickers/model";
 
 const PAGES = [
   "landing", "intro", "cuteness", "celebration",
@@ -92,6 +94,24 @@ function AmbientFX() {
 // used by the public "/" route to show the crawlable About/FAQ section. It is
 // never passed for share links or the dashboard preview, so those are
 // pixel-identical to before.
+const DEV_PREVIEW_STICKERS: StickersConfig = {
+  version: 1,
+  scenes: {
+    landing: {
+      enabled: true,
+      items: [
+        { uid: "dev-landing-1", stickerId: "kitty-22", x: 0.16, y: 0.24, w: 0.16, rotate: -10, z: 1 },
+      ],
+    },
+    intro: {
+      enabled: true,
+      items: [
+        { uid: "dev-intro-1", stickerId: "kitty-02", x: 0.84, y: 0.22, w: 0.18, rotate: 8, z: 1 },
+      ],
+    },
+  },
+};
+
 export default function BirthdayExperience({
   config = defaultConfig,
   landingFooter,
@@ -99,8 +119,20 @@ export default function BirthdayExperience({
   config?: SurpriseConfig;
   landingFooter?: ReactNode;
 }) {
+  const effectiveConfig = useMemo(() => {
+    if (
+      import.meta.env.DEV &&
+      !config.stickers &&
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("devStickers") === "1"
+    ) {
+      return { ...config, stickers: DEV_PREVIEW_STICKERS };
+    }
+    return config;
+  }, [config]);
+
   return (
-    <ConfigProvider config={config}>
+    <ConfigProvider config={effectiveConfig}>
       <ExperienceTheme><BirthdayExperienceInner landingFooter={landingFooter} /></ExperienceTheme>
     </ConfigProvider>
   );
@@ -174,6 +206,7 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
   };
 
   const pageIdx = PAGES.indexOf(page);
+  const activeLegacySceneKey = resolveActiveSceneKey(page, normalized.occasion) ?? page;
 
   // ── v2 path: use SceneEngine for configs with explicit scene sequences ──
   // Legacy v1 configs (no _version or _version===1) always use the fixed
@@ -278,7 +311,10 @@ function BirthdayExperienceInner({ landingFooter }: { landingFooter?: ReactNode 
         transition: `opacity ${transitioning ? "0.4" : "0.55"}s ease, transform ${transitioning ? "0.4" : "0.55"}s cubic-bezier(0.22,1,0.36,1)`,
         willChange: "opacity, transform",
       }}>
-        {renderPage()}
+        <div key={page} data-scene={activeLegacySceneKey} style={{ position: "relative" }}>
+          {renderPage()}
+          <StickerLayer sceneKey={activeLegacySceneKey} />
+        </div>
         {page === "landing" && landingFooter}
       </div>
     </>

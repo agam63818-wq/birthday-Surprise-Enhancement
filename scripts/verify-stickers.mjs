@@ -282,16 +282,24 @@ export async function verifyWebmFile(filePath) {
 }
 
 export async function verifyStickersDir(stickersDir = DEFAULT_STICKERS_DIR) {
-  let entries;
+  let dirEntries;
   try {
-    entries = (await fs.readdir(stickersDir)).sort();
+    dirEntries = await fs.readdir(stickersDir, { withFileTypes: true });
   } catch (err) {
     throw new Error(
       `Cannot read stickers directory "${stickersDir}": ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 
-  if (entries.length === 0) {
+  const fileNames = dirEntries
+    .filter((d) => {
+      if (d.isDirectory() && d.name === "posters") return false;
+      return true;
+    })
+    .map((d) => d.name)
+    .sort();
+
+  if (fileNames.length === 0) {
     throw new Error(`Stickers directory "${stickersDir}" is empty`);
   }
 
@@ -299,7 +307,7 @@ export async function verifyStickersDir(stickersDir = DEFAULT_STICKERS_DIR) {
   const errors = [];
   const byId = new Map();
 
-  for (const name of entries) {
+  for (const name of fileNames) {
     const fullPath = path.join(stickersDir, name);
     const ext = path.extname(name).toLowerCase();
     const id = path.basename(name, ext);
@@ -323,9 +331,44 @@ export async function verifyStickersDir(stickersDir = DEFAULT_STICKERS_DIR) {
     }
   }
 
+  const postersDir = path.join(stickersDir, "posters");
+  const hasPostersDir = dirEntries.some((d) => d.isDirectory() && d.name === "posters");
+
   for (const [id, pair] of byId.entries()) {
     if (!pair.webp) errors.push(`${id}: missing .webp companion file`);
     if (!pair.webm) errors.push(`${id}: missing .webm companion file`);
+
+    if (hasPostersDir && pair.webp) {
+      const posterPath = path.join(postersDir, `${id}.png`);
+      try {
+        const posterBuf = await fs.readFile(posterPath);
+        if (
+          posterBuf.length < 8 ||
+          posterBuf[0] !== 0x89 ||
+          posterBuf[1] !== 0x50 ||
+          posterBuf[2] !== 0x4e ||
+          posterBuf[3] !== 0x47
+        ) {
+          errors.push(`posters/${id}.png: invalid PNG magic header`);
+          continue;
+        }
+        const pMeta = await sharp(posterBuf).metadata();
+        if (pMeta.width !== pair.webp.width || pMeta.height !== pair.webp.height) {
+          errors.push(
+            `posters/${id}.png: expected ${pair.webp.width}x${pair.webp.height}, got ${pMeta.width}x${pMeta.height}`,
+          );
+        }
+        const pRaw = await sharp(posterBuf).ensureAlpha().raw().toBuffer();
+        const bounds = scanAlphaBounds(pRaw, pair.webp.width * pair.webp.height, `posters/${id}.png`);
+        if (bounds.minAlpha !== 0 || bounds.maxAlpha !== 255) {
+          errors.push(
+            `posters/${id}.png: expected alpha 0..255, got ${bounds.minAlpha}..${bounds.maxAlpha}`,
+          );
+        }
+      } catch (err) {
+        errors.push(`posters/${id}.png: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
   }
 
   if (errors.length > 0) {
