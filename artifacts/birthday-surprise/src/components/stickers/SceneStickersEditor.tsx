@@ -664,6 +664,9 @@ export default function SceneStickersEditor({
                       src={meta.poster}
                       alt=""
                       aria-hidden="true"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                       style={{
                         width: "40px",
                         height: "40px",

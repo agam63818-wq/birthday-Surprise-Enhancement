@@ -95,6 +95,9 @@ const StickerGalleryTile = React.memo(function StickerGalleryTile({
             aria-hidden="true"
             loading="lazy"
             decoding="async"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
             style={{
               maxWidth: "100%",
               maxHeight: "100%",

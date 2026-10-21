@@ -79,10 +79,12 @@ const StickerImg = React.memo(
     item: StickerPlacement;
     reducedMotion: boolean;
   }) {
+    const [failedSrc, setFailedSrc] = useState<string | null>(null);
     const manifestItem = getStickerById(item.stickerId);
     if (!manifestItem) return null;
 
     const src = reducedMotion ? manifestItem.poster : manifestItem.webp;
+    if (failedSrc === src) return null;
     const flip = item.flipX ? " scaleX(-1)" : "";
     const shouldFade = !reducedMotion && (item.entry ?? "fade") !== "none";
 
@@ -93,6 +95,7 @@ const StickerImg = React.memo(
         aria-hidden="true"
         decoding="async"
         draggable={false}
+        onError={() => setFailedSrc(src)}
         data-sticker-uid={item.uid}
         className={`sticker-layer-item${shouldFade ? " sticker-layer-item--fade" : ""}`}
         style={{
@@ -147,6 +150,7 @@ function EditableStickerOverlay({
   const itemElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const gestureRef = useRef<ActiveGesture | null>(null);
   const rafRef = useRef<number | null>(null);
+  const [failedKeys, setFailedKeys] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     return () => {
@@ -330,6 +334,8 @@ function EditableStickerOverlay({
 
         const isSelected = item.uid === selectedUid;
         const src = reducedMotion ? manifestItem.poster : manifestItem.webp;
+        const assetKey = `${item.uid}:${src}`;
+        if (failedKeys.has(assetKey)) return null;
 
         return (
           <div
@@ -382,6 +388,13 @@ function EditableStickerOverlay({
               aria-hidden="true"
               decoding="async"
               draggable={false}
+              onError={() =>
+                setFailedKeys((prev) => {
+                  const next = new Set(prev);
+                  next.add(assetKey);
+                  return next;
+                })
+              }
               style={{
                 width: "100%",
                 height: "100%",

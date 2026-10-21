@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import defaultConfig from "@/config";
 import StickerLayer from "@/components/stickers/StickerLayer";
@@ -242,5 +242,63 @@ describe("StickerLayer component", () => {
     expect(onCommit.mock.calls[0][0]).toBe("fix-intro-1");
     expect(onCommit.mock.calls[0][1].x).toBeCloseTo(0.28, 2);
     expect(onCommit.mock.calls[0][1].y).toBeCloseTo(0.35, 2);
+  });
+
+  it("silently removes 404/broken sticker imgs without leaving broken icons and cleans up matchMedia listeners on unmount", () => {
+    const addListener = vi.fn();
+    const removeListener = vi.fn();
+    vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: addListener,
+      removeEventListener: removeListener,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const corruptAndValidConfig: SurpriseConfig = {
+      ...createSeededStickerFixture("v2"),
+      stickers: {
+        version: 1,
+        scenes: {
+          intro: {
+            enabled: true,
+            items: [
+              // Out-of-bounds values get clamped cleanly
+              { uid: "broken-http", stickerId: "kitty-02", x: 99, y: -5, w: 9, rotate: -720, z: 1 },
+              // Corrupt NaN entry dropped silently
+              { uid: "corrupt-nan", stickerId: "kitty-03", x: Number.NaN, y: 0.5, w: 0.2, rotate: 0, z: 2 },
+              // Valid sibling remains intact
+              { uid: "healthy", stickerId: "kitty-22", x: 0.5, y: 0.5, w: 0.2, rotate: 0, z: 3 },
+            ],
+          },
+        },
+      },
+    };
+
+    const { container, unmount } = render(
+      <ConfigProvider config={corruptAndValidConfig}>
+        <StickerLayer sceneKey="intro" />
+      </ConfigProvider>,
+    );
+
+    const imgsBefore = Array.from(container.querySelectorAll("img"));
+    expect(imgsBefore).toHaveLength(2);
+    expect(imgsBefore[0].style.left).toBe("100%");
+    expect(imgsBefore[0].style.top).toBe("0%");
+    expect(imgsBefore[0].style.width).toBe("90%");
+    expect(imgsBefore[0].style.transform).toContain("rotate(-180deg)");
+
+    // Simulate HTTP 404 error on first sticker -> removed cleanly with no broken icon left in DOM
+    fireEvent.error(imgsBefore[0]);
+    const imgsAfter404 = Array.from(container.querySelectorAll("img"));
+    expect(imgsAfter404).toHaveLength(1);
+    expect(imgsAfter404[0].getAttribute("data-sticker-uid")).toBe("healthy");
+
+    expect(addListener).toHaveBeenCalledTimes(1);
+    unmount();
+    expect(removeListener).toHaveBeenCalledTimes(1);
   });
 });
