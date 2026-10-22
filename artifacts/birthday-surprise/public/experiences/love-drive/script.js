@@ -66,7 +66,20 @@
     get geometriesDisposed() { return counters.geometries; }, get materialsDisposed() { return counters.materials; },
     get texturesDisposed() { return counters.textures; }, get renderTargetsDisposed() { return counters.renderTargets; },
     get canvasesRemoved() { return counters.canvasesRemoved; }, get audioClosed() { return counters.audioClosed; },
-    get audioState() { return gameInstance && gameInstance.audioCtx ? gameInstance.audioCtx.state : 'none'; }
+    get audioState() { return gameInstance && gameInstance.audioCtx ? gameInstance.audioCtx.state : 'none'; },
+    // Read-only diagnostics let release QA drive the real mechanics without
+    // exposing the renderer/game object or adding a teleport/mutation hook.
+    get state() { return gameInstance && !gameInstance.isDisposed ? gameInstance.state : 'disposed'; },
+    get carPosition() { return gameInstance && gameInstance.car ? { x: gameInstance.car.position.x, y: gameInstance.car.position.y, z: gameInstance.car.position.z } : null; },
+    get collectedCount() { return gameInstance ? gameInstance.collectedItems.size : 0; },
+    get heldControls() { const keys = gameInstance ? gameInstance.keys : {}; return { left: Boolean(keys.left), right: Boolean(keys.right), up: Boolean(keys.up), down: Boolean(keys.down) }; },
+    get activePointers() { return gameInstance ? gameInstance.activePointers.size : 0; },
+    get activeModal() { return gameInstance && gameInstance.activeModal ? gameInstance.activeModal.id : null; },
+    get renderCalls() { return gameInstance && gameInstance.renderer ? gameInstance.renderer.info.render.calls : 0; },
+    get canvasSize() { const canvas = gameInstance && gameInstance.renderer ? gameInstance.renderer.domElement : null; return canvas ? { width: canvas.width, height: canvas.height } : null; },
+    get pixelRatio() { return gameInstance && gameInstance.renderer ? gameInstance.renderer.getPixelRatio() : 0; },
+    get particleCount() { return gameInstance ? gameInstance.particles.length : 0; },
+    get reducedMotion() { return gameInstance ? gameInstance.reducedMotion : false; }
   } });
 
   class LoveDriveGame {

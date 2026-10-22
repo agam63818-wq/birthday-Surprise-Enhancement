@@ -29,6 +29,7 @@ export default function LoveDriveScene({ onNext, isActive, reducedMotion, global
           onNext={onNext}
         />
       </div>
+      <div aria-hidden="true" data-experience-music-gutter="true" style={{ height: "calc(70px + env(safe-area-inset-bottom, 0px))", flexShrink: 0 }} />
     </div>
   );
 }

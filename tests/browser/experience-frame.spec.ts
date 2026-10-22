@@ -34,28 +34,19 @@ test("Love Drive runs in ExperienceFrame and teardown stops frame rAF", async ({
   if (!child) throw new Error("Love Drive iframe was not created.");
   const canvas = child.locator("#ld-canvas-container canvas");
   await expect(canvas).toBeVisible({ timeout: 15000 });
-  await expect.poll(() => child.evaluate(() => Boolean((window as any).loveDriveInstance?.renderer))).toBe(true);
+  await expect.poll(() => child.evaluate(() => (window as any).__loveDriveDebug?.activeInstances)).toBe(1);
 
-  const webgl = await child.evaluate(() => {
-    const game = (window as any).loveDriveInstance;
-    const renderer = game?.renderer;
-    return {
-      hasContext: Boolean(renderer?.getContext?.()),
-      width: renderer?.domElement?.width ?? 0,
-      height: renderer?.domElement?.height ?? 0,
-    };
-  });
-  expect(webgl.hasContext).toBe(true);
+  const webgl = await child.evaluate(() => (window as any).__loveDriveDebug.canvasSize);
   expect(webgl.width).toBeGreaterThan(0);
   expect(webgl.height).toBeGreaterThan(0);
-  await expect.poll(() => child.evaluate(() => (window as any).loveDriveInstance.renderer.info.render.calls)).toBeGreaterThan(0);
+  await expect.poll(() => child.evaluate(() => (window as any).__loveDriveDebug.renderCalls)).toBeGreaterThan(0);
 
   // Clicking the real canvas focuses the frame; a real keyboard event must
   // reach the game's existing key handler, not just a synthetic DOM dispatch.
   await canvas.click();
   await expect.poll(() => page.evaluate(() => document.activeElement?.tagName)).toBe("IFRAME");
   await page.keyboard.down("ArrowUp");
-  await expect.poll(() => child.evaluate(() => (window as any).loveDriveInstance.keys.up)).toBe(true);
+  await expect.poll(() => child.evaluate(() => (window as any).__loveDriveDebug.heldControls.up)).toBe(true);
   await page.keyboard.up("ArrowUp");
 
   await page.waitForTimeout(150);
