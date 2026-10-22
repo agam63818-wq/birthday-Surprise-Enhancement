@@ -2,9 +2,10 @@ import { useState } from "react";
 import { TextField, TextAreaField, CheckboxField } from "./FormFields";
 import FontPicker from "./FontPicker";
 import SceneStickersEditor from "@/components/stickers/SceneStickersEditor";
+import ExperienceSceneEditor from "./ExperienceSceneEditor";
 import { OCCASION_IDS, OCCASION_META } from "@/lib/occasions";
 import { THEME_PRESETS } from "@/lib/themePresets";
-import { SCENE_REGISTRY } from "@/lib/v2/registry";
+import { SCENE_REGISTRY, isSceneEnabled, setSceneEnabled } from "@/lib/v2/registry";
 import { normalizeConfig, promoteToCinematic, DEFAULT_V2_SCENE_SEQUENCE, sceneReorder, notebookAddPage, notebookEditPage, notebookDeletePage, notebookReorderPages } from "@/lib/v2/migrate";
 import type { SurpriseConfig, SceneId, SceneKey, NotebookPageType, NotebookPage } from "@/lib/v2/schema";
 import { applyConfigPatch, PAGE_TYPES } from "../../../supabase/functions/_shared/configPatch";
@@ -46,11 +47,12 @@ export default function V2ExperienceEditor({ config, onChange }: Props) {
   const text = (label: string, path: string, value: string | undefined, placeholder = "", multiline = false) => multiline
     ? <TextAreaField label={label} value={value ?? ""} onChange={v => patch(path, v)} placeholder={placeholder} />
     : <TextField label={label} value={value ?? ""} onChange={v => patch(path, v)} placeholder={placeholder} />;
-  const enabled = (id: SceneId) => n.scenes.includes(id) && n.features[SCENE_REGISTRY[id].featureKey!] !== false;
+  const enabled = (id: SceneId) => isSceneEnabled(id, n.scenes, n.features);
   const toggle = (id: SceneId, value: boolean) => {
     const feature = SCENE_REGISTRY[id].featureKey;
     if (!feature) return;
-    onChange({ ...config, scenes: n.scenes.includes(id) ? n.scenes : [...n.scenes, id], features: { ...n.features, [feature]: value } });
+    const next = setSceneEnabled(n.scenes, n.features, id, value);
+    onChange({ ...config, scenes: next.scenes, features: next.features });
   };
   const move = (from: number, to: number) => patch("scenes", sceneReorder(n.scenes, from, to));
   return <div className="v2-editor">
@@ -118,6 +120,35 @@ export default function V2ExperienceEditor({ config, onChange }: Props) {
       <CheckboxField label="Falling petals" checked={n.roseBloom.fallingPetals !== false} onChange={v => patch("roseBloom.fallingPetals", v)} /><CheckboxField label="Rose sound (respects global mute)" checked={n.roseBloom.soundEnabled !== false} onChange={v => patch("roseBloom.soundEnabled", v)} />
       {v2Stickers("roseBloom", "Rose bloom finale")}
     </details>
+    <ExperienceSceneEditor
+      sceneId="heartTunnel"
+      config={config}
+      occasion={n.occasion}
+      enabled={enabled("heartTunnel")}
+      onToggle={value => toggle("heartTunnel", value)}
+      onPatch={patch}
+      onDetailsToggle={handleDetailsToggle("heartTunnel")}
+      stickers={v2Stickers("heartTunnel", "Heart Tunnel")}
+    />
+    <ExperienceSceneEditor
+      sceneId="loveConfession"
+      config={config}
+      occasion={n.occasion}
+      enabled={enabled("loveConfession")}
+      onToggle={value => toggle("loveConfession", value)}
+      onPatch={patch}
+      onDetailsToggle={handleDetailsToggle("loveConfession")}
+      stickers={v2Stickers("loveConfession", "Love Confession")}
+    />
+    <ExperienceSceneEditor
+      sceneId="loveDrive"
+      config={config}
+      occasion={n.occasion}
+      enabled={enabled("loveDrive")}
+      onToggle={value => toggle("loveDrive", value)}
+      onPatch={patch}
+      onDetailsToggle={handleDetailsToggle("loveDrive")}
+    />
     <section className="v2-panel"><h3>Typography</h3><p>Global reading style. Individual page choices below still take priority.</p><FontPicker value={config.textStyles?.global ?? "storybook"} onChange={v => patch("textStyles.global", v)} /></section>
   </div>;
 }

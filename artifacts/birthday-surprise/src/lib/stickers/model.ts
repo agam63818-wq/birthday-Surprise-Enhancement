@@ -57,7 +57,16 @@ export const ALL_SCENE_KEYS: readonly SceneKey[] = [
   "youAndMe",
   "notebook",
   "roseBloom",
+  "heartTunnel",
+  "loveConfession",
+  "loveDrive",
 ] as const;
+
+/** Love Drive owns the full game surface; decorative host stickers are never mounted there. */
+export const STICKERS_DISABLED_SCENE_KEYS: readonly SceneKey[] = ["loveDrive"];
+export function areStickersSupported(sceneKey: SceneKey | string): boolean {
+  return !(STICKERS_DISABLED_SCENE_KEYS as readonly string[]).includes(sceneKey);
+}
 
 const VALID_ENTRY_MODES = new Set<StickerEntryMode>(["none", "fade", "pop"]);
 const OCCASION_HERO_KEYS = new Set<SceneKey>([
@@ -285,6 +294,7 @@ export function getSceneStickers(
     | undefined,
   sceneKey: SceneKey | string,
 ): StickerPlacement[] {
+  if (!areStickersSupported(sceneKey)) return [];
   const normalized = normalizeStickersConfig(config?.stickers);
   if (!normalized) return [];
 

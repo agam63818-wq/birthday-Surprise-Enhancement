@@ -263,3 +263,7 @@ The original Heart Tunnel `script.js/style.css`, Love Drive `script.js/style.css
 - No native React rewrite, theme binding, config-driven text, reduced-motion source patch, WebAudio replacement, completion buttons, or full disposal implementation yet.
 - No Supabase tables/RLS/RPCs/functions, payment/Razorpay, `api/`, or `middleware.js` changes.
 - No PR and no merge. The Arena session branch remains `arena/fbde90ae-birthday-surprise-enhancement`; the prompt's suggested `feat/scenes-part1` branch was not created because this session requires its fixed branch.
+
+## Part 2 follow-up
+
+Part 2 config/scene plumbing is documented in [`docs/experiences-part2.md`](./experiences-part2.md), with its compatibility/test report in [`docs/experiences-part2-report.md`](./experiences-part2-report.md). The shared AI validator change **REQUIRES MANUAL `supabase functions deploy`** before deployed AI assistant support can be claimed.

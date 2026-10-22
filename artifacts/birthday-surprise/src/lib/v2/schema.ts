@@ -55,13 +55,16 @@ export type LegacySceneId =
   | "lastNote";
 
 // New cinematic scenes (v2 only, opt-in):
+export const EXPERIENCE_SCENE_IDS = ["heartTunnel", "loveConfession", "loveDrive"] as const;
+export type ExperienceSceneId = (typeof EXPERIENCE_SCENE_IDS)[number];
 export type NewSceneId =
   | "letters"
   | "butterfly"
   | "giftReveal"
   | "youAndMe"
   | "notebook"
-  | "roseBloom";
+  | "roseBloom"
+  | ExperienceSceneId;
 
 export type SceneId = LegacySceneId | NewSceneId;
 
@@ -124,6 +127,12 @@ export interface FeatureFlags {
   youAndMe: boolean;
   notebook: boolean;
   roseBloom: boolean;
+
+  // Bundled experiences are always explicit opt-in. Absent must remain OFF;
+  // normalization deliberately does not materialize these keys on old rows.
+  heartTunnel?: boolean;
+  loveConfession?: boolean;
+  loveDrive?: boolean;
 }
 
 // ── Notebook page types ──────────────────────────────────────────────────
@@ -208,6 +217,110 @@ export interface YouAndMeConfig {
   name2?: string;
 }
 
+// ── Bundled experience configs ───────────────────────────────────────────
+// Every field is optional in saved JSON. Normalization resolves defaults only
+// when a scene/slice is explicitly present, so old normalized rows do not gain
+// new enumerable keys. All strings are plain text, never HTML.
+export interface HeartTunnelConfig {
+  startSub?: string;
+  startMain?: string;
+  startSubtitle?: string;
+  startButton?: string;
+  startHint?: string;
+  cinematicSub?: string;
+  cinematicMain?: string;
+  revealTitle?: string;
+  coupleNames?: string;
+  photoUrl?: string;
+  caption?: string;
+  subtitle?: string;
+  yearsNumber?: string;
+  yearsUnit?: string;
+  quote?: string;
+  dateText?: string;
+  letterButton?: string;
+  letterTitle?: string;
+  letterBody?: string[];
+  letterHighlight?: string;
+  signatureLead?: string;
+  signatureName?: string;
+  continueButton?: string;
+  replayButton?: string;
+}
+
+export interface LoveConfessionConfig {
+  question?: string;
+  yesLabel?: string;
+  noLabel?: string;
+  noReaction?: string;
+  climaxLine1?: string;
+  climaxLine2?: string;
+  envelopeLabel?: string;
+  letterTitle?: string;
+  letterBody?: string;
+  signatureLead?: string;
+  signatureName?: string;
+  closeLabel?: string;
+  continueLabel?: string;
+  replayLabel?: string;
+  noGiveInAfter?: number;
+}
+
+export interface LoveDriveCollectibleText {
+  letter?: string;
+  gift?: string;
+  heart?: string;
+}
+
+export interface LoveDriveConfig {
+  recipientName?: string;
+  senderName?: string;
+  missionLabel?: string;
+  progressLabel?: string;
+  objective?: string;
+  drivingObjective?: string;
+  /** Supports the literal {remaining} placeholder. */
+  exploringObjective?: string;
+  allFoundObjective?: string;
+  completedObjective?: string;
+  introToast?: string;
+  hintToast?: string;
+  brokenBlockToast?: string;
+  collectLabels?: LoveDriveCollectibleText;
+  collectedToasts?: LoveDriveCollectibleText;
+  allCollectedToast?: string;
+  /** Postbox-locked message; supports the literal {remaining} placeholder. */
+  deliveryToast?: string;
+  finalTitle?: string;
+  finalMessage?: string;
+  letterTitle?: string;
+  letterPrompt?: string;
+  letterBody?: string;
+  letterFooter?: string;
+  continueLabel?: string;
+  replayLabel?: string;
+  letterReplayLabel?: string;
+  pauseLabel?: string;
+  pauseTitle?: string;
+  pauseBody?: string;
+  resumeLabel?: string;
+  restartLabel?: string;
+  skipIntroLabel?: string;
+  skipRevealLabel?: string;
+  closeLabel?: string;
+  steerLeftLabel?: string;
+  steerRightLabel?: string;
+  brakeLabel?: string;
+  accelerateLabel?: string;
+}
+
+export type ResolvedHeartTunnelConfig = Required<HeartTunnelConfig>;
+export type ResolvedLoveConfessionConfig = Required<LoveConfessionConfig>;
+export type ResolvedLoveDriveConfig = Omit<Required<LoveDriveConfig>, "collectLabels" | "collectedToasts"> & {
+  collectLabels: Required<LoveDriveCollectibleText>;
+  collectedToasts: Required<LoveDriveCollectibleText>;
+};
+
 // ── Midnight Rose theme tokens ───────────────────────────────────────────
 // Applied only when themeId === "midnightRose" (new v2 preset)
 // Scoped to the experience; dashboard/auth/payment are NOT rethemed.
@@ -244,6 +357,11 @@ export interface SurpriseConfigV2Extension {
 
   /** You & Me configuration. */
   youAndMe?: YouAndMeConfig;
+
+  /** Bundled experience configuration; never enabled by migration alone. */
+  heartTunnel?: HeartTunnelConfig;
+  loveConfession?: LoveConfessionConfig;
+  loveDrive?: LoveDriveConfig;
 
   /** Per-page font overrides (extended to include new scenes). */
   textStyles?: Partial<Record<string, FontPresetId>>;
@@ -287,6 +405,10 @@ export interface NormalizedConfig {
   butterfly: ButterflyConfig;
   giftReveal: GiftRevealConfig;
   youAndMe: YouAndMeConfig;
+  /** Present only when the corresponding new scene/slice/flag is explicit. */
+  heartTunnel?: ResolvedHeartTunnelConfig;
+  loveConfession?: ResolvedLoveConfessionConfig;
+  loveDrive?: ResolvedLoveDriveConfig;
   /** The original raw config, preserved for legacy page rendering. */
   raw: SurpriseConfig;
 }

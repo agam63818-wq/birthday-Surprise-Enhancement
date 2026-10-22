@@ -10,6 +10,7 @@
 //  - Disabled scene must not render/progress/nav or load assets
 // ============================================================
 
+import { EXPERIENCE_SCENE_IDS } from "./schema";
 import type { SceneId, OccasionId, FeatureFlags } from "./schema";
 import type { ComponentType } from "react";
 
@@ -34,6 +35,36 @@ export interface SceneMeta {
 // ── Registry ─────────────────────────────────────────────────────────────
 export const SCENE_REGISTRY: Record<SceneId, SceneMeta> = {
   letters: { id: "letters", label: "Interactive Letters", description: "Open personal notes from your final letter lines", isLegacy: false, featureKey: "letters", isHeavy: true, pacing: "emotion" },
+  heartTunnel: {
+    id: "heartTunnel",
+    label: "Heart Tunnel",
+    description: "A cinematic heart tunnel with a personal anniversary or celebration letter",
+    isLegacy: false,
+    featureKey: "heartTunnel",
+    isHeavy: true,
+    pacing: "emotion",
+    recommendedFor: ["birthday", "anniversary", "romantic", "loveday", "custom"],
+  },
+  loveConfession: {
+    id: "loveConfession",
+    label: "Love Confession",
+    description: "A playful confession, secret letter, and heartfelt reveal",
+    isLegacy: false,
+    featureKey: "loveConfession",
+    isHeavy: true,
+    pacing: "surprise",
+    recommendedFor: ["romantic", "loveday", "anniversary", "birthday", "custom"],
+  },
+  loveDrive: {
+    id: "loveDrive",
+    label: "Love Drive",
+    description: "A 3D driving mission with hidden surprises and a birthday letter",
+    isLegacy: false,
+    featureKey: "loveDrive",
+    isHeavy: true,
+    pacing: "curiosity",
+    recommendedFor: ["birthday", "anniversary", "romantic", "loveday", "custom"],
+  },
   // ── Legacy scenes ──────────────────────────────────────────────────────
   landing: {
     id: "landing",
@@ -231,6 +262,9 @@ export interface SceneComponentProps {
 
 export const SCENE_LAZY_LOADERS: Partial<Record<SceneId, LazySceneLoader>> = {
   letters: () => import("@/scenes/LettersScene"),
+  heartTunnel: () => import("@/scenes/HeartTunnelScene"),
+  loveConfession: () => import("@/scenes/LoveConfessionScene"),
+  loveDrive: () => import("@/scenes/LoveDriveScene"),
   butterfly: () => import("@/scenes/ButterflyScene"),
   giftReveal: () => import("@/scenes/GiftRevealScene"),
   youAndMe: () => import("@/scenes/YouAndMeScene"),
@@ -249,6 +283,7 @@ export function isValidFeatureKey(key: string): key is keyof FeatureFlags {
     "intro", "cutenessMeter", "celebration", "memoryWall", "ourStory",
     "whyYouMatter", "beforeLeave", "lastNote",
     "butterfly", "giftReveal", "youAndMe", "notebook", "roseBloom",
+    "heartTunnel", "loveConfession", "loveDrive",
   ];
   return validKeys.includes(key as keyof FeatureFlags);
 }
@@ -263,16 +298,45 @@ export function getRecommendedScenes(occasion: OccasionId): SceneId[] {
 }
 
 // ── Active sequence computation ──────────────────────────────────────────
+// Existing scenes retain their historical "absent means enabled" behavior.
+// Bundled experiences are different: an absent flag is always OFF.
+export function isSceneEnabled(
+  sceneId: SceneId,
+  scenes: readonly SceneId[],
+  features: FeatureFlags,
+): boolean {
+  if (!scenes.includes(sceneId) || !isValidSceneId(sceneId)) return false;
+  const meta = SCENE_REGISTRY[sceneId];
+  if (!meta.featureKey) return true;
+  if ((EXPERIENCE_SCENE_IDS as readonly string[]).includes(sceneId)) {
+    return features[meta.featureKey] === true;
+  }
+  return features[meta.featureKey] !== false;
+}
+
+/** Pure editor operation: enabling adds an absent scene; disabling preserves order/settings. */
+export function setSceneEnabled(
+  scenes: readonly SceneId[],
+  features: FeatureFlags,
+  sceneId: SceneId,
+  enabled: boolean,
+): { scenes: SceneId[]; features: FeatureFlags } {
+  const meta = SCENE_REGISTRY[sceneId];
+  // Disabling an absent scene is a no-op for ordering; only an explicit
+  // enable may introduce a new ID into a saved sequence.
+  const nextScenes = scenes.includes(sceneId) || !enabled ? [...scenes] : [...scenes, sceneId];
+  if (!meta.featureKey) return { scenes: nextScenes, features: { ...features } };
+  return {
+    scenes: nextScenes,
+    features: { ...features, [meta.featureKey]: enabled },
+  };
+}
+
 // Given a scene list and feature flags, returns only the scenes that
 // should actually render (enabled + valid).
 export function computeActiveSequence(
   scenes: SceneId[],
   features: FeatureFlags,
 ): SceneId[] {
-  return [...new Set(scenes)].filter((id) => {
-    if (!isValidSceneId(id)) return false;
-    const meta = SCENE_REGISTRY[id];
-    if (!meta.featureKey) return true; // always-on scenes (landing, cake)
-    return features[meta.featureKey] !== false;
-  });
+  return [...new Set(scenes)].filter((id) => isSceneEnabled(id, scenes, features));
 }

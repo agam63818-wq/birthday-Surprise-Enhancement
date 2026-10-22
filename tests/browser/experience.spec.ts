@@ -52,6 +52,8 @@ async function setup(page: Page, initial: SurpriseConfig = fixture(), signedIn =
     return reply({});
   });
   if (signedIn) await page.addInitScript(({ user }) => {
+    // Auth storage belongs to the top-level app, never to opaque experience frames.
+    if (window !== window.top) return;
     if (sessionStorage.getItem("qa-seeded")) return;
     const exp = Math.floor(Date.now() / 1000) + 3600;
     const token = `${btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }))}.${btoa(JSON.stringify({ sub: user.id, exp }))}.qa`;
@@ -228,7 +230,7 @@ test("every scene can be independently disabled without loading it", async ({ pa
   const qa = await setup(page, config);
   await page.goto("/dashboard");
   await expect(page.getByText("No scenes configured.", { exact: false })).toBeVisible();
-  expect(qa.loaded.filter(url => /(?:Butterfly|GiftReveal|RoseBloom|Notebook|YouAndMe|Letters)Scene/.test(url))).toHaveLength(0);
+  expect(qa.loaded.filter(url => /(?:Butterfly|GiftReveal|RoseBloom|Notebook|YouAndMe|Letters|HeartTunnel|LoveConfession|LoveDrive)Scene/.test(url))).toHaveLength(0);
   await tab(page, "Customize");
   await page.getByLabel("Enable Rose Bloom", { exact: true }).first().check();
   await tab(page, "Preview");
@@ -254,6 +256,39 @@ async function observeAudio(page: Page) {
       return audio;
     };
     (window as any).Audio.prototype = Native.prototype;
+  });
+}
+
+for (const [id, title] of [
+  ["heartTunnel", "Heart Tunnel interactive experience"],
+  ["loveConfession", "Love Confession interactive experience"],
+  ["loveDrive", "Love Drive interactive experience"],
+] as const) {
+  test(`explicitly enabled ${id} mounts only its lazy ExperienceFrame`, async ({ page }) => {
+    const config = fixture();
+    config.scenes = [id];
+    config.features = { ...config.features, [id]: true };
+    let expectedConfig: Record<string, unknown>;
+    if (id === "heartTunnel") {
+      config.heartTunnel = { startMain: "QA Heart Title" };
+      expectedConfig = { startMain: "QA Heart Title", startSub: "YOUR" };
+    } else if (id === "loveConfession") {
+      config.loveConfession = { question: "QA Question?" };
+      expectedConfig = { question: "QA Question?", noGiveInAfter: 6 };
+    } else {
+      config.loveDrive = { objective: "QA Objective" };
+      expectedConfig = { objective: "QA Objective", recipientName: "QA Recipient" };
+    }
+    const qa = await setup(page, config);
+    await page.goto("/s/qa-surprise");
+    await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", id);
+    await expect(page.locator(`iframe[title="${title}"]`)).toBeVisible();
+    await expect(page.locator("[data-experience-loading]")).toHaveCount(0, { timeout: 15000 });
+    const child = page.frames().find(frame => frame.url().includes(`/experiences/${id === "heartTunnel" ? "heart-tunnel" : id === "loveConfession" ? "love-confession" : "love-drive"}/`));
+    expect(child).toBeDefined();
+    await expect.poll(() => child!.evaluate(() => Boolean((window as any).__experience?.initialized))).toBe(true);
+    expect(await child!.evaluate(() => (window as any).__experience.config)).toMatchObject(expectedConfig);
+    expect(qa.errors).toEqual([]);
   });
 }
 
