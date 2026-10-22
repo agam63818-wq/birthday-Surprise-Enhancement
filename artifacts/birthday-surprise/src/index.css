@@ -1690,3 +1690,59 @@ button.dash-mobile-dropdown-item.is-current:hover {
   .sticker-editor-card { padding: 12px; }
 }
 @media(max-width: 390px) { .music-control-card { padding: 12px; } .music-grid { gap: 8px; } }
+
+/* ── Scheduled Surprise Countdown: Customize card + owner toolbar ───────── */
+.cdx { gap: 18px; position: relative; overflow: hidden; border-color: #e8c98a40; background: radial-gradient(120% 80% at 100% 0%, #6b102833, transparent 60%), linear-gradient(145deg, #21141bee, #100c12); }
+.cdx::before { content: ""; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, transparent, #e8c98a, #f472b6, transparent); opacity: .7; }
+.cdx h3 { margin: 2px 0 4px; font: 600 1.35rem 'Playfair Display', Georgia, serif; color: #f8ece4; }
+.cdx .v2-eyebrow { margin: 0; }
+.cdx-head { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; }
+.cdx-sub { margin: 0; font-size: 13px; line-height: 1.55; color: #d9c3cc; max-width: 46ch; }
+.cdx-switch { display: inline-flex !important; grid-auto-flow: column; align-items: center; gap: 8px !important; cursor: pointer; min-height: 44px; flex-shrink: 0; }
+.cdx-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.cdx-track { width: 50px; height: 28px; border-radius: 999px; background: #3a2530; border: 1px solid #ad7b8960; position: relative; transition: background .25s ease; }
+.cdx-thumb { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #f5e9e2; box-shadow: 0 2px 6px #0008; transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+.cdx-switch input:checked + .cdx-track { background: linear-gradient(135deg, #c0396b, #e8a94a); border-color: #e8c98a; }
+.cdx-switch input:checked + .cdx-track .cdx-thumb { transform: translateX(22px); }
+.cdx-switch input:focus-visible + .cdx-track { outline: 2px solid #e8c98a; outline-offset: 3px; }
+.cdx-switch-text { font-size: 12px; font-weight: 600; color: #f5e9e2; min-width: 22px; }
+.cdx-summary { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 12px; background: #160e15; border: 1px solid #61404b66; font-size: 13px; color: #d9c3cc; overflow-wrap: anywhere; }
+.cdx-summary.on { border-color: #e8c98a66; color: #fbe9d0; background: linear-gradient(135deg, #3a1a2a, #1d1118); }
+.cdx-group { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 12px; }
+.cdx-group legend { padding: 0; margin-bottom: 10px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #e8c98a; font-weight: 600; }
+.cdx-field { display: grid; gap: 6px; min-width: 0; }
+.cdx-field label { display: flex !important; justify-content: space-between; gap: 8px; font-size: 12.5px; color: #e9d7de; }
+.cdx-count { color: #a88a96; font-variant-numeric: tabular-nums; font-size: 11px; }
+.cdx-field input, .cdx-field textarea, .cdx-field select { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid #ad7b8960; background: #160e15; color: #f5e9e2; font: 14px Inter, sans-serif; color-scheme: dark; }
+.cdx-field textarea { resize: vertical; line-height: 1.5; }
+.cdx-field input:focus-visible, .cdx-field textarea:focus-visible, .cdx-field select:focus-visible { outline: 2px solid #e8c98a; outline-offset: 2px; }
+.cdx-row2, .cdx-row3, .cdx-row4 { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.cdx-row4 { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); margin-top: 10px; }
+.cdx-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cdx-chips button[aria-pressed="true"] { border-color: #e8c98a; background: #5a2a3a; }
+.cdx-msg { margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 13px; display: grid; gap: 8px; }
+.cdx-msg p { margin: 0; }
+.cdx-msg.error { background: #4a1420aa; border: 1px solid #f43f5e80; color: #fecdd3; }
+.cdx-msg.warn { background: #4a3214aa; border: 1px solid #e8a94a80; color: #fde7c2; }
+.cdx-ok { color: #bbf7d0 !important; }
+.cdx-check { display: flex !important; align-items: center; gap: 10px !important; min-height: 44px; font-size: 13px; color: #e9d7de; cursor: pointer; }
+.cdx-check input { width: 18px; height: 18px; accent-color: #e8a94a; }
+.cdx-check small { color: #a88a96; }
+.cdx-details summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 13px; color: #e9d7de; }
+.cdx-note { margin: 0; font-size: 12px; line-height: 1.55; color: #bfa6b1; }
+.cdx-reset { border-color: #f43f5e60 !important; color: #fecdd3 !important; background: #3a141e88 !important; }
+@media (max-width: 420px) { .cdx-head { flex-direction: column; } }
+
+.cd-owner-bar { position: relative; z-index: 50; margin: 10px auto; width: min(100% - 20px, 900px); padding: 12px 14px; border-radius: 16px; border: 1px dashed #e8c98a; background: repeating-linear-gradient(135deg, #1d1118, #1d1118 12px, #241520 12px, #241520 24px); color: #f5e9e2; font: 13px Inter, sans-serif; display: grid; gap: 8px; box-shadow: 0 10px 30px #0007; }
+.cd-owner-title { margin: 0; font-weight: 700; color: #fbd38d; letter-spacing: .02em; }
+.cd-owner-sub { margin: 0; color: #d9c3cc; font-size: 12px; overflow-wrap: anywhere; }
+.cd-owner-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cd-owner-actions button { min-height: 44px; padding: 8px 12px; border-radius: 10px; border: 1px solid #ad7b8960; background: #42233088; color: #f5e9e2; font: 600 12px Inter, sans-serif; cursor: pointer; }
+.cd-owner-actions button[aria-pressed="true"] { border-color: #e8c98a; background: #5a2a3a; }
+.cd-owner-actions button:focus-visible { outline: 2px solid #e8c98a; outline-offset: 2px; }
+.cd-owner-primary { background: linear-gradient(135deg, #c0396b, #e8a94a) !important; border-color: #e8c98a !important; color: #fff !important; }
+.cd-owner-warn { border-color: #f43f5e80 !important; color: #fecdd3 !important; }
+.cdx button { min-height: 44px; padding: 10px 14px; border: 1px solid #ad7b8960; border-radius: 10px; background: #42233088; color: #f5e9e2; font: 600 12px Inter, sans-serif; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
+.cdx button:hover { border-color: #e8c98a; }
+.cdx button:focus-visible { outline: 2px solid #e8c98a; outline-offset: 2px; }
+.cdx .cdx-field select { appearance: auto; }

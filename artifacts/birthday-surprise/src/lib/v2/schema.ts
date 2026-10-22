@@ -369,8 +369,39 @@ export interface SurpriseConfigV2Extension {
   /** Optional per-scene sticker placements (additive across both v1 and v2 configs). */
   stickers?: StickersConfig;
 
+  /** Optional Scheduled Surprise Countdown gate (additive across v1 + v2). Absent = OFF. */
+  countdown?: CountdownConfig;
+
   /** Unknown extension data preserved without execution. */
   _ext?: Record<string, unknown>;
+}
+
+// ── Scheduled Surprise Countdown ─────────────────────────────────────────
+// A gate in FRONT of the experience (not a scene). Every field is optional.
+// `unlockAtUtc` is authoritative; localDate/localTime/timezone are the
+// creator's editing inputs it is derived from. All strings are plain text.
+export type CountdownAfterUnlock = "autoOpen" | "openButton";
+export type CountdownStyle = "aurora" | "celestial" | "velvet";
+export interface CountdownLabels { days?: string; hours?: string; minutes?: string; seconds?: string }
+export interface CountdownConfig {
+  enabled?: boolean;
+  unlockAtUtc?: string;
+  timezone?: string;
+  localDate?: string;
+  localTime?: string;
+  heading?: string;
+  recipientName?: string;
+  message?: string;
+  labels?: CountdownLabels;
+  waitingLine?: string;
+  footer?: string;
+  showTeaserButton?: boolean;
+  teaserLabel?: string;
+  teaserReaction?: string;
+  soundEnabled?: boolean;
+  afterUnlock?: CountdownAfterUnlock;
+  openButtonLabel?: string;
+  style?: CountdownStyle;
 }
 
 // ── Canonical SurpriseConfig (v1 + v2 extension) ────────────────────────

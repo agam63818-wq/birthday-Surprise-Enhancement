@@ -14,6 +14,9 @@ const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || "
  * AuthContext before anything renders, so a throw white-screens the whole
  * app (blank page / spinner-only shared links on misconfigured deploys).
  */
+/** Public (anon) REST credentials, for raw public RPC calls that need response metadata. */
+export const supabasePublicRest = { url: supabaseUrl, anonKey: supabaseAnonKey };
+
 export const supabaseConfigError: string | null =
   !supabaseUrl || !supabaseAnonKey
     ? "Supabase credentials are missing. Set SUPABASE_URL and SUPABASE_ANON_KEY (or VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) in the deployment environment."

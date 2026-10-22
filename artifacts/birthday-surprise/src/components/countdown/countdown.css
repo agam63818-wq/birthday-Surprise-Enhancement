@@ -1,0 +1,163 @@
+/* ============================================================
+   Scheduled Surprise Countdown — cinematic gate styles.
+   Code-split with CountdownScreen (loaded only when enabled + locked).
+   Theme-aware: everything derives from the active preset's CSS vars.
+   Motion: transform/opacity only; < 3 flashes/s; no strobes.
+   ============================================================ */
+.cd-root {
+  --cd-bg: var(--bg-deep, #0b0416);
+  --cd-plum: var(--plum-deep, #2a0a3f);
+  --cd-accent: var(--pink, #f472b6);
+  --cd-glow: var(--magenta, #e879f9);
+  --cd-hi: var(--lavender, #c4b5fd);
+  --cd-gold: #f3cf8f;
+  --cd-ink: var(--ink, #f8f1ff);
+  --cd-ink-soft: color-mix(in srgb, var(--ink, #f8f1ff) 80%, transparent);
+  --cd-glass: color-mix(in srgb, var(--cd-plum) 46%, transparent);
+  --cd-line: color-mix(in srgb, var(--cd-hi) 26%, transparent);
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: max(28px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(36px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background:
+    radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--cd-plum) 92%, #000) 0%, transparent 62%),
+    radial-gradient(90% 70% at 50% 120%, color-mix(in srgb, var(--cd-accent) 16%, transparent) 0%, transparent 60%),
+    var(--cd-bg);
+  color: var(--cd-ink);
+  font-family: Inter, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+.cd-root *, .cd-root *::before, .cd-root *::after { box-sizing: border-box; }
+.cd-root[data-owner="true"] { min-height: calc(100dvh - 120px); }
+
+/* ── Atmosphere ─────────────────────────────────────────────── */
+.cd-atmos, .cd-canvas, .cd-vignette, .cd-bloom, .cd-finale-glow { position: absolute; inset: 0; pointer-events: none; }
+.cd-atmos { z-index: 0; overflow: hidden; opacity: 0; animation: cd-fade-in 1.1s ease-out forwards; }
+.cd-aurora {
+  position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%;
+  filter: blur(60px); opacity: .55; mix-blend-mode: screen; will-change: transform;
+}
+.cd-aurora.a1 { top: -30vmax; left: -18vmax; background: radial-gradient(circle, color-mix(in srgb, var(--cd-accent) 75%, transparent), transparent 66%); animation: cd-drift-a 22s ease-in-out infinite alternate; }
+.cd-aurora.a2 { bottom: -34vmax; right: -22vmax; background: radial-gradient(circle, color-mix(in srgb, var(--cd-glow) 62%, transparent), transparent 64%); animation: cd-drift-b 26s ease-in-out infinite alternate; }
+.cd-aurora.a3 { top: 22%; left: 30%; width: 46vmax; height: 46vmax; opacity: .32; background: radial-gradient(circle, color-mix(in srgb, var(--cd-gold) 55%, transparent), transparent 66%); animation: cd-drift-c 30s ease-in-out infinite alternate; }
+.cd-root[data-cd-style="celestial"] .cd-aurora.a1 { background: radial-gradient(circle, color-mix(in srgb, var(--cd-hi) 60%, transparent), transparent 66%); }
+.cd-root[data-cd-style="celestial"] .cd-aurora.a3 { opacity: .2; }
+.cd-root[data-cd-style="velvet"] .cd-aurora.a2 { background: radial-gradient(circle, color-mix(in srgb, var(--cd-gold) 48%, transparent), transparent 64%); }
+.cd-root[data-cd-style="velvet"] .cd-aurora.a3 { opacity: .42; }
+.cd-vignette { z-index: 1; background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0, 0, 0, .55) 100%); }
+.cd-canvas { z-index: 1; width: 100%; height: 100%; opacity: 0; animation: cd-fade-in 1.6s ease-out 1.5s forwards; }
+
+/* ── Stage / content ───────────────────────────────────────── */
+.cd-stage { position: relative; z-index: 3; width: min(100%, 680px); display: grid; justify-items: center; gap: clamp(14px, 3.2vw, 22px); text-align: center; }
+.cd-eyebrow { margin: 0; font-size: clamp(.66rem, 2.6vw, .78rem); letter-spacing: .34em; text-transform: uppercase; color: color-mix(in srgb, var(--cd-gold) 85%, var(--cd-ink)); opacity: 0; animation: cd-rise .9s cubic-bezier(.2, .8, .2, 1) .55s forwards; }
+.cd-name { margin: -4px 0 0; font-family: 'Dancing Script', cursive; font-weight: 700; font-size: clamp(2.3rem, 11vw, 4.6rem); line-height: 1.05; color: var(--cd-ink); text-shadow: 0 0 28px color-mix(in srgb, var(--cd-accent) 55%, transparent), 0 0 2px rgba(0,0,0,.4); overflow-wrap: anywhere; max-width: 100%; }
+.cd-heading { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 600; font-size: clamp(1.25rem, 5.2vw, 2.05rem); line-height: 1.22; max-width: 22ch; overflow-wrap: anywhere; color: var(--cd-ink); }
+.cd-letter { display: inline-block; opacity: 0; transform: translateY(.42em); filter: blur(6px); animation: cd-letter .8s cubic-bezier(.2, .8, .2, 1) forwards; animation-delay: calc(.95s + var(--i) * 28ms); }
+.cd-word { display: inline-block; white-space: nowrap; }
+.cd-message { margin: 0; max-width: 46ch; font-size: clamp(.92rem, 3.6vw, 1.05rem); line-height: 1.6; color: var(--cd-ink-soft); overflow-wrap: anywhere; opacity: 0; animation: cd-rise 1s ease-out 1.7s forwards; }
+
+/* Glass panel with light sweep + breathing glow */
+.cd-panel { position: relative; width: 100%; padding: clamp(14px, 3.6vw, 26px) clamp(10px, 3vw, 24px) clamp(14px, 3.4vw, 22px); border-radius: 26px; border: 1px solid var(--cd-line); background: linear-gradient(160deg, color-mix(in srgb, var(--cd-plum) 58%, transparent), color-mix(in srgb, var(--cd-bg) 70%, transparent)); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08); overflow: hidden; opacity: 0; transform: translateY(26px) scale(.98); animation: cd-panel-in 1.1s cubic-bezier(.2, .8, .2, 1) .35s forwards; }
+.cd-panel::before { content: ""; position: absolute; inset: -1px; background: linear-gradient(105deg, transparent 30%, rgba(255, 244, 220, .22) 48%, transparent 64%); transform: translateX(-120%); animation: cd-sweep 1.6s ease-out 1.05s forwards; pointer-events: none; }
+.cd-breath { position: absolute; z-index: -1; left: 50%; top: 50%; width: 120%; height: 160%; transform: translate(-50%, -50%); background: radial-gradient(closest-side, color-mix(in srgb, var(--cd-accent) 30%, transparent), color-mix(in srgb, var(--cd-gold) 10%, transparent) 55%, transparent 75%); animation: cd-breathe 5.5s ease-in-out infinite; pointer-events: none; }
+.cd-timer { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(6px, 2vw, 14px); margin: 0; padding: 0; list-style: none; }
+.cd-unit { position: relative; display: grid; justify-items: center; gap: 6px; padding: clamp(10px, 2.6vw, 16px) 2px clamp(8px, 2vw, 12px); border-radius: 18px; background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.02)); border: 1px solid color-mix(in srgb, var(--cd-hi) 18%, transparent); box-shadow: inset 0 -12px 24px rgba(0,0,0,.18); opacity: 0; transform: translateY(18px) scale(.94); animation: cd-card-in .8s cubic-bezier(.2, .9, .25, 1.15) forwards; animation-delay: calc(.6s + var(--i) * 110ms); }
+.cd-unit::after { content: ""; position: absolute; left: 10%; right: 10%; top: 50%; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,0,0,.35), transparent); opacity: .5; }
+.cd-digits { display: inline-flex; justify-content: center; font-family: 'Playfair Display', Georgia, serif; font-weight: 600; font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "tnum" 1, "lnum" 1; font-size: clamp(1.55rem, 8.4vw, 3.4rem); line-height: 1; letter-spacing: .01em; color: var(--cd-ink); text-shadow: 0 0 22px color-mix(in srgb, var(--cd-accent) 50%, transparent); min-height: 1em; }
+.cd-digit-slot { display: inline-block; width: .64em; overflow: hidden; }
+.cd-digit { display: inline-block; width: 100%; text-align: center; animation: cd-digit .5s cubic-bezier(.2, .8, .2, 1); }
+.cd-label { font-size: clamp(.56rem, 2.3vw, .72rem); letter-spacing: .2em; text-transform: uppercase; color: var(--cd-ink-soft); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cd-when { margin: clamp(10px, 2.4vw, 14px) 0 0; font-size: clamp(.74rem, 2.9vw, .86rem); color: var(--cd-ink-soft); letter-spacing: .02em; }
+.cd-when strong { color: color-mix(in srgb, var(--cd-gold) 80%, var(--cd-ink)); font-weight: 600; }
+.cd-waiting { margin: 0; font-size: clamp(.86rem, 3.4vw, 1rem); font-style: italic; color: color-mix(in srgb, var(--cd-hi) 70%, var(--cd-ink)); opacity: 0; animation: cd-rise 1s ease-out 2.1s forwards, cd-soft-pulse 4.2s ease-in-out 3.2s infinite; overflow-wrap: anywhere; }
+.cd-footer { margin: 4px 0 0; font-family: 'Dancing Script', cursive; font-size: clamp(1.05rem, 4.6vw, 1.35rem); color: color-mix(in srgb, var(--cd-gold) 70%, var(--cd-ink)); opacity: 0; animation: cd-rise 1s ease-out 2.4s forwards; overflow-wrap: anywhere; }
+.cd-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; opacity: 0; animation: cd-rise .9s ease-out 2.2s forwards; }
+.cd-btn { min-height: 44px; padding: 10px 20px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--cd-hi) 40%, transparent); background: color-mix(in srgb, var(--cd-plum) 60%, transparent); color: var(--cd-ink); font: 600 .88rem Inter, system-ui, sans-serif; letter-spacing: .02em; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: transform .25s ease, box-shadow .25s ease, background .25s ease; }
+.cd-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 30px color-mix(in srgb, var(--cd-accent) 30%, transparent); }
+.cd-btn:focus-visible, .cd-open:focus-visible, .cd-sound:focus-visible { outline: 2px solid var(--cd-gold); outline-offset: 3px; }
+.cd-teaser-reaction { min-height: 1.4em; margin: -2px 0 0; font-size: .9rem; color: var(--cd-ink); }
+.cd-teaser-reaction span { display: inline-block; animation: cd-pop .5s cubic-bezier(.2, .9, .3, 1.3); }
+.cd-sound { position: absolute; z-index: 6; top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); min-height: 44px; min-width: 44px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--cd-line); background: color-mix(in srgb, var(--cd-bg) 70%, transparent); color: var(--cd-ink-soft); font: 500 .78rem Inter, system-ui, sans-serif; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.cd-root[data-owner="true"] .cd-sound { position: absolute; }
+.cd-sr { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Open button (afterUnlock = openButton) */
+.cd-open-wrap { display: grid; justify-items: center; gap: 14px; animation: cd-rise .8s ease-out both; }
+.cd-open { min-height: 56px; padding: 16px 34px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--cd-gold) 60%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--cd-accent) 88%, #000 0%), color-mix(in srgb, var(--cd-glow) 80%, var(--cd-plum))); color: #fff; font: 700 1.02rem Inter, system-ui, sans-serif; letter-spacing: .03em; cursor: pointer; box-shadow: 0 0 0 0 color-mix(in srgb, var(--cd-gold) 50%, transparent), 0 18px 48px color-mix(in srgb, var(--cd-accent) 45%, transparent); animation: cd-open-pulse 2.4s ease-in-out infinite; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+
+/* ── Final 3-2-1 ───────────────────────────────────────────── */
+.cd-finale { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; pointer-events: none; }
+.cd-finale-glow { background: radial-gradient(60% 50% at 50% 50%, color-mix(in srgb, var(--cd-accent) 34%, transparent), transparent 70%); opacity: 0; animation: cd-fade-in .6s ease-out forwards; }
+.cd-root[data-stage^="final"] .cd-stage { opacity: .16; filter: blur(3px); transform: scale(.97); transition: opacity .5s ease, filter .5s ease, transform .6s ease; }
+.cd-num-wrap { position: relative; display: grid; place-items: center; width: min(70vw, 340px); aspect-ratio: 1; }
+.cd-ring { position: absolute; inset: 8%; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--cd-gold) 70%, transparent); box-shadow: 0 0 40px color-mix(in srgb, var(--cd-accent) 45%, transparent), inset 0 0 30px color-mix(in srgb, var(--cd-accent) 30%, transparent); animation: cd-ring .98s cubic-bezier(.2, .7, .3, 1) forwards; }
+.cd-ring.r2 { animation-delay: .12s; border-color: color-mix(in srgb, var(--cd-hi) 50%, transparent); }
+.cd-num { position: relative; font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: clamp(7rem, 40vw, 13rem); line-height: 1; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 30px color-mix(in srgb, var(--cd-accent) 80%, transparent), 0 0 80px color-mix(in srgb, var(--cd-gold) 40%, transparent), 0 2px 4px rgba(0,0,0,.4); animation: cd-num .98s cubic-bezier(.2, .8, .2, 1) forwards; }
+
+/* ── Reveal bloom (curtain of light) ───────────────────────── */
+.cd-bloom { position: fixed; z-index: 1200; background: radial-gradient(circle at 50% 50%, rgba(255, 248, 236, .96) 0%, color-mix(in srgb, var(--cd-gold) 70%, transparent) 26%, color-mix(in srgb, var(--cd-accent) 40%, transparent) 46%, transparent 72%); transform: scale(.2); opacity: 0; animation: cd-bloom 1.2s cubic-bezier(.3, .6, .2, 1) forwards; }
+.cd-bloom.hold { animation: cd-bloom-in .6s ease-out forwards; }
+.cd-bloom-msg { position: fixed; z-index: 1201; inset: 0; display: grid; place-items: center; pointer-events: none; font: 600 1rem Inter, system-ui, sans-serif; color: #3a1530; letter-spacing: .12em; text-transform: uppercase; }
+.cd-retry { position: fixed; z-index: 1202; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(92vw, 420px); padding: 18px; border-radius: 18px; background: rgba(20, 8, 30, .92); border: 1px solid rgba(255,255,255,.16); color: #fff; text-align: center; display: grid; gap: 10px; }
+
+/* Entrance skip + reduced motion */
+.cd-root.cd-skip *, .cd-root.cd-skip { animation-delay: 0s !important; animation-duration: .01s !important; }
+.cd-root.cd-skip .cd-aurora, .cd-root.cd-skip .cd-breath, .cd-root.cd-skip .cd-waiting, .cd-root.cd-skip .cd-open { animation-duration: revert !important; }
+.cd-root.cd-skip .cd-aurora.a1 { animation: cd-drift-a 22s ease-in-out infinite alternate !important; }
+.cd-root.cd-skip .cd-aurora.a2 { animation: cd-drift-b 26s ease-in-out infinite alternate !important; }
+.cd-root.cd-skip .cd-aurora.a3 { animation: cd-drift-c 30s ease-in-out infinite alternate !important; }
+.cd-root.cd-skip .cd-breath { animation: cd-breathe 5.5s ease-in-out infinite !important; }
+.cd-root.cd-skip .cd-waiting { animation: none !important; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .cd-root *, .cd-root::before, .cd-root::after { animation-duration: .35s !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition: opacity .35s ease !important; }
+  .cd-aurora, .cd-breath { animation: none !important; }
+  .cd-atmos, .cd-canvas { animation: cd-fade-in .35s ease-out forwards !important; }
+  .cd-letter, .cd-eyebrow, .cd-message, .cd-waiting, .cd-footer, .cd-actions, .cd-unit, .cd-panel { animation-name: cd-fade-in !important; transform: none !important; filter: none !important; }
+  .cd-digit, .cd-teaser-reaction span { animation: none !important; }
+  .cd-panel::before { display: none; }
+  .cd-ring { display: none; }
+  .cd-num { animation-name: cd-fade-in !important; }
+  .cd-open { animation: none !important; }
+  .cd-root[data-stage^="final"] .cd-stage { filter: none; transform: none; }
+  .cd-bloom { transform: none !important; animation-name: cd-fade-pulse !important; animation-duration: 1.1s !important; }
+  .cd-bloom.hold { animation-name: cd-fade-in !important; }
+}
+
+@keyframes cd-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cd-fade-pulse { 0% { opacity: 0; } 45% { opacity: .9; } 100% { opacity: 0; } }
+@keyframes cd-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes cd-letter { to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes cd-panel-in { to { opacity: 1; transform: none; } }
+@keyframes cd-card-in { to { opacity: 1; transform: none; } }
+@keyframes cd-sweep { to { transform: translateX(120%); } }
+@keyframes cd-breathe { 0%, 100% { opacity: .55; transform: translate(-50%, -50%) scale(.94); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); } }
+@keyframes cd-soft-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .62; } }
+@keyframes cd-digit { from { opacity: 0; transform: translateY(-38%) scale(.96); filter: blur(4px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes cd-pop { from { opacity: 0; transform: scale(.7) translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes cd-open-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cd-gold) 45%, transparent), 0 18px 48px color-mix(in srgb, var(--cd-accent) 40%, transparent); } 50% { box-shadow: 0 0 0 14px transparent, 0 18px 60px color-mix(in srgb, var(--cd-accent) 55%, transparent); } }
+@keyframes cd-ring { 0% { opacity: 0; transform: scale(.55); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1.55); } }
+@keyframes cd-num { 0% { opacity: 0; transform: scale(1.35); filter: blur(10px); } 22% { opacity: 1; transform: scale(1); filter: blur(0); } 78% { opacity: 1; transform: scale(.96); } 100% { opacity: 0; transform: scale(.82); } }
+@keyframes cd-bloom { 0% { opacity: 0; transform: scale(.2); } 35% { opacity: 1; transform: scale(1.4); } 70% { opacity: .9; transform: scale(2.6); } 100% { opacity: 0; transform: scale(3.2); } }
+@keyframes cd-bloom-in { to { opacity: 1; transform: scale(2.6); } }
+@keyframes cd-drift-a { to { transform: translate3d(12vmax, 8vmax, 0) scale(1.12); } }
+@keyframes cd-drift-b { to { transform: translate3d(-10vmax, -8vmax, 0) scale(1.08); } }
+@keyframes cd-drift-c { to { transform: translate3d(-8vmax, 6vmax, 0) scale(.92); } }
+
+@media (max-width: 380px) {
+  .cd-timer { gap: 5px; }
+  .cd-unit { border-radius: 14px; }
+  .cd-label { letter-spacing: .1em; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .cd-root { place-items: start center; }
+  .cd-stage { gap: 8px; }
+  .cd-name { font-size: clamp(1.8rem, 7vh, 2.6rem); }
+  .cd-heading { font-size: 1.1rem; }
+  .cd-message { display: none; }
+  .cd-digits { font-size: clamp(1.4rem, 9vh, 2.4rem); }
+  .cd-num { font-size: clamp(5rem, 40vh, 9rem); }
+}

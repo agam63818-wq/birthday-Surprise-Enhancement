@@ -101,6 +101,11 @@ export function describeConfigChange(path: string, value: unknown): string {
   if (path === "roseBloom.text") return "Change the rose message";
   if (path === "scenes") return "Reorder the scene sequence";
   if (path === "occasionId") return `Make this a ${String(value)} surprise`;
+  if (path === "countdown.enabled") return value ? "Turn the scheduled countdown on" : "Turn the scheduled countdown off";
+  if (path === "countdown.localDate") return `Set the countdown date to ${String(value)}`;
+  if (path === "countdown.localTime") return `Set the countdown time to ${String(value)}`;
+  if (path === "countdown.timezone") return `Use the ${String(value)} timezone for the countdown`;
+  if (path.startsWith("countdown.")) return `Update the countdown ${path.slice("countdown.".length).replace(".", " ")}`;
   if (path.startsWith("features.")) {
     const key = path.slice("features.".length);
     const labels: Record<string, string> = {
