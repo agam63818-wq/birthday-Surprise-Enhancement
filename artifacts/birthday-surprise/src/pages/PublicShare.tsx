@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase, supabaseConfigError } from "@/lib/supabase";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { supabaseConfigError } from "@/lib/supabase";
 import BirthdayExperience from "@/BirthdayExperience";
 import LoadingPrelude from "@/components/LoadingPrelude";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import type { SurpriseConfig as Config } from "@/lib/v2/schema";
+import { fetchPublicSurprise, type PublicSurpriseResult } from "@/lib/countdown/publicSource";
+import { TrustedClock, measureServerTime } from "@/lib/countdown/trustedClock";
+import { initialGateDecision, needsTrustedTime } from "@/lib/countdown/gateDecision";
+
+// Loaded ONLY when a countdown is enabled and still locked, so countdown-OFF
+// visitors download nothing extra.
+const CountdownGate = lazy(() => import("@/components/countdown/CountdownGate"));
 
 // Public, unauthenticated share page. Renders the full birthday
 // experience with zero dashboard chrome, using only the
@@ -23,6 +30,7 @@ const MAX_AUTO_RETRIES = 2;
 type State =
   | { status: "loading" }
   | { status: "found"; config: Config }
+  | { status: "gated"; result: PublicSurpriseResult; clock: TrustedClock }
   | { status: "not-found" }
   | { status: "error" };
 
@@ -36,7 +44,7 @@ export default function PublicShare({ slug }: { slug: string }) {
   // Social previews are unaffected — link-preview bots are served by
   // middleware.js and never reach this component. The title becomes
   // personalized once the config loads (matches the middleware's OG title).
-  const name = state.status === "found" ? state.config.name?.trim() : "";
+  const name = state.status === "found" ? state.config.name?.trim() : state.status === "gated" ? state.result.config?.name?.trim() : "";
   usePageMeta({
     title: name ? `${name}'s Birthday Surprise \uD83C\uDF82` : "A Birthday Surprise \uD83C\uDF82",
     description: name
@@ -66,25 +74,37 @@ export default function PublicShare({ slug }: { slug: string }) {
     };
 
     try {
-      const rpc = supabase.rpc("get_surprise_by_slug", { p_slug: slug });
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("fetch-timeout")), FETCH_TIMEOUT_MS),
-      );
-      const { data, error } = (await Promise.race([rpc, timeout])) as {
-        data: unknown;
-        error: unknown;
-      };
+      // Tries the hard-lock RPC (get_surprise_by_slug_v2) first and falls
+      // back to get_surprise_by_slug when it isn't deployed yet.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      let result: PublicSurpriseResult;
+      try { result = await fetchPublicSurprise(slug, controller.signal); }
+      finally { clearTimeout(timer); }
 
-      if (error) throw error;
-
-      // RPC may return a single row object or an array with one row.
-      const row = Array.isArray(data) ? data[0] : data;
-      const config = (row as { config?: Config } | null | undefined)?.config;
+      const config = result.config;
       if (!config) {
         finish({ status: "not-found" });
         return;
       }
-      finish({ status: "found", config });
+      if (!result.locked && !needsTrustedTime(config)) {
+        // Countdown OFF -> exactly today's behaviour.
+        finish({ status: "found", config });
+        return;
+      }
+      // Countdown configured: decide on a TRUSTED clock, never the device clock.
+      const clock = new TrustedClock();
+      if (result.timeSample) clock.accept({ serverMs: result.timeSample.serverMs, perfMid: result.timeSample.perfMid, rttMs: result.timeSample.rttMs, source: result.timeSample.source });
+      if (result.timeSample?.source !== "rpc") {
+        const sample = await measureServerTime();
+        if (sample) clock.accept(sample);
+      }
+      const decision = initialGateDecision(config, result.locked, clock.now());
+      if (decision === "experience") finish({ status: "found", config });
+      else {
+        void import("@/components/countdown/CountdownGate");
+        finish({ status: "gated", result, clock });
+      }
     } catch {
       // Transient failure (network blip / timeout) → retry with backoff
       // before surfacing the manual retry state.
@@ -123,6 +143,16 @@ export default function PublicShare({ slug }: { slug: string }) {
   if (state.status === "loading") return <LoadingPrelude state="loading" />;
   if (state.status === "not-found") return <LoadingPrelude state="not-found" />;
   if (state.status === "error") return <LoadingPrelude state="error" onRetry={retry} />;
+  if (state.status === "gated") {
+    return (
+      <Suspense fallback={<LoadingPrelude state="loading" />}>
+        {/* viewerMode is HARDCODED: the public route can never show owner controls. */}
+        <CountdownGate viewerMode="public" slug={slug} initial={state.result} clock={state.clock}>
+          {(config) => <BirthdayExperience config={config} />}
+        </CountdownGate>
+      </Suspense>
+    );
+  }
 
   return (
     <div

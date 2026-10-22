@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -14,6 +14,11 @@ import { SCENE_IDS } from "../../../supabase/functions/_shared/configPatch";
 import { validateV2Config } from "../../../supabase/functions/_shared/configPatch";
 import type { SurpriseRow } from "@/types/surprise";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { countdownActive } from "@/lib/countdown/defaults";
+import { unlockNowPatch } from "@/lib/countdown/editor";
+
+// Owner-only countdown preview chunk (loaded only when the draft has an active countdown).
+const CountdownGate = lazy(() => import("@/components/countdown/CountdownGate"));
 
 function FullScreenState({ children }: { children: React.ReactNode }) {
   return (
@@ -236,7 +241,24 @@ export default function Dashboard() {
           {history && <button type="button" disabled={!canUndo || audioPending > 0} title={canUndo ? "Restore the exact pre-AI draft" : "Undo blocked because newer changes exist"} onClick={undoAI}>Undo last AI change</button>}
         </div>
         {tab === "preview" ? (
-          <BirthdayExperience config={config} />
+          countdownActive(config) ? (
+            <Suspense fallback={<FullScreenState><Spinner className="size-8" style={{ color: "var(--violet)" }} /></FullScreenState>}>
+              {/* The ONLY place viewerMode="owner-preview" is set (authenticated dashboard). */}
+              <CountdownGate
+                viewerMode="owner-preview"
+                config={config}
+                onUnlockForRecipientsNow={() => {
+                  setDraft(prev => { const base = prev ?? surprise.config; return { ...base, countdown: { ...base.countdown, ...unlockNowPatch(base.countdown) } }; });
+                  toast.success("Countdown set to now in your draft. Save in Customize to unlock it for recipients.");
+                  setTab("customize");
+                }}
+              >
+                {(cfg) => <BirthdayExperience config={cfg} />}
+              </CountdownGate>
+            </Suspense>
+          ) : (
+            <BirthdayExperience config={config} />
+          )
         ) : tab === "customize" ? (
           <div
             style={{

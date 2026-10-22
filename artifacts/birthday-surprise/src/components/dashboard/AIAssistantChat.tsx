@@ -581,7 +581,7 @@ export default function AIAssistantChat({
       const patch = data?.patch ? validatePatch(data.patch) : configToPatch(data?.config);
       if (!patch.changes.length) {
         setStep("done");
-        addMessage("assistant", "That request has no supported changes. I can edit scenes, notebook pages, names, messages, occasions and themes; unsupported features are not added.");
+        addMessage("assistant", "That request has no supported changes. I can edit scenes, notebook pages, names, messages, occasions, themes and the scheduled countdown; unsupported features are not added. (Countdown edits need the latest AI function deployment — if this keeps happening, set it in Customize → Countdown unlock.)");
         return;
       }
       applyConfigPatch(base, patch); // Validate atomically before presenting a review.

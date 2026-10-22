@@ -17,16 +17,20 @@ async function fetchName(slug: string): Promise<string | null> {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
   const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
   if (!supabaseUrl || !anonKey || !slug) return null;
+  // Prefer the countdown hard-lock RPC (redacted payload keeps config.name);
+  // fall back to the original RPC while v2 is not deployed (404).
+  const call = (fn: string) => fetch(`${supabaseUrl}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_slug: slug }),
+  });
   try {
-    const res = await fetch(`${supabaseUrl}/rest/v1/rpc/get_surprise_by_slug`, {
-      method: "POST",
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ p_slug: slug }),
-    });
+    let res = await call("get_surprise_by_slug_v2");
+    if (res.status === 404) res = await call("get_surprise_by_slug");
     if (!res.ok) return null;
     const data = (await res.json()) as SurpriseRow | SurpriseRow[] | null;
     const row = Array.isArray(data) ? data[0] : data;

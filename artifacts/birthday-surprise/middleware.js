@@ -98,16 +98,21 @@ async function fetchName(slug) {
   const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
   if (!supabaseUrl || !anonKey) return { name: null, description: null };
 
+  // Countdown hard lock: prefer get_surprise_by_slug_v2 (its redacted
+  // "locked" payload still carries config.name), fall back to the original
+  // RPC while v2 is not deployed (404). Only name/subtitle are read.
+  const call = (fn) => fetch(`${supabaseUrl}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_slug: slug }),
+  });
   try {
-    const res = await fetch(`${supabaseUrl}/rest/v1/rpc/get_surprise_by_slug`, {
-      method: "POST",
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ p_slug: slug }),
-    });
+    let res = await call("get_surprise_by_slug_v2");
+    if (res.status === 404) res = await call("get_surprise_by_slug");
     if (!res.ok) return { name: null, description: null };
     const data = await res.json();
     const row = Array.isArray(data) ? data[0] : data;

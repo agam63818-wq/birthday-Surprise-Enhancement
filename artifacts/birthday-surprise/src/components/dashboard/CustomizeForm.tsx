@@ -23,6 +23,7 @@ import SceneStickersEditor from "@/components/stickers/SceneStickersEditor";
 import { supabase } from "@/lib/supabase";
 import type { SceneKey, SurpriseConfig as Config } from "@/lib/v2/schema";
 import V2ExperienceEditor from "./V2ExperienceEditor";
+import CountdownEditor from "./CountdownEditor";
 import { validateV2Config } from "../../../supabase/functions/_shared/configPatch";
 import type { SurpriseRow } from "@/types/surprise";
 import type { FontPresetId } from "@/lib/fontPresets";
@@ -438,6 +439,7 @@ export default function CustomizeForm({
   return (
     <div className="customize-shell" style={{ maxWidth: "560px", width: "100%", margin: "0 auto", padding: "0 4px" }}>
       <fieldset disabled={saving} style={{ border: 0, padding: 0, minWidth: 0 }}><V2ExperienceEditor config={config} onChange={onConfigChange} /></fieldset>
+      <fieldset disabled={saving} style={{ border: 0, padding: 0, minWidth: 0, margin: "0 0 16px" }}><CountdownEditor config={config} onChange={setConfig} /></fieldset>
       {/* Draft-restored notice */}
       {draftRestored && (
         <div
