@@ -14,6 +14,7 @@ import {
 import { getStickerById } from "@/lib/stickers/manifest";
 import {
   addStickerPlacement,
+  areStickersSupported,
   MAX_STICKERS_PER_SCENE,
   removeStickerPlacement,
   resolveActiveSceneKey,
@@ -299,6 +300,10 @@ export default function SceneStickersEditor({
   const atMaxLimit = items.length >= MAX_STICKERS_PER_SCENE;
   const showLiveCanvas = panelOpen && (isEnabled || items.length > 0);
   const selectedIndex = selectedItem ? items.findIndex((i) => i.uid === selectedItem.uid) : -1;
+
+  // Keep the guard here (after hooks) so a reused editor cannot conditionally
+  // change its hook order when the selected scene changes.
+  if (!areStickersSupported(sceneKey)) return null;
 
   return (
     <section

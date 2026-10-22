@@ -52,6 +52,8 @@ async function setup(page: Page, initial: SurpriseConfig = fixture(), signedIn =
     return reply({});
   });
   if (signedIn) await page.addInitScript(({ user }) => {
+    // Auth storage belongs to the top-level app, never to opaque experience frames.
+    if (window !== window.top) return;
     if (sessionStorage.getItem("qa-seeded")) return;
     const exp = Math.floor(Date.now() / 1000) + 3600;
     const token = `${btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }))}.${btoa(JSON.stringify({ sub: user.id, exp }))}.qa`;
@@ -197,6 +199,8 @@ test("cinematic rose, letters, and recipient navigation", async ({ page }) => {
       await expect(page.getByText("Letter 01 · Open")).toHaveCount(0);
       await page.getByRole("button", { name: /Open letter 01/i }).click();
       await expect(page.getByText("Our first memory", { exact: true })).toBeVisible();
+      await page.getByRole("dialog").getByRole("button", { name: "Close Letter 01", exact: true }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
     }
     if (order[i] === "roseBloom") {
       await expect(page.locator("[data-rose-stem]")).toBeVisible();
@@ -222,13 +226,143 @@ test("butterfly canvas is sized as soon as the scene mounts", async ({ page }) =
   expect(qa.errors).toEqual([]);
 });
 
+test("butterfly long copy keeps its Continue action separate and reachable", async ({ page }) => {
+  const message = "Ye chhota sa digital\nsurprise sirf\ntumhaare liye. I know\nki tum kitna gussa ho,\nbas tumhe khush\ndekhne ke liye kuch\nbhi kar sakta hoon.";
+  const config = fixture();
+  config.scenes = ["butterfly"];
+  config.features.butterfly = true;
+  config.butterfly = {
+    message,
+    subMessage: "A deliberately long supporting note checks that every configured word can wrap and remain readable. EvenAnExceptionallyLongUnbrokenConfiguredWordMustStayInsideTheViewportWithoutCreatingHorizontalOverflow.",
+  };
+  const qa = await setup(page, config);
+  await page.goto("/s/qa-surprise");
+
+  for (const [label, width, height] of [["desktop", 1280, 800], ["mobile", 390, 844], ["landscape", 640, 360]] as const) {
+    await page.setViewportSize({ width, height });
+    await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "butterfly");
+    const card = page.locator(".butterfly-message-card");
+    const action = page.getByRole("button", { name: /Continue/ });
+    await expect(card).toContainText(message);
+    await expect(action).toBeVisible();
+    await action.scrollIntoViewIfNeeded();
+    await noOverflow(page);
+    const cardBox = await card.boundingBox();
+    const actionBox = await action.boundingBox();
+    expect(cardBox).not.toBeNull();
+    expect(actionBox).not.toBeNull();
+    expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(actionBox!.y + 1);
+    expect(actionBox!.x).toBeGreaterThanOrEqual(0);
+    expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(width + 1);
+    if (label !== "landscape") await page.screenshot({ path: `test-results/scene-polish/butterfly-${label}.png` });
+  }
+  expect(qa.errors).toEqual([]);
+});
+
+test("you and me names, caption and actions stay responsive with a live canvas", async ({ page }) => {
+  const config = fixture();
+  config.scenes = ["youAndMe"];
+  config.features.youAndMe = true;
+  config.youAndMe = { name1: "ALEXANDERSONNN", name2: "CHRISTIANANDER" };
+  const qa = await setup(page, config);
+  await page.goto("/s/qa-surprise");
+
+  for (const [label, width, height] of [["desktop", 1280, 800], ["mobile", 390, 844], ["landscape", 640, 360]] as const) {
+    await page.setViewportSize({ width, height });
+    const names = page.locator(".together-names");
+    const copy = page.locator(".together-copy");
+    const action = page.getByRole("button", { name: /Continue/ });
+    await expect(names).toBeVisible();
+    await expect(action).toBeVisible();
+    await action.scrollIntoViewIfNeeded();
+    await noOverflow(page);
+    const namesBox = await names.boundingBox();
+    const copyBox = await copy.boundingBox();
+    const actionBox = await action.boundingBox();
+    expect(namesBox!.x).toBeGreaterThanOrEqual(0);
+    expect(namesBox!.x + namesBox!.width).toBeLessThanOrEqual(width + 1);
+    expect(copyBox!.y + copyBox!.height).toBeLessThanOrEqual(actionBox!.y + 1);
+    expect(await names.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    if (label !== "landscape") await page.screenshot({ path: `test-results/scene-polish/you-and-me-${label}.png` });
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const canvas = page.locator("[data-you-and-me-canvas]");
+  await expect(canvas).toBeVisible();
+  await expect.poll(() => page.locator(".together-canvas-shell").evaluate(el => el.style.transform.includes("rotateX"))).toBe(true);
+  expect(await page.locator("[data-you-and-me-scene]").evaluate(el => el.style.transform)).toBe("");
+  expect(await canvas.evaluate(el => el.width >= el.offsetWidth && el.height >= el.offsetHeight)).toBe(true);
+  await expect(page.getByRole("button", { name: /Continue/ })).toBeVisible({ timeout: 30000 });
+  await expect.poll(() => page.locator(".together-copy").evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1);
+  await page.screenshot({ path: "test-results/scene-polish/you-and-me-animated-mobile.png" });
+  expect(qa.errors).toEqual([]);
+});
+
+test("mobile letter reader scrolls the complete note and keeps close and Continue usable", async ({ page }) => {
+  const finalLine = "FINAL LINE: this is the end of the complete configured letter.";
+  const longLetter = Array.from({ length: 18 }, (_, index) =>
+    `Paragraph ${index + 1}: This configured memory is intentionally long so the reader must provide a real, touch-friendly scrolling area instead of clipping the note inside its envelope.`,
+  ).join("\n\n") + `\n\n${finalLine}`;
+  const config = fixture();
+  config.name = "Nandini";
+  config.scenes = ["letters", "intro"];
+  config.features.letters = true;
+  config.features.intro = true;
+  config.lastNote.lines = [longLetter, "A second configured note"];
+  const qa = await setup(page, config);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/s/qa-surprise");
+  await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "letters");
+  await expect(page.getByRole("button", { name: /Open Letter/ })).toHaveCount(2);
+
+  const open = page.getByRole("button", { name: "Open Letter 01", exact: true });
+  await open.click();
+  const dialog = page.getByRole("dialog");
+  const body = page.locator("[data-letter-reader-body]");
+  await expect(dialog).toBeVisible();
+  await expect(body).toContainText(finalLine);
+  await expect(dialog.getByRole("button", { name: "Close Letter 01", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back to letters", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /Continue/ })).toBeVisible();
+  expect(await body.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  await noOverflow(page);
+  await page.screenshot({ path: "test-results/scene-polish/letters-mobile-open.png" });
+
+  await body.hover();
+  await page.mouse.wheel(0, 12000);
+  await expect.poll(() => body.evaluate(el => el.scrollTop + el.clientHeight >= el.scrollHeight - 2)).toBe(true);
+  await page.screenshot({ path: "test-results/scene-polish/letters-mobile-end.png" });
+  await page.getByRole("button", { name: "Back to letters", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(open).toBeFocused();
+
+  await open.click();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(open).toBeFocused();
+  await open.click();
+  await dialog.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "intro");
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/s/qa-surprise");
+  await page.getByRole("button", { name: "Open Letter 01", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await noOverflow(page);
+  const dialogBox = await page.getByRole("dialog").boundingBox();
+  expect(dialogBox!.width).toBeLessThanOrEqual(720);
+  await page.screenshot({ path: "test-results/scene-polish/letters-desktop-open.png" });
+  expect(qa.errors).toEqual([]);
+});
+
 test("every scene can be independently disabled without loading it", async ({ page }) => {
   const config = fixture(); config.scenes = Object.keys(SCENE_REGISTRY) as SceneId[];
   config.features = Object.fromEntries(Object.values(SCENE_REGISTRY).map(meta => [meta.featureKey, false]));
   const qa = await setup(page, config);
   await page.goto("/dashboard");
   await expect(page.getByText("No scenes configured.", { exact: false })).toBeVisible();
-  expect(qa.loaded.filter(url => /(?:Butterfly|GiftReveal|RoseBloom|Notebook|YouAndMe|Letters)Scene/.test(url))).toHaveLength(0);
+  expect(qa.loaded.filter(url => /(?:Butterfly|GiftReveal|RoseBloom|Notebook|YouAndMe|Letters|HeartTunnel|LoveConfession|LoveDrive)Scene/.test(url))).toHaveLength(0);
   await tab(page, "Customize");
   await page.getByLabel("Enable Rose Bloom", { exact: true }).first().check();
   await tab(page, "Preview");
@@ -254,6 +388,39 @@ async function observeAudio(page: Page) {
       return audio;
     };
     (window as any).Audio.prototype = Native.prototype;
+  });
+}
+
+for (const [id, title] of [
+  ["heartTunnel", "Heart Tunnel interactive experience"],
+  ["loveConfession", "Love Confession interactive experience"],
+  ["loveDrive", "Love Drive interactive experience"],
+] as const) {
+  test(`explicitly enabled ${id} mounts only its lazy ExperienceFrame`, async ({ page }) => {
+    const config = fixture();
+    config.scenes = [id];
+    config.features = { ...config.features, [id]: true };
+    let expectedConfig: Record<string, unknown>;
+    if (id === "heartTunnel") {
+      config.heartTunnel = { startMain: "QA Heart Title" };
+      expectedConfig = { startMain: "QA Heart Title", startSub: "YOUR" };
+    } else if (id === "loveConfession") {
+      config.loveConfession = { question: "QA Question?" };
+      expectedConfig = { question: "QA Question?", noGiveInAfter: 6 };
+    } else {
+      config.loveDrive = { objective: "QA Objective" };
+      expectedConfig = { objective: "QA Objective", recipientName: "QA Recipient" };
+    }
+    const qa = await setup(page, config);
+    await page.goto("/s/qa-surprise");
+    await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", id);
+    await expect(page.locator(`iframe[title="${title}"]`)).toBeVisible();
+    await expect(page.locator("[data-experience-loading]")).toHaveCount(0, { timeout: 15000 });
+    const child = page.frames().find(frame => frame.url().includes(`/experiences/${id === "heartTunnel" ? "heart-tunnel" : id === "loveConfession" ? "love-confession" : "love-drive"}/`));
+    expect(child).toBeDefined();
+    await expect.poll(() => child!.evaluate(() => Boolean((window as any).__experience?.initialized))).toBe(true);
+    expect(await child!.evaluate(() => (window as any).__experience.config)).toMatchObject(expectedConfig);
+    expect(qa.errors).toEqual([]);
   });
 }
 

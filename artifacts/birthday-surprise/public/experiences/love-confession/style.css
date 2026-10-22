@@ -1,0 +1,137 @@
+/* Arena integration: preserve the original climax inside a bounded iframe container. */
+:root {
+    --exp-accent: #ff2d55;
+    --exp-accent-2: #c471f5;
+    --exp-bg: #020005;
+    --exp-text: #ffffff;
+    --exp-radius: 16px;
+}
+html, body { width: 100%; height: 100%; min-height: 100%; }
+#confession-root { box-sizing: border-box; margin: 0; padding: 0; }
+#confession-root *, #confession-root *::before, #confession-root *::after { box-sizing: border-box; }
+:where(#confession-root *) { margin: 0; padding: 0; }
+#confession-root {
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    position: relative;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: var(--exp-bg);
+    color: var(--exp-text);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    container-type: inline-size;
+    isolation: isolate;
+}
+.hidden-state { opacity: 0; visibility: hidden; pointer-events: none !important; }
+.particle { position: absolute; border-radius: 50%; background: #ff2d55; box-shadow: 0 0 6px #ff2d55; }
+#c, #confetti-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+#question-screen {
+    width: calc(100% - 24px);
+    max-width: 28rem;
+    margin: 0 12px;
+    padding: calc(24px + env(safe-area-inset-top, 0px)) 12px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+#question-text { overflow-wrap: anywhere; }
+.answer-row { gap: 12px; }
+.answer-row button {
+    width: min(8rem, calc(50% - 6px));
+    min-width: 0;
+    padding-inline: 12px;
+    overflow-wrap: anywhere;
+}
+#confession-root #noBtn.no-given-in { border-color: rgba(255,255,255,.35); color: white; }
+.no-reaction {
+    margin-top: 20px;
+    max-width: 100%;
+    color: #fda4af;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+#climax-screen { padding: env(safe-area-inset-top, 0px) 12px env(safe-area-inset-bottom, 0px); }
+#love-bg-text { width: calc(100% - 24px); }
+#confession-root #climax-line-1 { font-size: clamp(2.25rem, 12cqw, 6rem); overflow-wrap: anywhere; }
+#confession-root #climax-line-2 { font-size: clamp(1.5rem, 7cqw, 3rem); overflow-wrap: anywhere; }
+#confession-root #envelope-trigger {
+    appearance: none;
+    border: 0;
+    padding: 12px;
+    margin: 0;
+    color: inherit;
+    background: transparent;
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+    border-radius: var(--exp-radius);
+}
+#confession-root #envelope-trigger:focus-visible { outline: 3px solid white; outline-offset: 5px; }
+#confession-root #envelope-trigger:focus-visible .envelope-icon { transform: scale(1.1) translateY(-4px); }
+#confession-root #envelope-label { max-width: min(80cqw, 320px); overflow-wrap: anywhere; }
+.final-actions {
+    position: absolute;
+    z-index: 35;
+    left: 50%;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: max-content;
+    max-width: calc(100% - 24px);
+}
+#confession-root .final-actions button, #confession-root .experience-fallback button {
+    min-height: 44px;
+    border-radius: 999px;
+    padding: 10px 22px;
+    font: 600 14px 'Plus Jakarta Sans', sans-serif;
+    cursor: pointer;
+}
+.final-primary { color: white; border: 1px solid rgba(255,255,255,.3); background: linear-gradient(135deg, var(--exp-accent), var(--exp-accent-2)); box-shadow: 0 8px 24px rgba(255,45,85,.3); }
+.final-secondary { color: #fecdd3; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.08); }
+.final-actions button:hover { filter: brightness(1.1); }
+.final-actions button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, [tabindex]:focus-visible { outline: 3px solid white; outline-offset: 4px; }
+#closeBtn:focus-visible { outline-color: #be123c; }
+#letter-overlay {
+    padding: calc(20px + env(safe-area-inset-top, 0px)) calc(12px + env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) calc(12px + env(safe-area-inset-left, 0px));
+    overflow: auto;
+}
+#letter-box {
+    width: min(400px, 100%);
+    max-height: calc(100dvh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+#letter-title, #letter-text, #letter-signature { overflow-wrap: anywhere; }
+#letter-text { white-space: pre-wrap; }
+.font-serif { font-family: 'Dancing Script', cursive; }
+.experience-fallback {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 24px;
+    color: white;
+    background: var(--exp-bg);
+    text-align: center;
+}
+.experience-fallback p { max-width: 28rem; line-height: 1.7; }
+[hidden] { display: none !important; }
+.is-paused *, .is-paused *::before, .is-paused *::after { animation-play-state: paused !important; }
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+}

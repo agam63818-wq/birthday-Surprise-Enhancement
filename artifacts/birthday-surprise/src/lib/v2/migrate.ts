@@ -30,6 +30,12 @@ import type {
   ExtendedThemePresetId,
 } from "./schema";
 import type { ThemePresetId } from "@/lib/themePresets";
+import { EXPERIENCE_SCENE_IDS } from "./schema";
+import {
+  resolveHeartTunnelConfig,
+  resolveLoveConfessionConfig,
+  resolveLoveDriveConfig,
+} from "./experienceDefaults";
 
 // ── Legacy occasion aliases ──────────────────────────────────────────────
 const OCCASION_ALIASES: Record<string, OccasionId> = {
@@ -162,6 +168,11 @@ function resolveFeatures(raw: SurpriseConfig, version: ConfigVersion): FeatureFl
       merged[key] = f[key] as boolean;
     }
   }
+  // New bundled experiences are optional keys so old normalized objects stay
+  // byte-identical. Explicit values are still honored when present.
+  for (const key of EXPERIENCE_SCENE_IDS) {
+    if (key in f && typeof f[key] === "boolean") merged[key] = f[key];
+  }
   return merged;
 }
 
@@ -251,6 +262,7 @@ function detectVersion(raw: SurpriseConfig): ConfigVersion {
 const KNOWN_V2_KEYS = new Set([
   "_version", "occasionId", "scenes", "features", "themePreset",
   "notebook", "roseBloom", "butterfly", "giftReveal", "youAndMe",
+  "heartTunnel", "loveConfession", "loveDrive",
   "textStyles", "stickers", "_ext",
 ]);
 
@@ -261,6 +273,14 @@ function preserveExtensionData(raw: SurpriseConfig): Record<string, unknown> {
     // Already handled by known keys — skip
   }
   return ext;
+}
+
+// New experience roots are resolved only for explicit new configuration. In
+// particular, a plain old v1/v2 row must not gain new normalized properties.
+function hasExplicitExperience(raw: SurpriseConfig, id: (typeof EXPERIENCE_SCENE_IDS)[number]): boolean {
+  return raw[id] !== undefined ||
+    (Array.isArray(raw.scenes) && raw.scenes.includes(id)) ||
+    typeof raw.features?.[id] === "boolean";
 }
 
 // ── Main normalization function ──────────────────────────────────────────
@@ -284,7 +304,7 @@ export function normalizeConfig(raw: SurpriseConfig): NormalizedConfig {
   const giftReveal = resolveGiftReveal(raw);
   const youAndMe = resolveYouAndMe(raw);
 
-  return {
+  const normalized: NormalizedConfig = {
     version,
     occasion,
     recipient: {
@@ -305,6 +325,20 @@ export function normalizeConfig(raw: SurpriseConfig): NormalizedConfig {
     youAndMe,
     raw,
   };
+
+  if (hasExplicitExperience(raw, "heartTunnel")) {
+    normalized.heartTunnel = resolveHeartTunnelConfig(raw.heartTunnel, occasion);
+  }
+  if (hasExplicitExperience(raw, "loveConfession")) {
+    normalized.loveConfession = resolveLoveConfessionConfig(raw.loveConfession, raw.giftReveal?.senderName ?? "");
+  }
+  if (hasExplicitExperience(raw, "loveDrive")) {
+    normalized.loveDrive = resolveLoveDriveConfig(raw.loveDrive, occasion, {
+      recipientName: raw.name ?? "",
+      senderName: raw.giftReveal?.senderName ?? "",
+    });
+  }
+  return normalized;
 }
 
 // ── Migration: v1 → v2 (pure, non-mutating) ─────────────────────────────

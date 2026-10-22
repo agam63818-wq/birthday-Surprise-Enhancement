@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import defaultConfig from "@/config";
 import StickerLayer from "@/components/stickers/StickerLayer";
+import SceneStickersEditor from "@/components/stickers/SceneStickersEditor";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import { STICKERS_BY_ID } from "@/lib/stickers/manifest";
 import { createSeededStickerFixture } from "@/lib/stickers/__tests__/fixtures";
@@ -300,5 +301,38 @@ describe("StickerLayer component", () => {
     expect(addListener).toHaveBeenCalledTimes(1);
     unmount();
     expect(removeListener).toHaveBeenCalledTimes(1);
+  });
+
+  it("never mounts decorative or editable stickers on Love Drive", () => {
+    const config: SurpriseConfig = {
+      ...createSeededStickerFixture("v2"),
+      stickers: {
+        version: 1,
+        scenes: {
+          loveDrive: {
+            enabled: true,
+            items: [{ uid: "drive-sticker", stickerId: "kitty-01", x: 0.5, y: 0.5, w: 0.2, rotate: 0, z: 0 }],
+          },
+        },
+      },
+    };
+    const { container } = render(
+      <ConfigProvider config={config}>
+        <StickerLayer sceneKey="loveDrive" editable selectedUid="drive-sticker" />
+      </ConfigProvider>,
+    );
+    expect(container.firstChild).toBeNull();
+    expect(container.querySelector("img")).toBeNull();
+
+    const editor = render(
+      <SceneStickersEditor
+        sceneKey="loveDrive"
+        sceneLabel="Love Drive"
+        config={config}
+        onChange={vi.fn()}
+        panelOpen={false}
+      />,
+    );
+    expect(editor.container.firstChild).toBeNull();
   });
 });

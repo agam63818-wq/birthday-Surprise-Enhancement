@@ -9,7 +9,7 @@ import {
   type StickerTransformValues,
 } from "@/lib/stickers/editorMath";
 import { getStickerById } from "@/lib/stickers/manifest";
-import { getSceneStickers } from "@/lib/stickers/model";
+import { areStickersSupported, getSceneStickers } from "@/lib/stickers/model";
 import type { SceneKey, StickerPlacement } from "@/lib/v2/schema";
 
 export interface StickerLayerProps {
@@ -490,6 +490,8 @@ function StickerLayerInner({
   const config = useConfig();
   const reducedMotion = usePrefersReducedMotion(reducedMotionProp);
   const items = useMemo(() => getSceneStickers(config, sceneKey), [config, sceneKey]);
+
+  if (!areStickersSupported(sceneKey)) return null;
 
   if (editable) {
     return (

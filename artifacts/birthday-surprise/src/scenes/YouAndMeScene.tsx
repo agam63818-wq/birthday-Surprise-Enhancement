@@ -54,9 +54,18 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
   useEffect(() => {
     mountedRef.current = true;
     const canvasEl = canvasRef.current;
-    if (!canvasEl || reducedMotion) return;
+    if (reducedMotion) return;
+    if (!canvasEl) {
+      setTextAlpha(1);
+      setShowNext(true);
+      return;
+    }
     const ctxOrNull = canvasEl.getContext("2d");
-    if (!ctxOrNull) return;
+    if (!ctxOrNull) {
+      setTextAlpha(1);
+      setShowNext(true);
+      return;
+    }
     // Non-null aliases for use in closures
     const canvas: HTMLCanvasElement = canvasEl;
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -66,11 +75,14 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
     const resize = () => {
       const c = canvasRef.current;
       if (!c) return;
-      W = c.width = c.offsetWidth;
-      H = c.height = c.offsetHeight;
+      W = Math.max(1, c.offsetWidth);
+      H = Math.max(1, c.offsetHeight);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      c.width = Math.round(W * dpr);
+      c.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
-    window.addEventListener("resize", resize);
 
     let t = 0, phase = 0, phaseTimer = 0;
     let particles: Particle[] = [];
@@ -81,6 +93,7 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
     let localTextAlpha = 0;
     let allArrived = false;
     let doneTimer = 0;
+    let nextShown = false;
 
     function buildStars() {
       stars = [];
@@ -250,6 +263,12 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
 
     buildStars();
     buildParticles();
+    const handleResize = () => {
+      resize();
+      buildStars();
+      buildParticles();
+    };
+    window.addEventListener("resize", handleResize);
 
     function loop() {
       if (!mountedRef.current) return;
@@ -282,7 +301,8 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
 
         if (ratio >= 0.95 && !allArrived) allArrived = true;
         if (allArrived) { doneTimer++; spawnPetals(); }
-        if (allArrived && doneTimer > 180 && mountedRef.current) {
+        if (allArrived && doneTimer > 180 && mountedRef.current && !nextShown) {
+          nextShown = true;
           setShowNext(true);
         }
       }
@@ -293,7 +313,7 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
     rafRef.current = requestAnimationFrame(loop);
 
     return () => {
-      window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(rafRef.current);
     };
   }, [reducedMotion, name1, name2]);
@@ -305,123 +325,94 @@ export default function YouAndMeScene({ onNext, isActive, reducedMotion }: Scene
     };
   }, []);
 
-  if (reducedMotion) {
-    return (
-      <div style={{
-        minHeight: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "32px 24px",
-        background: "#000",
-        textAlign: "center",
-        gap: "24px",
-      }}>
-        <div style={{ fontSize: "clamp(3rem, 10vw, 5rem)" }}>❤️</div>
-        <h2 style={{
-          fontFamily: "Georgia, serif",
-          fontSize: "clamp(1.4rem, 5vw, 2.2rem)",
-          color: "#fff",
-          letterSpacing: "0.1em",
-          textShadow: "0 0 30px #ff4466",
-        }}>
-          {name1} & {name2}
-        </h2>
-        <p style={{ color: "rgba(255,180,180,0.8)", letterSpacing: "0.2em", fontSize: "0.85rem" }}>
-          {caption}
-        </p>
-        <button onClick={onNext} style={{
-          marginTop: "16px", padding: "14px 32px", borderRadius: "999px",
-          border: "1px solid rgba(255,68,102,0.5)",
-          background: "rgba(255,68,102,0.15)",
-          color: "#fff", fontSize: "1rem", cursor: "pointer",
-        }}>Continue ✨</button>
-      </div>
-    );
-  }
+  const contentVisible = reducedMotion || showNext;
 
   return (
-    <div style={{
-      position: "relative",
-      width: "100%",
-      height: "100dvh",
-      background: "#000",
-      overflow: "hidden",
-      transformStyle: "preserve-3d",
-    }}>
-      <canvas
-        ref={canvasRef}
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-      />
+    <div data-you-and-me-scene className={`together-scene ${reducedMotion ? "is-reduced" : ""}`}>
+      {!reducedMotion && (
+        <div className="together-canvas-shell" aria-hidden="true">
+          <canvas ref={canvasRef} data-you-and-me-canvas className="together-canvas" />
+        </div>
+      )}
+      {reducedMotion && <div className="together-static-heart" aria-hidden="true">♥</div>}
 
-      {/* Text overlay */}
-      <div style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        pointerEvents: "none",
-        gap: "8px",
-      }}>
-        <div style={{
-          fontFamily: "Georgia, serif",
-          color: `rgba(255,255,255,${textAlpha})`,
-          fontSize: "clamp(1.2rem, 4vw, 2rem)",
-          textAlign: "center",
-          letterSpacing: "6px",
-          textShadow: `0 0 ${30 * textAlpha}px #ff4466, 0 0 ${60 * textAlpha}px #ff4466`,
-          lineHeight: 2,
-          padding: "0 24px",
-        }}>
-          {name1} & {name2}
-          <br />
-          <span style={{
-            fontSize: "0.5em",
-            letterSpacing: "8px",
-            color: `rgba(255,180,180,${textAlpha})`,
-          }}>
-            {caption}
-          </span>
+      <div className="together-content">
+        <div className="together-content-inner">
+          <div className="together-copy" style={{ opacity: reducedMotion ? 1 : textAlpha }}>
+            <h1 className="together-names" aria-label={`${name1} and ${name2}`}>
+              <span>{name1}</span><span className="together-ampersand" aria-hidden="true">&amp;</span><span>{name2}</span>
+            </h1>
+            <p className="together-caption">{caption}</p>
+          </div>
+          <div className={`together-actions ${contentVisible ? "is-visible" : ""}`} aria-hidden={!contentVisible}>
+            <button type="button" onClick={onNext} className="together-continue" tabIndex={contentVisible ? 0 : -1}>
+              Continue <span aria-hidden="true">✨</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Continue button */}
-      {showNext && (
-        <div style={{
-          position: "absolute",
-          bottom: "calc(40px + env(safe-area-inset-bottom, 0px))",
-          left: "50%",
-          transform: "translateX(-50%)",
-          animation: "together-fadeInUp 0.6s ease forwards",
-          pointerEvents: "auto",
-        }}>
-          <button
-            onClick={onNext}
-            style={{
-              padding: "14px 36px",
-              borderRadius: "999px",
-              border: "1px solid rgba(255,68,102,0.5)",
-              background: "rgba(255,68,102,0.15)",
-              color: "#fff",
-              fontSize: "1rem",
-              cursor: "pointer",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Continue ✨
-          </button>
-        </div>
-      )}
-
       <style>{`
-        @keyframes together-fadeInUp {
-          from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .together-scene {
+          position: relative; width: 100%; height: 100dvh; min-height: 100dvh; overflow: hidden;
+          color: #fff; background: radial-gradient(ellipse at 50% 42%, #120819 0%, #04020a 56%, #010102 100%);
+          isolation: isolate; perspective: 1000px;
+        }
+        .together-scene::after {
+          content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+          background: radial-gradient(ellipse at center, transparent 34%, rgba(0,0,0,.58) 100%);
+        }
+        .together-canvas-shell { position: absolute; inset: 0; z-index: 1; transform-style: preserve-3d; will-change: transform; }
+        .together-canvas { display: block; width: 100%; height: 100%; }
+        .together-static-heart {
+          position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; pointer-events: none;
+          color: rgba(255,45,117,.23); font: clamp(12rem, 52vw, 26rem)/1 Georgia, serif;
+          text-shadow: 0 0 45px rgba(255,45,117,.55), 0 0 110px rgba(255,45,117,.24);
+          transform: translateY(-4%);
+        }
+        .together-content {
+          position: absolute; inset: 0; z-index: 3; display: flex; overflow-y: auto;
+          overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+          scrollbar-width: thin; scrollbar-color: rgba(255,112,157,.32) transparent;
+        }
+        .together-content-inner {
+          box-sizing: border-box; width: 100%; min-height: 100%; margin: auto; display: flex; flex-direction: column;
+          align-items: center; justify-content: flex-start; gap: clamp(20px, 4vh, 36px);
+          padding: calc(76px + env(safe-area-inset-top, 0px)) clamp(16px, 4vw, 40px) calc(92px + env(safe-area-inset-bottom, 0px));
+        }
+        .together-copy { width: 100%; margin-top: auto; text-align: center; }
+        .together-names {
+          box-sizing: border-box; max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap;
+          align-items: baseline; justify-content: center; gap: .12em .38em;
+          color: #fff; font: 500 clamp(1.25rem, 5.2vw, 2.3rem)/1.28 'Playfair Display', Georgia, serif;
+          letter-spacing: clamp(1px, 1vw, 5px); text-shadow: 0 0 24px rgba(255,45,117,.55);
+        }
+        .together-names > span { flex: 0 0 auto; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+        .together-names .together-ampersand { flex: 0 0 auto; color: #ff2d75; font-style: italic; overflow-wrap: normal; }
+        .together-caption {
+          max-width: 58ch; margin: 18px auto 0; color: rgba(255,227,239,.78); white-space: pre-wrap; overflow-wrap: anywhere;
+          font: 500 clamp(.66rem, 2.2vw, .82rem)/1.75 Inter, system-ui, sans-serif;
+          letter-spacing: clamp(1px, 1.4vw, 6px); text-transform: uppercase;
+        }
+        .together-actions { min-height: 48px; margin-top: auto; display: flex; align-items: center; justify-content: center; visibility: hidden; }
+        .together-actions.is-visible { visibility: visible; animation: together-actionIn .55s ease both; }
+        .together-continue {
+          min-height: 48px; padding: 13px 30px; border: 1px solid rgba(255,112,157,.55); border-radius: 999px;
+          color: #fff; background: linear-gradient(135deg, rgba(255,45,117,.3), rgba(168,85,247,.24));
+          box-shadow: 0 12px 36px rgba(255,45,117,.15), inset 0 1px rgba(255,255,255,.13);
+          backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); cursor: pointer; white-space: nowrap;
+          font: 600 clamp(.85rem, 3vw, 1rem)/1.3 Inter, system-ui, sans-serif;
+        }
+        .together-continue:hover { border-color: rgba(255,177,211,.85); box-shadow: 0 14px 42px rgba(255,45,117,.24); }
+        .together-continue:focus-visible { outline: 3px solid #ffd1e3; outline-offset: 4px; }
+        @keyframes together-actionIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 520px) {
+          .together-content-inner { gap: 22px; }
+          .together-names { max-width: 100%; letter-spacing: clamp(1px, .8vw, 3px); }
+          .together-caption { margin-top: 14px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .together-scene *, .together-scene *::before, .together-scene *::after { animation: none !important; transition: none !important; }
         }
       `}</style>
     </div>

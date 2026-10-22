@@ -11,6 +11,7 @@ import Dashboard from "@/pages/auth/Dashboard";
 import PublicShare from "@/pages/PublicShare";
 import PublicHome from "@/pages/PublicHome";
 import NotFound from "@/pages/not-found";
+import ExperienceFrameFixture from "@/pages/ExperienceFrameFixture";
 
 // Auth pages share a lightweight background + font-loading shell; the
 // full birthday experience (with its own ambient FX, music, confetti,
@@ -74,6 +75,9 @@ export default function App() {
             </ProtectedRoute>
           </AuthShell>
         </Route>
+        {import.meta.env.DEV && (
+          <Route path="/__experience-frame-fixture" component={ExperienceFrameFixture} />
+        )}
         <Route>
           <NotFound />
         </Route>

@@ -1,7 +1,10 @@
 import { validateAudioPlayback } from "./audioPlayback.ts";
-/** Dependency-free contract shared by the browser and Deno. Never executes model code. */
-export const SCENE_IDS = ["letters", "landing", "intro", "cuteness", "celebration", "cake", "rakhiHero", "familyHero", "loveDayHero", "whyYouMatter", "ourStory", "memoryWall", "beforeLeave", "lastNote", "butterfly", "giftReveal", "youAndMe", "notebook", "roseBloom"] as const;
-export const FEATURE_IDS = ["letters", "landing", "intro", "cutenessMeter", "celebration", "cake", "rakhiHero", "familyHero", "loveDayHero", "whyYouMatter", "ourStory", "memoryWall", "beforeLeave", "lastNote", "butterfly", "giftReveal", "youAndMe", "notebook", "roseBloom"] as const;
+/** Dependency-free contract shared by the browser and Deno. Never executes model code.
+ * REQUIRES MANUAL `supabase functions deploy` after changes before the deployed AI
+ * assistant can use the expanded paths/IDs. Local/browser validation is not deployment.
+ */
+export const SCENE_IDS = ["letters", "landing", "intro", "cuteness", "celebration", "cake", "rakhiHero", "familyHero", "loveDayHero", "whyYouMatter", "ourStory", "memoryWall", "beforeLeave", "lastNote", "butterfly", "giftReveal", "youAndMe", "notebook", "roseBloom", "heartTunnel", "loveConfession", "loveDrive"] as const;
+export const FEATURE_IDS = ["letters", "landing", "intro", "cutenessMeter", "celebration", "cake", "rakhiHero", "familyHero", "loveDayHero", "whyYouMatter", "ourStory", "memoryWall", "beforeLeave", "lastNote", "butterfly", "giftReveal", "youAndMe", "notebook", "roseBloom", "heartTunnel", "loveConfession", "loveDrive"] as const;
 export const OCCASION_IDS = ["birthday", "anniversary", "friendship", "mothersday", "fathersday", "rakshabandhan", "congratulations", "romantic", "justbecause", "loveday", "custom"] as const;
 export const THEME_IDS = ["midnightRose", "dreamyLavender", "champagne", "oceanNight", "softBloom", "midnightPurple", "roseGold", "deepEmerald", "royalGold"] as const;
 export const FONT_IDS = ["elegant", "readable", "warm", "storybook"] as const;
@@ -12,6 +15,11 @@ type Check = (v: unknown) => boolean;
 const own = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v) && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null);
 const text = (max = 6000): Check => v => typeof v === "string" && v.length <= max;
+// New bundled experiences accept data only. Existing legacy text validators
+// intentionally keep their historical behavior for backward compatibility.
+const plainText = (max = 6000): Check => v => typeof v === "string" && v.length <= max &&
+  !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v) &&
+  !/<\s*\/?\s*[a-z][^>]*>/i.test(v) && !/(?:javascript|vbscript)\s*:/i.test(v);
 const bool: Check = v => typeof v === "boolean";
 const member = (values: readonly string[]): Check => v => typeof v === "string" && values.includes(v);
 export const safeMediaUrl: Check = v => {
@@ -58,6 +66,45 @@ strings("cake", ["title", "subtitle", "tapHint", "message", "buttonText"]); path
 strings("memoryWall", ["title", "subtitle", "buttonText"]); paths["memoryWall.photos"] = list(photo, 60);
 strings("beforeLeave", ["message", "buttonText"]);
 strings("lastNote", ["finalLine1", "finalLine2", "footerText"]); paths["lastNote.lines"] = list(text(3000), 60);
+
+// Part 2 bundled-experience paths. Keep these explicit so AI/save validation
+// cannot silently accept arbitrary nested keys or executable markup.
+const experienceTextFields: Record<string, Record<string, number>> = {
+  heartTunnel: {
+    startSub: 80, startMain: 120, startSubtitle: 300, startButton: 160, startHint: 200,
+    cinematicSub: 120, cinematicMain: 300, revealTitle: 300, coupleNames: 200, caption: 300,
+    subtitle: 300, yearsNumber: 20, yearsUnit: 80, quote: 2000, dateText: 120, letterButton: 160,
+    letterTitle: 300, letterHighlight: 2000, signatureLead: 200, signatureName: 200,
+    continueButton: 160, replayButton: 160,
+  },
+  loveConfession: {
+    question: 600, yesLabel: 120, noLabel: 120, noReaction: 600, climaxLine1: 300, climaxLine2: 300,
+    envelopeLabel: 200, letterTitle: 300, letterBody: 6000, signatureLead: 200, signatureName: 200,
+    closeLabel: 160, continueLabel: 160, replayLabel: 160,
+  },
+  loveDrive: {
+    recipientName: 120, senderName: 120, missionLabel: 80, progressLabel: 200, objective: 600,
+    drivingObjective: 600, exploringObjective: 600, allFoundObjective: 600, completedObjective: 600,
+    introToast: 600, hintToast: 600, brokenBlockToast: 600, allCollectedToast: 600, deliveryToast: 600,
+    finalTitle: 300, finalMessage: 2000, letterTitle: 300, letterPrompt: 300, letterBody: 6000,
+    letterFooter: 300, continueLabel: 160, replayLabel: 160, letterReplayLabel: 160, pauseLabel: 120,
+    pauseTitle: 300, pauseBody: 600, resumeLabel: 160, restartLabel: 160, skipIntroLabel: 160,
+    skipRevealLabel: 160, closeLabel: 120, steerLeftLabel: 120, steerRightLabel: 120, brakeLabel: 120,
+    accelerateLabel: 120,
+  },
+};
+for (const [section, fields] of Object.entries(experienceTextFields)) {
+  for (const [key, max] of Object.entries(fields)) paths[`${section}.${key}`] = plainText(max);
+}
+paths["heartTunnel.photoUrl"] = safeMediaUrl;
+paths["heartTunnel.letterBody"] = list(plainText(6000), 6);
+paths["loveConfession.noGiveInAfter"] = v => typeof v === "number" && Number.isInteger(v) && v >= 3 && v <= 12;
+const driveCollectibleText: Check = v => shape(v, { letter: plainText(300), gift: plainText(300), heart: plainText(300) });
+paths["loveDrive.collectLabels"] = driveCollectibleText;
+paths["loveDrive.collectedToasts"] = driveCollectibleText;
+for (const group of ["collectLabels", "collectedToasts"]) {
+  for (const key of ["letter", "gift", "heart"]) paths[`loveDrive.${group}.${key}`] = plainText(300);
+}
 ["rakshabandhan", "fathersday", "mothersday", "loveday"].forEach(o => strings(`occasionContent.${o}`, ["title", "message", "buttonText", ...(o === "rakshabandhan" ? ["siblingName"] : [])]));
 export const PATCH_PATHS = Object.keys(paths);
 
@@ -112,7 +159,7 @@ export function configToPatch(input: unknown): ConfigPatch {
 export function validateV2Config(input: unknown): void {
   if (object(input)) validateAudioPlayback(input.audio, SCENE_IDS);
   if (!object(input) || input._version !== 2) return;
-  for (const root of ["occasionId", "themePreset", "scenes", "features", "notebook", "roseBloom", "butterfly", "giftReveal", "youAndMe", "textStyles"]) {
+  for (const root of ["occasionId", "themePreset", "scenes", "features", "notebook", "roseBloom", "butterfly", "giftReveal", "youAndMe", "heartTunnel", "loveConfession", "loveDrive", "textStyles"]) {
     if (!own(input, root)) continue;
     if (own(paths, root)) { if (!paths[root](input[root])) throw new Error(`Invalid ${root}.`); }
     else {

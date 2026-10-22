@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Love Drive</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Three.js r128 Library, vendored locally; no runtime CDN dependency. -->
+  <script src="vendor/three.min.js"></script>
+</head>
+<body data-experience="love-drive">
+  <div id="ld-game-wrapper" class="ld-wrapper">
+    <div id="ld-canvas-container" class="ld-canvas-container"></div>
+
+    <div id="ld-hud" class="ld-hud">
+      <div class="ld-hud-top">
+        <div class="ld-objective-box">
+          <span id="ld-mission-label" class="ld-badge"></span>
+          <p id="ld-objective-text" aria-live="polite"></p>
+        </div>
+        <div id="ld-progress-pill" class="ld-progress-pill" role="status" aria-live="polite">
+          <div class="ld-slots">
+            <span id="ld-slot-letter" class="ld-slot" aria-hidden="true">💌</span>
+            <span id="ld-slot-gift" class="ld-slot" aria-hidden="true">🎁</span>
+            <span id="ld-slot-heart" class="ld-slot" aria-hidden="true">💛</span>
+          </div>
+          <span id="ld-counter-text" class="ld-counter">0/3</span>
+        </div>
+        <div class="ld-controls-top">
+          <button id="ld-btn-pause" class="ld-icon-btn" type="button">⏸</button>
+        </div>
+      </div>
+
+      <div id="ld-toast" class="ld-toast ld-hidden" role="status" aria-live="polite"></div>
+      <button id="ld-btn-skip" class="ld-skip-btn ld-hidden" type="button"></button>
+
+      <div id="ld-touch-controls" class="ld-touch-controls">
+        <div class="ld-touch-left">
+          <button id="ld-btn-left" class="ld-ctrl-btn" type="button">◀</button>
+          <button id="ld-btn-right" class="ld-ctrl-btn" type="button">▶</button>
+        </div>
+        <div class="ld-touch-right">
+          <button id="ld-btn-brake" class="ld-ctrl-btn ld-btn-sub" type="button">▼</button>
+          <button id="ld-btn-gas" class="ld-ctrl-btn ld-btn-main" type="button">▲</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="ld-pause-modal" class="ld-overlay ld-hidden" role="dialog" aria-modal="true" aria-labelledby="ld-pause-title" aria-hidden="true" inert>
+      <div class="ld-card" tabindex="-1">
+        <h3 id="ld-pause-title"></h3>
+        <p id="ld-pause-body"></p>
+        <div class="ld-btn-group">
+          <button id="ld-btn-resume" class="ld-primary-btn" type="button"></button>
+          <button id="ld-btn-restart-pause" class="ld-secondary-btn" type="button"></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="ld-final-modal" class="ld-overlay ld-hidden" role="dialog" aria-modal="true" aria-labelledby="ld-final-title" aria-hidden="true" inert>
+      <div class="ld-card ld-final-card" tabindex="-1">
+        <div class="ld-final-icons" aria-hidden="true">💌 🎁 💛</div>
+        <h2 id="ld-final-title"></h2>
+        <p id="ld-final-msg"></p>
+        <div class="ld-btn-group">
+          <button id="ld-btn-read-letter" class="ld-secondary-btn" type="button"></button>
+          <button id="ld-btn-open-letter" class="ld-primary-btn" type="button"></button>
+          <button id="ld-btn-replay" class="ld-secondary-btn" type="button"></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="love-modal" class="ld-love-modal-overlay ld-hidden" role="dialog" aria-modal="true" aria-labelledby="ld-love-modal-heading" aria-hidden="true" inert>
+      <div class="ld-love-modal-card" tabindex="-1">
+        <button class="ld-close-love-modal" id="close-modal" type="button">✕</button>
+        <div class="ld-love-banner">
+          <div class="ld-hearts-row" aria-hidden="true"><span>💖</span><span>💕</span><span>❤️</span><span>💗</span><span>💖</span></div>
+          <h1 id="ld-love-modal-heading" class="ld-love-title"></h1>
+          <div class="ld-hearts-row" aria-hidden="true"><span>💕</span><span>💖</span><span>❤️</span><span>💗</span><span>💕</span></div>
+        </div>
+        <div class="ld-love-body">
+          <p id="ld-love-prompt" class="ld-love-prompt"></p>
+          <div id="love-message" class="ld-love-letter" role="document" tabindex="0"></div>
+          <p id="ld-love-footer" class="ld-love-footer-note"></p>
+        </div>
+        <div class="ld-btn-group">
+          <button class="ld-primary-btn" id="love-continue-btn" type="button"></button>
+          <button class="ld-secondary-btn" id="save-modal-btn" type="button"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../shared/bridge.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
