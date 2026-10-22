@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Love Drive - Birthday Surprise</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Three.js r128 Library, vendored locally; no runtime CDN dependency. -->
+  <script src="vendor/three.min.js"></script>
+</head>
+<body data-experience="love-drive">
+
+  <!-- LOVE DRIVE GAME CONTAINER -->
+  <div id="ld-game-wrapper" class="ld-wrapper">
+    <!-- 3D Canvas -->
+    <div id="ld-canvas-container" class="ld-canvas-container"></div>
+
+    <!-- HUD Overlay -->
+    <div id="ld-hud" class="ld-hud">
+      <div class="ld-hud-top">
+        <div class="ld-objective-box">
+          <span class="ld-badge">MISSION</span>
+          <p id="ld-objective-text">Find the 3 Hidden Surprises</p>
+        </div>
+        
+        <div class="ld-progress-pill" aria-label="Mission Collectibles Progress">
+          <div class="ld-slots">
+            <span id="ld-slot-letter" class="ld-slot" title="Love Letter">💌</span>
+            <span id="ld-slot-gift" class="ld-slot" title="Birthday Gift">🎁</span>
+            <span id="ld-slot-heart" class="ld-slot" title="Golden Heart">💛</span>
+          </div>
+          <span id="ld-counter-text" class="ld-counter">0/3</span>
+        </div>
+
+        <div class="ld-controls-top">
+          <button id="ld-btn-pause" class="ld-icon-btn" type="button" aria-label="Pause Game">⏸</button>
+        </div>
+      </div>
+
+      <!-- Toast Notification -->
+      <div id="ld-toast" class="ld-toast ld-hidden" role="status" aria-live="polite"></div>
+
+      <!-- Skip Button -->
+      <button id="ld-btn-skip" class="ld-skip-btn ld-hidden" type="button">Skip Intro ➔</button>
+
+      <!-- Mobile Touch Controls -->
+      <div id="ld-touch-controls" class="ld-touch-controls">
+        <div class="ld-touch-left">
+          <button id="ld-btn-left" class="ld-ctrl-btn" type="button" aria-label="Steer Left">◀</button>
+          <button id="ld-btn-right" class="ld-ctrl-btn" type="button" aria-label="Steer Right">▶</button>
+        </div>
+        <div class="ld-touch-right">
+          <button id="ld-btn-brake" class="ld-ctrl-btn ld-btn-sub" type="button" aria-label="Brake or Reverse">▼</button>
+          <button id="ld-btn-gas" class="ld-ctrl-btn ld-btn-main" type="button" aria-label="Accelerate">▲</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause Modal -->
+    <div id="ld-pause-modal" class="ld-overlay ld-hidden" role="dialog" aria-modal="true" aria-labelledby="ld-pause-title">
+      <div class="ld-card">
+        <h3 id="ld-pause-title">Game Paused</h3>
+        <p>Take a breath on the magical road.</p>
+        <div class="ld-btn-group">
+          <button id="ld-btn-resume" class="ld-primary-btn" type="button">Resume Drive</button>
+          <button id="ld-btn-restart-pause" class="ld-secondary-btn" type="button">Restart Mission 🔄</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Birthday Ending Modal -->
+    <div id="ld-final-modal" class="ld-overlay ld-hidden" role="dialog" aria-modal="true" aria-labelledby="ld-final-title">
+      <div class="ld-card ld-final-card">
+        <div class="ld-final-icons">💌 🎁 💛</div>
+        <h2 id="ld-final-title">Happy Birthday! ✨</h2>
+        <p id="ld-final-msg">You crashed through every obstacle and found all three hidden surprises! Ready for your special birthday message?</p>
+        <div class="ld-btn-group">
+          <button id="ld-btn-open-letter" class="ld-primary-btn" type="button">Back to Surprise 💌</button>
+          <button id="ld-btn-replay" class="ld-secondary-btn" type="button">Replay Mission 🔄</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Built-in Original Love Letter Modal (Used when parent website modal is not external) -->
+    <div id="love-modal" class="ld-love-modal-overlay ld-hidden" role="dialog" aria-modal="true" aria-labelledby="ld-love-modal-heading">
+      <div class="ld-love-modal-card">
+        <button class="ld-close-love-modal" id="close-modal" type="button" aria-label="Close message">✕</button>
+        <div class="ld-love-banner">
+          <div class="ld-hearts-row" aria-hidden="true">
+            <span>💖</span><span>💕</span><span>❤️</span><span>💗</span><span>💖</span>
+          </div>
+          <h1 id="ld-love-modal-heading" class="ld-love-title">HAPPY BIRTHDAY &amp; I LOVE YOU</h1>
+          <div class="ld-hearts-row" aria-hidden="true">
+            <span>💕</span><span>💖</span><span>❤️</span><span>💗</span><span>💕</span>
+          </div>
+        </div>
+        <div class="ld-love-body">
+          <p class="ld-love-prompt">Your Special Birthday Surprise Message:</p>
+          <textarea id="love-message" maxlength="300" placeholder="Write something sweet...">To my favorite person, every road is better with you by my side. You make my heart race more than any engine ever could. Wishing you the happiest birthday filled with love and magic! 💖🎂✨</textarea>
+          <p class="ld-love-footer-note">Screenshot &amp; cherish this special moment 💌</p>
+        </div>
+        <div class="ld-btn-group">
+          <button class="ld-primary-btn" id="save-modal-btn" type="button">Keep Driving / Replay 💖</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../shared/bridge.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

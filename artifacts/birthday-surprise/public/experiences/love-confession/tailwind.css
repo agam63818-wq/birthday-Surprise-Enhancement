@@ -1,0 +1,184 @@
+/*
+ * Static replacement for cdn.tailwindcss.com.
+ * Only utilities present in index.html are included. Attribute selectors keep
+ * arbitrary Tailwind class names readable and every rule is scoped to the
+ * confession document root; no runtime JIT or host-page preflight is needed.
+ */
+#confession-root {
+  background: #020005;
+  color: #fff;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+#confession-root::selection,
+#confession-root *::selection,
+#confession-root[class~="selection:bg-pink-500"]::selection,
+#confession-root[class~="selection:text-white"]::selection { background: #ec4899; color: #fff; }
+#confession-root[class~="bg-[#020005]"] { background: #020005; }
+#confession-root button { font: inherit; }
+#confession-root [class~="absolute"] { position: absolute; }
+#confession-root [class~="relative"] { position: relative; }
+#confession-root [class~="fixed"] { position: fixed; }
+#confession-root [class~="inset-0"] { inset: 0; }
+#confession-root [class~="overflow-hidden"] { overflow: hidden; }
+#confession-root [class~="pointer-events-none"] { pointer-events: none; }
+#confession-root [class~="z-0"] { z-index: 0; }
+#confession-root [class~="z-10"] { z-index: 10; }
+#confession-root [class~="z-20"] { z-index: 20; }
+#confession-root [class~="z-30"] { z-index: 30; }
+#confession-root [class~="z-40"] { z-index: 40; }
+#confession-root [class~="z-50"] { z-index: 50; }
+#confession-root [class~="flex"] { display: flex; }
+#confession-root [class~="flex-col"] { flex-direction: column; }
+#confession-root [class~="items-center"] { align-items: center; }
+#confession-root [class~="justify-center"] { justify-content: center; }
+#confession-root [class~="text-center"] { text-align: center; }
+#confession-root [class~="text-right"] { text-align: right; }
+#confession-root [class~="block"] { display: block; }
+#confession-root [class~="w-full"] { width: 100%; }
+#confession-root [class~="h-full"] { height: 100%; }
+#confession-root [class~="w-screen"] { width: 100vw; }
+#confession-root [class~="h-screen"] { height: 100vh; }
+#confession-root [class~="max-w-md"] { max-width: 28rem; }
+#confession-root [class~="w-32"] { width: 8rem; }
+#confession-root [class~="w-20"] { width: 5rem; }
+#confession-root [class~="h-12"] { height: 3rem; }
+#confession-root [class~="w-10"] { width: 2.5rem; }
+#confession-root [class~="h-10"] { height: 2.5rem; }
+#confession-root [class~="min-h-[60px]"] { min-height: 60px; }
+#confession-root [class~="min-h-[120px]"] { min-height: 120px; }
+#confession-root [class~="w-[600px]"] { width: 600px; }
+#confession-root [class~="h-[600px]"] { height: 600px; }
+#confession-root [class~="w-[340px]"] { width: 340px; }
+#confession-root [class~="p-6"] { padding: 1.5rem; }
+#confession-root [class~="px-8"] { padding-left: 2rem; padding-right: 2rem; }
+#confession-root [class~="py-3.5"] { padding-top: .875rem; padding-bottom: .875rem; }
+#confession-root [class~="px-6"] { padding-left: 1.5rem; padding-right: 1.5rem; }
+#confession-root [class~="py-2.5"] { padding-top: .625rem; padding-bottom: .625rem; }
+#confession-root [class~="mx-4"] { margin-left: 1rem; margin-right: 1rem; }
+#confession-root [class~="mb-6"] { margin-bottom: 1.5rem; }
+#confession-root [class~="mb-8"] { margin-bottom: 2rem; }
+#confession-root [class~="mt-2"] { margin-top: .5rem; }
+#confession-root [class~="mt-6"] { margin-top: 1.5rem; }
+#confession-root [class~="mt-1"] { margin-top: .25rem; }
+#confession-root [class~="mb-4"] { margin-bottom: 1rem; }
+#confession-root [class~="pb-2"] { padding-bottom: .5rem; }
+#confession-root [class~="pt-4"] { padding-top: 1rem; }
+#confession-root [class~="gap-6"] { gap: 1.5rem; }
+#confession-root [class~="gap-3"] { gap: .75rem; }
+#confession-root [class~="top-[-20%]"] { top: -20%; }
+#confession-root [class~="left-[-20%]"] { left: -20%; }
+#confession-root [class~="bottom-[-20%]"] { bottom: -20%; }
+#confession-root [class~="right-[-20%]"] { right: -20%; }
+#confession-root [class~="bottom-24"] { bottom: 6rem; }
+#confession-root [class~="top-0"] { top: 0; }
+#confession-root [class~="left-0"] { left: 0; }
+#confession-root [class~="top-[35%]"] { top: 35%; }
+#confession-root [class~="left-1/2"] { left: 50%; }
+#confession-root [class~="-top-4"] { top: -1rem; }
+#confession-root [class~="rounded-full"] { border-radius: 9999px; }
+#confession-root [class~="rounded-lg"] { border-radius: .5rem; }
+#confession-root [class~="rounded-3xl"] { border-radius: 1.5rem; }
+#confession-root [class~="border"] { border-width: 1px; border-style: solid; }
+#confession-root [class~="border-2"] { border-width: 2px; border-style: solid; }
+#confession-root [class~="border-b"] { border-bottom-width: 1px; border-bottom-style: solid; }
+#confession-root [class~="border-t"] { border-top-width: 1px; border-top-style: solid; }
+#confession-root [class~="border-pink-400/20"] { border-color: rgb(244 114 182 / .2); }
+#confession-root [class~="border-white/10"] { border-color: rgb(255 255 255 / .1); }
+#confession-root [class~="border-pink-100"] { border-color: #fce7f3; }
+#confession-root [class~="border-rose-100"] { border-color: #ffe4e6; }
+#confession-root [class~="border-white"] { border-color: #fff; }
+#confession-root [class~="bg-pink-500/10"] { background-color: rgb(236 72 153 / .1); }
+#confession-root [class~="bg-purple-500/10"] { background-color: rgb(168 85 247 / .1); }
+#confession-root [class~="bg-white/5"] { background-color: rgb(255 255 255 / .05); }
+#confession-root [class~="bg-black/60"] { background-color: rgb(0 0 0 / .6); }
+#confession-root [class~="bg-white"] { background-color: #fff; }
+#confession-root [class~="bg-rose-500"] { background-color: #f43f5e; }
+#confession-root [class~="bg-rose-50"] { background-color: #fff1f2; }
+#confession-root [class~="text-white"] { color: #fff; }
+#confession-root [class~="text-white/80"] { color: rgb(255 255 255 / .8); }
+#confession-root [class~="text-gray-900"] { color: #111827; }
+#confession-root [class~="text-gray-700"] { color: #374151; }
+#confession-root [class~="text-gray-400"] { color: #9ca3af; }
+#confession-root [class~="text-pink-300"] { color: #f9a8d4; }
+#confession-root [class~="text-rose-600"] { color: #e11d48; }
+#confession-root [class~="text-transparent"] { color: transparent; }
+#confession-root [class~="text-7xl"] { font-size: 4.5rem; line-height: 1; }
+#confession-root [class~="text-6xl"] { font-size: 3.75rem; line-height: 1; }
+#confession-root [class~="text-4xl"] { font-size: 2.25rem; line-height: 2.5rem; }
+#confession-root [class~="text-3xl"] { font-size: 1.875rem; line-height: 2.25rem; }
+#confession-root [class~="text-lg"] { font-size: 1.125rem; line-height: 1.75rem; }
+#confession-root [class~="text-base"] { font-size: 1rem; line-height: 1.5rem; }
+#confession-root [class~="text-sm"] { font-size: .875rem; line-height: 1.25rem; }
+#confession-root [class~="text-xs"] { font-size: .75rem; line-height: 1rem; }
+#confession-root [class~="font-extrabold"] { font-weight: 800; }
+#confession-root [class~="font-black"] { font-weight: 900; }
+#confession-root [class~="font-semibold"] { font-weight: 600; }
+#confession-root [class~="font-bold"] { font-weight: 700; }
+#confession-root [class~="font-sans"] { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+#confession-root [class~="font-serif"] { font-family: 'Dancing Script', cursive; }
+#confession-root [class~="tracking-tight"] { letter-spacing: -.025em; }
+#confession-root [class~="tracking-wider"] { letter-spacing: .05em; }
+#confession-root [class~="tracking-[0.2em]"] { letter-spacing: .2em; }
+#confession-root [class~="uppercase"] { text-transform: uppercase; }
+#confession-root [class~="leading-relaxed"] { line-height: 1.625; }
+#confession-root [class~="select-none"] { user-select: none; }
+#confession-root [class~="cursor-pointer"] { cursor: pointer; }
+#confession-root [class~="bg-clip-text"] { background-clip: text; -webkit-background-clip: text; }
+#confession-root [class~="filter"] { filter: none; }
+#confession-root [class~="drop-shadow-md"] { filter: drop-shadow(0 4px 3px rgb(0 0 0 / .07)) drop-shadow(0 2px 2px rgb(0 0 0 / .06)); }
+#confession-root [class~="drop-shadow-[0_0_15px_rgba(255,45,85,0.6)]"] { filter: drop-shadow(0 0 15px rgb(255 45 85 / .6)); }
+#confession-root [class~="blur-[130px]"] { filter: blur(130px); }
+#confession-root [class~="backdrop-blur-md"] { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+#confession-root [class~="shadow-md"] { box-shadow: 0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1); }
+#confession-root [class~="shadow-[0_10px_25px_rgba(255,45,85,0.4)]"] { box-shadow: 0 10px 25px rgb(255 45 85 / .4); }
+#confession-root [class~="shadow-[0_10px_20px_rgba(255,45,85,0.3)]"] { box-shadow: 0 10px 20px rgb(255 45 85 / .3); }
+#confession-root [class~="shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)]"] { box-shadow: 0 25px 60px -15px rgb(0 0 0 / .5); }
+#confession-root [class~="opacity-0"] { opacity: 0; }
+#confession-root [class~="scale-75"] { transform: scale(.75); }
+#confession-root [class~="scale-0"] { transform: scale(0); }
+#confession-root [class~="translate-y-32"] { transform: translateY(8rem); }
+#confession-root [class~="translate-y-4"] { transform: translateY(1rem); }
+#confession-root [class~="scale-95"] { transform: scale(.95); }
+#confession-root [class~="translate-y-32"][class~="scale-95"] { transform: translateY(8rem) scale(.95); }
+#confession-root [class~="-translate-x-1/2"][class~="-translate-y-1/2"] { transform: translate(-50%, -50%); }
+#confession-root [class~="-translate-x-1/2"]:not([class~="-translate-y-1/2"]) { transform: translateX(-50%); }
+#confession-root [class~="origin-top"] { transform-origin: top; }
+#confession-root [class~="transition-all"] { transition-property: all; transition-timing-function: cubic-bezier(.4, 0, .2, 1); transition-duration: 150ms; }
+#confession-root [class~="transition-transform"] { transition-property: transform; transition-timing-function: cubic-bezier(.4, 0, .2, 1); }
+#confession-root [class~="duration-300"] { transition-duration: 300ms; }
+#confession-root [class~="duration-500"] { transition-duration: 500ms; }
+#confession-root [class~="space-y-3"] > :not([hidden]) ~ :not([hidden]) { margin-top: .75rem; }
+#confession-root [class~="border-l-[40px]"] { border-left-width: 40px; border-left-style: solid; }
+#confession-root [class~="border-l-transparent"] { border-left-color: transparent; }
+#confession-root [class~="border-r-[40px]"] { border-right-width: 40px; border-right-style: solid; }
+#confession-root [class~="border-r-transparent"] { border-right-color: transparent; }
+#confession-root [class~="border-t-[24px]"] { border-top-width: 24px; border-top-style: solid; }
+#confession-root [class~="border-t-pink-300"] { border-top-color: #f9a8d4; }
+#confession-root [class~="h-0"] { height: 0; }
+#confession-root [class~="bg-gradient-to-r"][class~="from-pink-400"][class~="via-rose-400"][class~="to-purple-400"] { background-image: linear-gradient(to right, #f472b6, #fb7185, #c084fc); }
+#confession-root [class~="bg-gradient-to-r"][class~="from-pink-500"][class~="to-rose-500"] { background-image: linear-gradient(to right, #ec4899, #f43f5e); }
+#confession-root [class~="bg-gradient-to-r"][class~="from-pink-500"][class~="via-rose-500"][class~="to-purple-500"] { background-image: linear-gradient(to right, #ec4899, #f43f5e, #a855f7); }
+#confession-root [class~="bg-gradient-to-br"][class~="from-pink-400"][class~="to-rose-500"] { background-image: linear-gradient(to bottom right, #f472b6, #f43f5e); }
+#confession-root [class~="hover:from-pink-600"][class~="hover:to-rose-600"]:hover { background-image: linear-gradient(to right, #db2777, #e11d48); }
+#confession-root [class~="hover:bg-white/10"]:hover { background-color: rgb(255 255 255 / .1); }
+#confession-root [class~="hover:bg-rose-100"]:hover { background-color: #ffe4e6; }
+#confession-root [class~="hover:scale-105"]:hover { transform: scale(1.05); }
+#confession-root [class~="active:scale-95"]:active { transform: scale(.95); }
+#confession-root [class~="group"]:hover [class~="group-hover:scale-110"][class~="group-hover:-translate-y-1"] { transform: scale(1.1) translateY(-.25rem); }
+#confession-root [class~="group"]:hover [class~="group-hover:rotateX-180"] { transform: rotateX(180deg); }
+#confession-root [class~="animate-pulse"] { animation: confession-pulse 2s cubic-bezier(.4, 0, .6, 1) infinite; }
+@keyframes confession-pulse { 50% { opacity: .5; } }
+@media (min-width: 640px) {
+  #confession-root [class~="sm:text-5xl"] { font-size: 3rem; line-height: 1; }
+  #confession-root [class~="sm:text-8xl"] { font-size: 6rem; line-height: 1; }
+  #confession-root [class~="sm:text-base"] { font-size: 1rem; line-height: 1.5rem; }
+  #confession-root [class~="sm:w-[420px]"] { width: 420px; }
+  #confession-root [class~="sm:p-8"] { padding: 2rem; }
+}
