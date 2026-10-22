@@ -412,3 +412,130 @@ body, html {
     height: 62px;
   }
 }
+
+/* Arena integration: container layout, safe areas, accessible dialogs and lifecycle state. */
+:root {
+  --exp-accent: #ff758c;
+  --exp-accent-2: #ff7eb3;
+  --exp-bg: #07011a;
+  --exp-text: #f3ecff;
+}
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+  touch-action: pan-x pan-y;
+}
+.ld-wrapper {
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  container-type: inline-size;
+  isolation: isolate;
+  touch-action: pan-x pan-y;
+}
+.ld-hud {
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-right: calc(16px + env(safe-area-inset-right, 0px));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(16px + env(safe-area-inset-left, 0px));
+}
+.ld-hud-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 44px;
+  align-items: start;
+}
+.ld-objective-box { min-width: 0; overflow-wrap: anywhere; }
+#ld-objective-text { overflow-wrap: anywhere; }
+.ld-progress-pill { white-space: nowrap; }
+.ld-toast { max-width: min(92%, 560px); overflow-wrap: anywhere; }
+.ld-skip-btn {
+  right: calc(20px + env(safe-area-inset-right, 0px));
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  min-height: 44px;
+  max-width: calc(100% - 32px);
+  white-space: normal;
+}
+.ld-icon-btn { width: 44px; height: 44px; }
+.ld-overlay,
+.ld-love-modal-overlay {
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  padding-right: calc(20px + env(safe-area-inset-right, 0px));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(20px + env(safe-area-inset-left, 0px));
+  overflow: auto;
+  touch-action: pan-y;
+}
+.ld-card,
+.ld-love-modal-card {
+  max-height: calc(100dvh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.ld-card h2, .ld-card h3, .ld-card p, .ld-love-title, .ld-love-prompt, .ld-love-footer-note,
+.ld-btn-group button { overflow-wrap: anywhere; }
+.ld-primary-btn {
+  background: linear-gradient(135deg, var(--exp-accent, #ff758c), var(--exp-accent-2, #ff7eb3));
+}
+.ld-primary-btn:disabled { opacity: .55; cursor: default; }
+.ld-close-love-modal { width: 44px; height: 44px; top: 8px; right: 8px; }
+#love-message {
+  display: block;
+  min-height: 95px;
+  max-height: min(38dvh, 340px);
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+  line-height: 1.65;
+  overscroll-behavior: contain;
+}
+.ld-wrapper button:focus-visible,
+.ld-wrapper canvas:focus-visible,
+.ld-wrapper [tabindex]:focus-visible {
+  outline: 3px solid #4a2545;
+  outline-offset: 3px;
+}
+.ld-overlay button:focus-visible,
+.ld-love-modal-overlay button:focus-visible,
+.ld-love-modal-overlay [tabindex]:focus-visible { outline-color: #80134d; }
+.ld-wrapper.is-paused *,
+.ld-wrapper.is-paused *::before,
+.ld-wrapper.is-paused *::after { animation-play-state: paused !important; }
+.ld-wrapper.reduced-motion *,
+.ld-wrapper.reduced-motion *::before,
+.ld-wrapper.reduced-motion *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+@container (max-width: 420px) {
+  .ld-hud {
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    padding-right: calc(10px + env(safe-area-inset-right, 0px));
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    padding-left: calc(10px + env(safe-area-inset-left, 0px));
+  }
+  .ld-hud-top { gap: 6px; grid-template-columns: minmax(0, 1fr) auto 44px; }
+  .ld-objective-box { max-width: none; padding: 8px 10px; }
+  .ld-progress-pill { gap: 6px; padding: 6px 8px; }
+  .ld-slots { gap: 3px; }
+  .ld-slot { font-size: 16px; }
+  .ld-counter { font-size: 13px; }
+  .ld-card, .ld-love-modal-card { padding: 20px 16px; }
+  .ld-skip-btn { right: calc(10px + env(safe-area-inset-right, 0px)); }
+}
+@media (max-height: 480px) {
+  .ld-ctrl-btn { width: 48px; height: 48px; border-radius: 14px; }
+  .ld-btn-main { width: 54px; height: 54px; }
+  .ld-skip-btn { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .ld-card, .ld-love-modal-card { padding-top: 18px; padding-bottom: 18px; }
+  .ld-final-icons { font-size: 26px; margin-bottom: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld-wrapper *, .ld-wrapper *::before, .ld-wrapper *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
