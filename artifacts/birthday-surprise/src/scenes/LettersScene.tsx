@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNormalizedConfig } from "@/contexts/ConfigContext";
 import type { SceneComponentProps } from "@/lib/v2/registry";
 import { letterHints } from "@/lib/v2/cinematicCopy";
@@ -18,14 +18,25 @@ export default function LettersScene({ onNext }: SceneComponentProps) {
   );
   const hints = letterHints();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const openLetter = openIndex === null ? null : letters[openIndex];
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpenIndex(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (openIndex === null) {
+      if (dialog.open) dialog.close();
+      const target = restoreFocusRef.current;
+      restoreFocusRef.current = null;
+      if (target?.isConnected) requestAnimationFrame(() => target.focus());
+      return;
+    }
+    if (!dialog.open) {
+      restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      dialog.showModal();
+    }
+  }, [openIndex]);
 
   const toggle = (index: number) => {
     setOpenIndex((current) => (current === index ? null : index));
@@ -52,13 +63,15 @@ export default function LettersScene({ onNext }: SceneComponentProps) {
                 type="button"
                 className={`envelope ${isOpen ? "is-open" : ""}`}
                 aria-expanded={isOpen}
+                aria-controls="letter-reader-dialog"
+                aria-haspopup="dialog"
                 aria-label={isOpen ? `Close ${label}` : `Open ${label}`}
                 onClick={() => toggle(index)}
               >
                 <span className="envelope-back" aria-hidden="true" />
-                <span className="letter-paper" aria-hidden={!isOpen}>
+                <span className="letter-paper" aria-hidden="true">
                   <small>For {recipient.name || "you"}</small>
-                  <p>{text}</p>
+                  <p>Open to read</p>
                 </span>
                 <span className="envelope-front" aria-hidden="true" />
                 <span className="envelope-flap" aria-hidden="true" />
@@ -72,6 +85,35 @@ export default function LettersScene({ onNext }: SceneComponentProps) {
           );
         })}
       </ul>
+
+      <dialog
+        ref={dialogRef}
+        id="letter-reader-dialog"
+        className="letter-reader-dialog"
+        aria-labelledby="letter-reader-title"
+        onCancel={(event) => { event.preventDefault(); setOpenIndex(null); }}
+        onClose={() => setOpenIndex(null)}
+        onClick={(event) => { if (event.target === event.currentTarget) setOpenIndex(null); }}
+      >
+        {openLetter && openIndex !== null && (
+          <article className="letter-reader">
+            <header className="letter-reader-header">
+              <div>
+                <p className="letter-reader-eyebrow">Letter {String(openIndex + 1).padStart(2, "0")}</p>
+                <h2 id="letter-reader-title">For {recipient.name || "you"}</h2>
+              </div>
+              <button type="button" className="letter-reader-close" aria-label={`Close Letter ${String(openIndex + 1).padStart(2, "0")}`} onClick={() => setOpenIndex(null)} autoFocus>
+                <span aria-hidden="true">×</span>
+              </button>
+            </header>
+            <div className="letter-reader-body" data-letter-reader-body tabIndex={0} aria-label="Letter content">{openLetter}</div>
+            <footer className="letter-reader-footer">
+              <button type="button" className="letter-reader-back" onClick={() => setOpenIndex(null)}>Back to letters</button>
+              <button type="button" className="letter-reader-next" onClick={onNext}>Continue <span aria-hidden="true">✦</span></button>
+            </footer>
+          </article>
+        )}
+      </dialog>
 
       <button type="button" className="letters-continue" onClick={onNext}>
         Continue <span aria-hidden="true">✦</span>
@@ -268,9 +310,125 @@ const LETTERS_CSS = `
     font: 600 .75rem/1 Inter, system-ui, sans-serif;
     letter-spacing: .06em;
   }
+  .letter-reader-dialog {
+    position: fixed;
+    inset: 0;
+    box-sizing: border-box;
+    width: min(720px, calc(100% - 32px));
+    max-width: none;
+    max-height: calc(100dvh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    margin: auto;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    border-radius: 22px;
+    color: #4e2029;
+    background: transparent;
+    box-shadow: 0 30px 120px rgba(0,0,0,.62);
+  }
+  .letter-reader-dialog::backdrop {
+    background: rgba(12,3,8,.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .letter-reader {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+    border: 1px solid rgba(255,239,218,.7);
+    border-radius: 22px;
+    background: linear-gradient(145deg, #fff9ed, #f7e4cf);
+  }
+  .letter-reader-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px clamp(20px, 4vw, 32px);
+    border-bottom: 1px solid rgba(126,71,65,.18);
+    background: rgba(255,251,242,.62);
+    text-align: left;
+  }
+  .letter-reader-eyebrow {
+    margin: 0 0 5px;
+    color: #a66a63;
+    font: 700 .64rem/1.4 Inter, system-ui, sans-serif;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+  }
+  .letter-reader-header h2 {
+    margin: 0;
+    color: #64283b;
+    font: 500 clamp(1.3rem, 4vw, 1.85rem)/1.25 "Playfair Display", Georgia, serif;
+    overflow-wrap: anywhere;
+  }
+  .letter-reader-close {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(126,71,65,.24);
+    border-radius: 50%;
+    color: #7e203b;
+    background: rgba(255,255,255,.56);
+    font: 400 1.65rem/1 Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .letter-reader-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: clamp(22px, 5vw, 38px);
+    color: #4e2029;
+    text-align: left;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: 500 clamp(1rem, 2.5vw, 1.12rem)/1.85 "Playfair Display", Georgia, serif;
+    scrollbar-width: thin;
+    scrollbar-color: #c58c8c transparent;
+  }
+  .letter-reader-footer {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 16px clamp(20px, 4vw, 32px);
+    border-top: 1px solid rgba(126,71,65,.18);
+    background: rgba(255,251,242,.74);
+  }
+  .letter-reader-footer button {
+    min-height: 44px;
+    padding: 11px 20px;
+    border-radius: 999px;
+    font: 600 .82rem/1.3 Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .letter-reader-back { border: 1px solid rgba(126,71,65,.3); color: #7e203b; background: transparent; }
+  .letter-reader-next { border: 1px solid rgba(230,187,123,.38); color: #fff1e7; background: linear-gradient(135deg, #8c3450, #58152f); }
+  .letter-reader button:focus-visible, .letter-reader-body:focus-visible { outline: 3px solid #a66a63; outline-offset: 3px; }
   @media (max-width: 520px) {
-    .letters-grid { grid-template-columns: 1fr 1fr; }
+    .letters-grid { grid-template-columns: 1fr 1fr; gap: 18px 14px; }
     .envelope-meta em { display: none; }
+    .letter-reader-dialog {
+      width: calc(100% - 20px);
+      max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+      border-radius: 18px;
+    }
+    .letter-reader {
+      max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+      border-radius: 18px;
+    }
+    .letter-reader-header { padding: 16px 18px; }
+    .letter-reader-footer { padding: 14px 18px; }
+    .letter-reader-footer button { flex: 1 1 125px; }
   }
   @media (prefers-reduced-motion: reduce) {
     .letters-scene *, .letters-scene *::before, .letters-scene *::after {

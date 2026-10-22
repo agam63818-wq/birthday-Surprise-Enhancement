@@ -199,6 +199,8 @@ test("cinematic rose, letters, and recipient navigation", async ({ page }) => {
       await expect(page.getByText("Letter 01 · Open")).toHaveCount(0);
       await page.getByRole("button", { name: /Open letter 01/i }).click();
       await expect(page.getByText("Our first memory", { exact: true })).toBeVisible();
+      await page.getByRole("dialog").getByRole("button", { name: "Close Letter 01", exact: true }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
     }
     if (order[i] === "roseBloom") {
       await expect(page.locator("[data-rose-stem]")).toBeVisible();
@@ -221,6 +223,136 @@ test("butterfly canvas is sized as soon as the scene mounts", async ({ page }) =
   const box = await canvas.boundingBox();
   expect(box?.width ?? 0).toBeGreaterThan(80);
   expect(box?.height ?? 0).toBeGreaterThan(80);
+  expect(qa.errors).toEqual([]);
+});
+
+test("butterfly long copy keeps its Continue action separate and reachable", async ({ page }) => {
+  const message = "Ye chhota sa digital\nsurprise sirf\ntumhaare liye. I know\nki tum kitna gussa ho,\nbas tumhe khush\ndekhne ke liye kuch\nbhi kar sakta hoon.";
+  const config = fixture();
+  config.scenes = ["butterfly"];
+  config.features.butterfly = true;
+  config.butterfly = {
+    message,
+    subMessage: "A deliberately long supporting note checks that every configured word can wrap and remain readable. EvenAnExceptionallyLongUnbrokenConfiguredWordMustStayInsideTheViewportWithoutCreatingHorizontalOverflow.",
+  };
+  const qa = await setup(page, config);
+  await page.goto("/s/qa-surprise");
+
+  for (const [label, width, height] of [["desktop", 1280, 800], ["mobile", 390, 844], ["landscape", 640, 360]] as const) {
+    await page.setViewportSize({ width, height });
+    await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "butterfly");
+    const card = page.locator(".butterfly-message-card");
+    const action = page.getByRole("button", { name: /Continue/ });
+    await expect(card).toContainText(message);
+    await expect(action).toBeVisible();
+    await action.scrollIntoViewIfNeeded();
+    await noOverflow(page);
+    const cardBox = await card.boundingBox();
+    const actionBox = await action.boundingBox();
+    expect(cardBox).not.toBeNull();
+    expect(actionBox).not.toBeNull();
+    expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(actionBox!.y + 1);
+    expect(actionBox!.x).toBeGreaterThanOrEqual(0);
+    expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(width + 1);
+    if (label !== "landscape") await page.screenshot({ path: `test-results/scene-polish/butterfly-${label}.png` });
+  }
+  expect(qa.errors).toEqual([]);
+});
+
+test("you and me names, caption and actions stay responsive with a live canvas", async ({ page }) => {
+  const config = fixture();
+  config.scenes = ["youAndMe"];
+  config.features.youAndMe = true;
+  config.youAndMe = { name1: "ALEXANDERSONNN", name2: "CHRISTIANANDER" };
+  const qa = await setup(page, config);
+  await page.goto("/s/qa-surprise");
+
+  for (const [label, width, height] of [["desktop", 1280, 800], ["mobile", 390, 844], ["landscape", 640, 360]] as const) {
+    await page.setViewportSize({ width, height });
+    const names = page.locator(".together-names");
+    const copy = page.locator(".together-copy");
+    const action = page.getByRole("button", { name: /Continue/ });
+    await expect(names).toBeVisible();
+    await expect(action).toBeVisible();
+    await action.scrollIntoViewIfNeeded();
+    await noOverflow(page);
+    const namesBox = await names.boundingBox();
+    const copyBox = await copy.boundingBox();
+    const actionBox = await action.boundingBox();
+    expect(namesBox!.x).toBeGreaterThanOrEqual(0);
+    expect(namesBox!.x + namesBox!.width).toBeLessThanOrEqual(width + 1);
+    expect(copyBox!.y + copyBox!.height).toBeLessThanOrEqual(actionBox!.y + 1);
+    expect(await names.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    if (label !== "landscape") await page.screenshot({ path: `test-results/scene-polish/you-and-me-${label}.png` });
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const canvas = page.locator("[data-you-and-me-canvas]");
+  await expect(canvas).toBeVisible();
+  await expect.poll(() => page.locator(".together-canvas-shell").evaluate(el => el.style.transform.includes("rotateX"))).toBe(true);
+  expect(await page.locator("[data-you-and-me-scene]").evaluate(el => el.style.transform)).toBe("");
+  expect(await canvas.evaluate(el => el.width >= el.offsetWidth && el.height >= el.offsetHeight)).toBe(true);
+  await expect(page.getByRole("button", { name: /Continue/ })).toBeVisible({ timeout: 30000 });
+  await expect.poll(() => page.locator(".together-copy").evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1);
+  await page.screenshot({ path: "test-results/scene-polish/you-and-me-animated-mobile.png" });
+  expect(qa.errors).toEqual([]);
+});
+
+test("mobile letter reader scrolls the complete note and keeps close and Continue usable", async ({ page }) => {
+  const finalLine = "FINAL LINE: this is the end of the complete configured letter.";
+  const longLetter = Array.from({ length: 18 }, (_, index) =>
+    `Paragraph ${index + 1}: This configured memory is intentionally long so the reader must provide a real, touch-friendly scrolling area instead of clipping the note inside its envelope.`,
+  ).join("\n\n") + `\n\n${finalLine}`;
+  const config = fixture();
+  config.name = "Nandini";
+  config.scenes = ["letters", "intro"];
+  config.features.letters = true;
+  config.features.intro = true;
+  config.lastNote.lines = [longLetter, "A second configured note"];
+  const qa = await setup(page, config);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/s/qa-surprise");
+  await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "letters");
+  await expect(page.getByRole("button", { name: /Open Letter/ })).toHaveCount(2);
+
+  const open = page.getByRole("button", { name: "Open Letter 01", exact: true });
+  await open.click();
+  const dialog = page.getByRole("dialog");
+  const body = page.locator("[data-letter-reader-body]");
+  await expect(dialog).toBeVisible();
+  await expect(body).toContainText(finalLine);
+  await expect(dialog.getByRole("button", { name: "Close Letter 01", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back to letters", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /Continue/ })).toBeVisible();
+  expect(await body.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  await noOverflow(page);
+  await page.screenshot({ path: "test-results/scene-polish/letters-mobile-open.png" });
+
+  await body.hover();
+  await page.mouse.wheel(0, 12000);
+  await expect.poll(() => body.evaluate(el => el.scrollTop + el.clientHeight >= el.scrollHeight - 2)).toBe(true);
+  await page.screenshot({ path: "test-results/scene-polish/letters-mobile-end.png" });
+  await page.getByRole("button", { name: "Back to letters", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(open).toBeFocused();
+
+  await open.click();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(open).toBeFocused();
+  await open.click();
+  await dialog.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.locator("[data-scene]")).toHaveAttribute("data-scene", "intro");
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/s/qa-surprise");
+  await page.getByRole("button", { name: "Open Letter 01", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await noOverflow(page);
+  const dialogBox = await page.getByRole("dialog").boundingBox();
+  expect(dialogBox!.width).toBeLessThanOrEqual(720);
+  await page.screenshot({ path: "test-results/scene-polish/letters-desktop-open.png" });
   expect(qa.errors).toEqual([]);
 });
 

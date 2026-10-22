@@ -71,6 +71,7 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
 
   const message = normalized.butterfly.message ?? "You still give me Butterflies";
   const subMessage = normalized.butterfly.subMessage ?? "In a world of 8 billion souls, my heart chose yours.";
+  const messageIsLong = message.length > 90 || message.split("\n").length > 4;
   const intro = butterflyIntro(normalized.occasion);
   const whisperPool = butterflyWhispers(normalized.occasion);
 
@@ -432,203 +433,115 @@ export default function ButterflyScene({ onNext, isActive, reducedMotion }: Scen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, reducedMotion, normalized.occasion]);
 
-  if (reducedMotion) {
-    return (
-      <div style={{
-        minHeight: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "32px 24px",
-        background: "linear-gradient(180deg, #020108 0%, #0f0728 100%)",
-        textAlign: "center",
-        gap: "24px",
-      }}>
-        <div style={{ fontSize: "clamp(2rem, 8vw, 4rem)" }}>🦋</div>
-        <h2 style={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: "clamp(1.4rem, 5vw, 2.2rem)",
-          color: "#fff",
-          lineHeight: 1.3,
-        }}>{message}</h2>
-        <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "clamp(0.9rem, 3vw, 1.1rem)", maxWidth: "480px", lineHeight: 1.6 }}>
-          {subMessage}
-        </p>
-        <button
-          onClick={onNext}
-          style={{
-            marginTop: "16px",
-            padding: "14px 32px",
-            borderRadius: "999px",
-            border: "1px solid rgba(255,45,117,0.5)",
-            background: "linear-gradient(135deg, rgba(255,45,117,0.2), rgba(168,85,247,0.2))",
-            color: "#fff",
-            fontSize: "1rem",
-            cursor: "pointer",
-          }}
-        >
-          Continue ✨
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div data-butterfly-scene style={{
-      position: "relative",
-      width: "100%",
-      height: "100dvh",
-      background: "#020108",
-      overflow: "hidden",
-    }}>
-      <canvas
-        ref={canvasRef}
-        data-butterfly-canvas
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          display: "block",
-          opacity: 1,
-        }}
-      />
+    <div data-butterfly-scene className={`butterfly-scene ${reducedMotion ? "is-reduced" : ""}`}>
+      {!reducedMotion && <canvas ref={canvasRef} data-butterfly-canvas className="butterfly-canvas" />}
 
-      {showOverlay && (
-        <button
-          type="button"
-          onClick={dismissOverlay}
-          aria-label={intro.cta}
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(2,1,8,0.55)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            gap: "16px",
-            padding: "32px 24px",
-            textAlign: "center",
-            border: 0,
-            color: "inherit",
-            cursor: "pointer",
-            zIndex: 3,
-          }}
-        >
-          <div style={{ fontSize: "clamp(2.5rem, 10vw, 5rem)", animation: "butterfly-pulse 2s ease-in-out infinite" }}>🦋</div>
-          <p style={{
-            fontFamily: "'Dancing Script', cursive",
-            fontSize: "clamp(1.1rem, 4vw, 1.6rem)",
-            color: "rgba(255,255,255,0.86)",
-            letterSpacing: "0.05em",
-            margin: 0,
-          }}>
-            {intro.whisper}
-          </p>
-          <span style={{
-            marginTop: "4px",
-            padding: "14px 32px",
-            borderRadius: "999px",
-            border: "1px solid rgba(255,45,117,0.6)",
-            background: "linear-gradient(135deg, rgba(255,45,117,0.25), rgba(168,85,247,0.2))",
-            color: "#fff",
-            fontSize: "clamp(0.85rem, 3vw, 1rem)",
-          }}>
-            {intro.cta}
-          </span>
+      {!reducedMotion && showOverlay && (
+        <button type="button" onClick={dismissOverlay} aria-label={intro.cta} className="butterfly-intro">
+          <span className="butterfly-intro-icon" aria-hidden="true">🦋</span>
+          <span className="butterfly-intro-whisper">{intro.whisper}</span>
+          <span className="butterfly-intro-cta">{intro.cta}</span>
         </button>
       )}
 
-      {started && (
-        <div style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          pointerEvents: "none",
-          padding: "24px",
-          textAlign: "center",
-          gap: "12px",
-          zIndex: 2,
-        }}>
-          <div style={{
-            opacity: 0,
-            animation: "butterfly-fadeInUp 0.8s ease 1.1s forwards",
-            fontSize: "0.7rem",
-            letterSpacing: "0.16em",
-            color: "rgba(255,255,255,0.7)",
-            textTransform: "uppercase",
-          }}>
-            {intro.badge}
+      {(started || reducedMotion || showNext) && (
+        <div className="butterfly-content">
+          <div className="butterfly-content-inner">
+            <article className="butterfly-message-card">
+              <p className="butterfly-badge">{intro.badge}</p>
+              <h1 className={`butterfly-message ${messageIsLong ? "is-long" : ""}`}>{message}</h1>
+              <p className="butterfly-submessage">{subMessage}</p>
+            </article>
+            {(showNext || reducedMotion) && (
+              <div className="butterfly-actions">
+                <button type="button" onClick={onNext} className="butterfly-continue">Continue <span aria-hidden="true">✨</span></button>
+              </div>
+            )}
           </div>
-          <div style={{
-            opacity: 0,
-            animation: "butterfly-fadeInUp 0.8s ease 1.7s forwards",
-            fontFamily: "'Playfair Display', serif",
-            fontSize: "clamp(1.6rem, 6vw, 2.8rem)",
-            color: "#fff",
-            textShadow: "0 0 30px rgba(255,45,117,0.6)",
-            maxWidth: "16ch",
-          }}>
-            {message}
-          </div>
-          <p style={{
-            maxWidth: "480px",
-            opacity: 0,
-            animation: "butterfly-fadeInUp 0.8s ease 2.4s forwards",
-            color: "rgba(255,255,255,0.75)",
-            fontSize: "clamp(0.85rem, 2.5vw, 1rem)",
-            lineHeight: 1.7,
-            margin: 0,
-          }}>
-            {subMessage}
-          </p>
-        </div>
-      )}
-
-      {showNext && (
-        <div style={{
-          position: "absolute",
-          bottom: "calc(40px + env(safe-area-inset-bottom, 0px))",
-          left: "50%",
-          transform: "translateX(-50%)",
-          animation: "butterfly-fadeInUp 0.6s ease forwards",
-          zIndex: 4,
-        }}>
-          <button
-            onClick={onNext}
-            style={{
-              padding: "14px 36px",
-              borderRadius: "999px",
-              border: "1px solid rgba(255,45,117,0.5)",
-              background: "linear-gradient(135deg, rgba(255,45,117,0.25), rgba(168,85,247,0.2))",
-              color: "#fff",
-              fontSize: "1rem",
-              cursor: "pointer",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Continue ✨
-          </button>
         </div>
       )}
 
       <style>{`
-        @keyframes butterfly-fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+        .butterfly-scene {
+          position: relative;
+          width: 100%;
+          height: 100dvh;
+          min-height: 100dvh;
+          overflow: hidden;
+          color: #fff;
+          background:
+            radial-gradient(circle at 50% 40%, rgba(117,34,105,.22), transparent 48%),
+            linear-gradient(180deg, #020108, #090316);
+          isolation: isolate;
         }
-        @keyframes butterfly-pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.08); }
+        .butterfly-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+        .butterfly-intro {
+          position: absolute; inset: 0; z-index: 5;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 16px; padding: calc(72px + env(safe-area-inset-top, 0px)) 24px calc(88px + env(safe-area-inset-bottom, 0px));
+          border: 0; color: #fff; text-align: center; cursor: pointer;
+          background: rgba(2,1,8,.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
+        .butterfly-intro-icon { font-size: clamp(2.5rem, 10vw, 5rem); animation: butterfly-pulse 2s ease-in-out infinite; }
+        .butterfly-intro-whisper { max-width: 34rem; font: clamp(1.1rem, 4vw, 1.6rem)/1.5 'Dancing Script', cursive; letter-spacing: .05em; color: rgba(255,255,255,.86); }
+        .butterfly-intro-cta, .butterfly-continue {
+          min-height: 48px; padding: 13px 30px; border: 1px solid rgba(255,112,157,.58); border-radius: 999px;
+          color: #fff; background: linear-gradient(135deg, rgba(255,45,117,.34), rgba(168,85,247,.28));
+          box-shadow: 0 12px 36px rgba(255,45,117,.16), inset 0 1px rgba(255,255,255,.14);
+          backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+          font: 600 clamp(.85rem, 3vw, 1rem)/1.3 Inter, system-ui, sans-serif;
+        }
+        .butterfly-content {
+          position: absolute; inset: 0; z-index: 2; display: flex;
+          overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+          scrollbar-width: thin; scrollbar-color: rgba(255,112,157,.36) transparent;
+        }
+        .butterfly-content-inner {
+          box-sizing: border-box; width: 100%; margin: auto;
+          display: flex; flex-direction: column; align-items: center; gap: clamp(16px, 2.5vh, 24px);
+          padding: calc(76px + env(safe-area-inset-top, 0px)) clamp(16px, 4vw, 36px) calc(92px + env(safe-area-inset-bottom, 0px));
+        }
+        .butterfly-message-card {
+          box-sizing: border-box; width: min(100%, 820px); padding: clamp(22px, 4vw, 42px);
+          border: 1px solid rgba(255,177,211,.16); border-radius: clamp(22px, 4vw, 34px);
+          background: linear-gradient(145deg, rgba(22,8,35,.7), rgba(5,2,15,.48));
+          box-shadow: 0 26px 90px rgba(0,0,0,.34), inset 0 1px rgba(255,255,255,.07);
+          backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
+          text-align: center;
+        }
+        .butterfly-badge {
+          margin: 0 0 16px; color: rgba(255,210,229,.76); font: 600 .68rem/1.5 Inter, system-ui, sans-serif;
+          letter-spacing: .18em; text-transform: uppercase; opacity: 0; animation: butterfly-fadeInUp .8s ease 1.1s forwards;
+        }
+        .butterfly-message {
+          max-width: 25ch; margin: 0 auto; color: #fff; white-space: pre-wrap; overflow-wrap: anywhere;
+          font: 500 clamp(1.65rem, 4.2vw, 3.2rem)/1.2 'Playfair Display', Georgia, serif;
+          text-shadow: 0 0 30px rgba(255,45,117,.42); opacity: 0; animation: butterfly-fadeInUp .8s ease 1.7s forwards;
+        }
+        .butterfly-message.is-long { max-width: 31ch; font-size: clamp(1.35rem, 2.8vw, 2.35rem); line-height: 1.24; }
+        .butterfly-submessage {
+          max-width: 620px; margin: 20px auto 0; color: rgba(255,239,246,.78); white-space: pre-wrap; overflow-wrap: anywhere;
+          font: clamp(.88rem, 2.2vw, 1.02rem)/1.72 Inter, system-ui, sans-serif;
+          opacity: 0; animation: butterfly-fadeInUp .8s ease 2.4s forwards;
+        }
+        .butterfly-actions { display: flex; justify-content: center; animation: butterfly-actionIn .55s ease both; }
+        .butterfly-continue { cursor: pointer; white-space: nowrap; }
+        .butterfly-continue:hover { border-color: rgba(255,177,211,.85); box-shadow: 0 14px 42px rgba(255,45,117,.25); }
+        .butterfly-intro:focus-visible, .butterfly-continue:focus-visible { outline: 3px solid #ffd1e3; outline-offset: 4px; }
+        .butterfly-scene.is-reduced .butterfly-badge, .butterfly-scene.is-reduced .butterfly-message,
+        .butterfly-scene.is-reduced .butterfly-submessage { opacity: 1; animation: none; }
+        @keyframes butterfly-fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes butterfly-actionIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes butterfly-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+        @media (max-width: 520px) {
+          .butterfly-message-card { padding: 22px 17px; border-radius: 22px; }
+          .butterfly-badge { margin-bottom: 12px; letter-spacing: .13em; }
+          .butterfly-submessage { margin-top: 16px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .butterfly-scene *, .butterfly-scene *::before, .butterfly-scene *::after { animation: none !important; transition: none !important; }
+          .butterfly-badge, .butterfly-message, .butterfly-submessage { opacity: 1; }
         }
       `}</style>
     </div>
