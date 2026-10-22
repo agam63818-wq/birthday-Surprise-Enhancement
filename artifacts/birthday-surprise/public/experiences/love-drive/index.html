@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Love Drive</title>
   <link rel="stylesheet" href="style.css">
   <!-- Three.js r128 Library, vendored locally; no runtime CDN dependency. -->
@@ -11,6 +11,8 @@
 <body data-experience="love-drive">
   <div id="ld-game-wrapper" class="ld-wrapper">
     <div id="ld-canvas-container" class="ld-canvas-container"></div>
+    <div class="ld-vignette" aria-hidden="true"></div>
+    <div id="ld-hit-flash" class="ld-hit-flash" aria-hidden="true"></div>
 
     <div id="ld-hud" class="ld-hud">
       <div class="ld-hud-top">
@@ -18,31 +20,75 @@
           <span id="ld-mission-label" class="ld-badge"></span>
           <p id="ld-objective-text" aria-live="polite"></p>
         </div>
-        <div id="ld-progress-pill" class="ld-progress-pill" role="status" aria-live="polite">
-          <div class="ld-slots">
-            <span id="ld-slot-letter" class="ld-slot" aria-hidden="true">💌</span>
-            <span id="ld-slot-gift" class="ld-slot" aria-hidden="true">🎁</span>
-            <span id="ld-slot-heart" class="ld-slot" aria-hidden="true">💛</span>
+        <div class="ld-hud-right">
+          <div id="ld-progress-pill" class="ld-progress-pill" role="status" aria-live="polite">
+            <div class="ld-slots">
+              <span id="ld-slot-letter" class="ld-slot" aria-hidden="true">💌</span>
+              <span id="ld-slot-gift" class="ld-slot" aria-hidden="true">🎁</span>
+              <span id="ld-slot-heart" class="ld-slot" aria-hidden="true">💛</span>
+            </div>
+            <span id="ld-counter-text" class="ld-counter">0/3</span>
           </div>
-          <span id="ld-counter-text" class="ld-counter">0/3</span>
-        </div>
-        <div class="ld-controls-top">
-          <button id="ld-btn-pause" class="ld-icon-btn" type="button">⏸</button>
+          <div class="ld-controls-top">
+            <button id="ld-btn-sound" class="ld-icon-btn" type="button" aria-pressed="true" aria-label="Game sounds">🔊</button>
+            <button id="ld-btn-pause" class="ld-icon-btn" type="button">⏸</button>
+          </div>
         </div>
       </div>
 
+      <div class="ld-hud-mid">
+        <div class="ld-track" aria-hidden="true">
+          <div id="ld-distance-fill" class="ld-track-fill"></div>
+          <span class="ld-track-mark" style="left:22%">💌</span>
+          <span class="ld-track-mark" style="left:50%">🎁</span>
+          <span class="ld-track-mark" style="left:80%">💛</span>
+          <span class="ld-track-end">💖</span>
+          <span id="ld-track-car" class="ld-track-car">🚗</span>
+        </div>
+        <div class="ld-stats-row">
+          <span id="ld-lives" class="ld-lives" aria-label="Lives">❤️❤️❤️</span>
+          <span class="ld-score-wrap"><span id="ld-score" class="ld-score">0</span><small>pts</small></span>
+          <span id="ld-speed" class="ld-speed">0<small>km/h</small></span>
+        </div>
+      </div>
+
+      <div id="ld-combo" class="ld-combo ld-hidden" aria-hidden="true"></div>
       <div id="ld-toast" class="ld-toast ld-hidden" role="status" aria-live="polite"></div>
+      <div id="ld-countdown" class="ld-countdown ld-hidden" aria-live="assertive"></div>
       <button id="ld-btn-skip" class="ld-skip-btn ld-hidden" type="button"></button>
+
+      <div id="ld-key-hints" class="ld-key-hints" aria-hidden="true">
+        <span><kbd>←</kbd><kbd>→</kbd> lanes</span>
+        <span><kbd>↑</kbd>/<kbd>Space</kbd> boost</span>
+        <span><kbd>↓</kbd> brake</span>
+        <span><kbd>P</kbd> pause</span>
+      </div>
 
       <div id="ld-touch-controls" class="ld-touch-controls">
         <div class="ld-touch-left">
-          <button id="ld-btn-left" class="ld-ctrl-btn" type="button">◀</button>
-          <button id="ld-btn-right" class="ld-ctrl-btn" type="button">▶</button>
+          <button id="ld-btn-left" class="ld-ctrl-btn" type="button"><span aria-hidden="true">‹</span></button>
+          <button id="ld-btn-right" class="ld-ctrl-btn" type="button"><span aria-hidden="true">›</span></button>
         </div>
         <div class="ld-touch-right">
-          <button id="ld-btn-brake" class="ld-ctrl-btn ld-btn-sub" type="button">▼</button>
-          <button id="ld-btn-gas" class="ld-ctrl-btn ld-btn-main" type="button">▲</button>
+          <button id="ld-btn-brake" class="ld-ctrl-btn ld-btn-sub" type="button"><span aria-hidden="true">▼</span></button>
+          <button id="ld-btn-gas" class="ld-ctrl-btn ld-btn-main" type="button"><span aria-hidden="true">⚡</span><small>BOOST</small></button>
         </div>
+      </div>
+    </div>
+
+    <div id="ld-start" class="ld-overlay ld-start" role="dialog" aria-modal="true" aria-labelledby="ld-start-title">
+      <div class="ld-card ld-start-card" tabindex="-1">
+        <p class="ld-eyebrow">A ROAD MADE FOR YOU</p>
+        <h2 id="ld-start-title" class="ld-start-title">Love Drive</h2>
+        <p id="ld-start-sub" class="ld-start-sub"></p>
+        <ul class="ld-rules">
+          <li><span>💔</span>Dodge the heartbreak barriers</li>
+          <li><span>💗</span>Grab hearts for combo points</li>
+          <li><span>🎁</span>Collect all 3 hidden surprises</li>
+          <li><span>💖</span>Reach the Love Gate</li>
+        </ul>
+        <p id="ld-start-controls" class="ld-start-controls"></p>
+        <button id="ld-btn-start" class="ld-primary-btn ld-start-btn" type="button">Start engine 🏁</button>
       </div>
     </div>
 
@@ -59,13 +105,14 @@
 
     <div id="ld-final-modal" class="ld-overlay ld-hidden" role="dialog" aria-modal="true" aria-labelledby="ld-final-title" aria-hidden="true" inert>
       <div class="ld-card ld-final-card" tabindex="-1">
-        <div class="ld-final-icons" aria-hidden="true">💌 🎁 💛</div>
+        <div id="ld-stars" class="ld-stars" aria-hidden="true">★★★</div>
         <h2 id="ld-final-title"></h2>
         <p id="ld-final-msg"></p>
+        <dl id="ld-final-stats" class="ld-final-stats"></dl>
         <div class="ld-btn-group">
-          <button id="ld-btn-read-letter" class="ld-secondary-btn" type="button"></button>
-          <button id="ld-btn-open-letter" class="ld-primary-btn" type="button"></button>
-          <button id="ld-btn-replay" class="ld-secondary-btn" type="button"></button>
+          <button id="ld-btn-read-letter" class="ld-primary-btn" type="button"></button>
+          <button id="ld-btn-open-letter" class="ld-secondary-btn" type="button"></button>
+          <button id="ld-btn-replay" class="ld-ghost-btn" type="button"></button>
         </div>
       </div>
     </div>
@@ -74,9 +121,8 @@
       <div class="ld-love-modal-card" tabindex="-1">
         <button class="ld-close-love-modal" id="close-modal" type="button">✕</button>
         <div class="ld-love-banner">
-          <div class="ld-hearts-row" aria-hidden="true"><span>💖</span><span>💕</span><span>❤️</span><span>💗</span><span>💖</span></div>
+          <div class="ld-hearts-row" aria-hidden="true"><span>✦</span><span>💖</span><span>✦</span></div>
           <h1 id="ld-love-modal-heading" class="ld-love-title"></h1>
-          <div class="ld-hearts-row" aria-hidden="true"><span>💕</span><span>💖</span><span>❤️</span><span>💗</span><span>💕</span></div>
         </div>
         <div class="ld-love-body">
           <p id="ld-love-prompt" class="ld-love-prompt"></p>
