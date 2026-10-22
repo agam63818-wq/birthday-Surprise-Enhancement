@@ -1,156 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Happy Anniversary 💕</title>
-    <meta name="description" content="A cinematic 3D heart tunnel anniversary reveal experience.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Cinzel+Decorative:wght@700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Dancing+Script:wght@600;700&family=Inter:wght@300;400;600&display=swap"
-        rel="stylesheet" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A Special Surprise 💕</title>
+  <meta name="description" content="A cinematic heart tunnel surprise and personal letter.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Cinzel+Decorative:wght@700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Dancing+Script:wght@600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body data-experience="heart-tunnel">
-
-    
-    <div id="start-overlay">
-        <div class="start-card">
-            <div class="start-heart">💖</div>
-            <h1 class="start-title">
-                <span class="start-title-sub">OUR</span>
-                <span class="start-title-main">ANNIVERSARY</span>
-            </h1>
-            <p class="start-subtitle">A Special Surprise For You</p>
-            <button id="start-btn" class="glow-btn">
-                <span class="btn-icon"></span> Tap To Open Surprise <span class="btn-icon"></span>
-            </button>
-            <p class="start-hint">🔊 Turn on sound for best experience</p>
-        </div>
+  <div id="start-overlay">
+    <div class="start-card">
+      <div class="start-heart" aria-hidden="true">💖</div>
+      <h1 class="start-title">
+        <span class="start-title-sub" id="start-sub"></span>
+        <span class="start-title-main" id="start-main"></span>
+      </h1>
+      <p class="start-subtitle" id="start-subtitle"></p>
+      <button id="start-btn" class="glow-btn" type="button"><span class="btn-icon" aria-hidden="true">✦</span><span id="start-button-label"></span><span class="btn-icon" aria-hidden="true">✦</span></button>
+      <p class="start-hint" id="start-hint"></p>
     </div>
+  </div>
 
-    
-    <canvas id="tunnel-canvas"></canvas>
+  <canvas id="tunnel-canvas" aria-hidden="true"></canvas>
+  <div id="cinematic-text" aria-hidden="true"><span class="sub-line" id="cinematic-sub"></span><span class="main-line" id="cinematic-main"></span></div>
+  <div id="flash-overlay" aria-hidden="true"></div>
 
-    
-    <div id="cinematic-text">
-        <span class="sub-line">✦ OUR JOURNEY ✦</span>
-        <span class="main-line">Our Love Story</span>
-    </div>
-
-    
-    <div id="flash-overlay"></div>
-
-    
-    <div id="reveal">
-        <canvas id="ambient-canvas"></canvas>
-
-        <div class="reveal-content">
-            <div class="reveal-card">
-
-                <div class="reveal-item sparkle-row top">
-                    <span>✦</span><span>·</span><span>✧</span><span>·</span><span>✦</span>
-                </div>
-
-                <h1 class="reveal-item reveal-title" id="display-title">Happy<br>Anniversary</h1>
-
-                <p class="reveal-item reveal-couple-name" id="display-couple">Anu & Sam</p>
-
-                <div class="reveal-item ornament">
-                    <span class="orn-line"></span>
-                    <span class="orn-diamond">◆</span>
-                    <span class="orn-line"></span>
-                </div>
-
-                
-                <div class="reveal-item polaroid-wrapper">
-                    <div class="polaroid-frame" id="polaroid-box">
-                        <div class="photo-placeholder">
-                            <img id="couple-photo"
-                                src="https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=600&auto=format&fit=crop"
-                                alt="Our Moment" />
-                            <div class="photo-overlay-btn" id="photo-upload-trigger">
-                                <span>📷 Tap to change photo</span>
-                            </div>
-                        </div>
-                        <p class="polaroid-caption" id="display-caption">Forever My Favorite Person 💕</p>
-                    </div>
-                    <input type="file" id="photo-file-input" accept="image/*" style="display:none;">
-                </div>
-
-                
-                <div class="reveal-item big-heart-wrap">
-                    <div class="heart-ring">
-                        <span>♥</span><span>♥</span><span>♥</span><span>♥</span>
-                        <span>♥</span><span>♥</span><span>♥</span><span>♥</span>
-                    </div>
-                    <div class="big-heart">❤</div>
-                    <div class="heart-glow"></div>
-                </div>
-
-                <p class="reveal-item reveal-subtitle" id="display-subtitle">To Us & Our Beautiful Journey</p>
-
-                <div class="reveal-item years-badge">
-                    <span class="years-number" id="display-years">5</span>
-                    <span class="years-text" id="display-years-unit">Years of Love</span>
-                </div>
-
-                <blockquote class="reveal-item reveal-quote" id="display-quote">
-                    "Every love story is beautiful,<br>but ours is my favorite."
-                </blockquote>
-
-                <p class="reveal-item reveal-date" id="display-date">~ November 2, 2025 ~</p>
-
-                
-                <div class="reveal-item letter-btn-wrapper">
-                    <button class="glow-btn letter-open-btn" id="open-letter-btn">
-                        <span class="letter-icon">💌</span> Open My Love Letter <span class="letter-icon">💌</span>
-                    </button>
-                </div>
-
-                <div class="reveal-item sparkle-row bottom">
-                    <span>✧</span><span>·</span><span>♥</span><span>·</span><span>✧</span>
-                </div>
-
+  <div id="reveal" aria-hidden="true" inert>
+    <canvas id="ambient-canvas" aria-hidden="true"></canvas>
+    <div class="reveal-content">
+      <div class="reveal-card">
+        <div class="reveal-item sparkle-row top" aria-hidden="true"><span>✦</span><span>·</span><span>✧</span><span>·</span><span>✦</span></div>
+        <h1 class="reveal-item reveal-title" id="display-title"></h1>
+        <p class="reveal-item reveal-couple-name" id="display-couple"></p>
+        <div class="reveal-item ornament" aria-hidden="true"><span class="orn-line"></span><span class="orn-diamond">◆</span><span class="orn-line"></span></div>
+        <div class="reveal-item polaroid-wrapper">
+          <div class="polaroid-frame" id="polaroid-box">
+            <div class="photo-placeholder">
+              <svg id="photo-fallback" class="photo-fallback" viewBox="0 0 240 180" role="img" aria-label="A heart illustration">
+                <defs><radialGradient id="fallback-glow"><stop stop-color="#ff9db8"/><stop offset="1" stop-color="#5b183d"/></radialGradient></defs>
+                <rect width="240" height="180" fill="#1a0c25"/><circle cx="120" cy="90" r="76" fill="url(#fallback-glow)" opacity=".45"/>
+                <path d="M120 137C112 128 66 100 66 68c0-25 32-35 54-10 22-25 54-15 54 10 0 32-46 60-54 69Z" fill="#ff6b8b" stroke="#ffe4ed" stroke-width="3"/>
+                <path d="M91 64c5-11 16-14 25-5" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="4" opacity=".75"/>
+              </svg>
+              <img id="couple-photo" alt="" hidden>
             </div>
+            <p class="polaroid-caption" id="display-caption"></p>
+          </div>
         </div>
+        <div class="reveal-item big-heart-wrap" aria-hidden="true"><div class="heart-ring"><span>♥</span><span>♥</span><span>♥</span><span>♥</span><span>♥</span><span>♥</span><span>♥</span><span>♥</span></div><div class="big-heart">❤</div><div class="heart-glow"></div></div>
+        <p class="reveal-item reveal-subtitle" id="display-subtitle"></p>
+        <div class="reveal-item years-badge" id="years-badge" hidden><span class="years-number" id="display-years"></span><span class="years-text" id="display-years-unit"></span></div>
+        <blockquote class="reveal-item reveal-quote" id="display-quote"></blockquote>
+        <p class="reveal-item reveal-date" id="display-date" hidden></p>
+        <div class="reveal-item letter-btn-wrapper"><button class="glow-btn letter-open-btn" id="open-letter-btn" type="button"><span class="letter-icon" aria-hidden="true">💌</span><span id="letter-button-label"></span><span class="letter-icon" aria-hidden="true">💌</span></button></div>
+        <div class="reveal-item experience-actions"><button class="glow-btn" id="continue-btn" type="button"></button><button class="secondary-btn" id="replay-btn" type="button"></button></div>
+        <div class="reveal-item sparkle-row bottom" aria-hidden="true"><span>✧</span><span>·</span><span>♥</span><span>·</span><span>✧</span></div>
+      </div>
     </div>
+  </div>
+  <canvas id="petals-canvas" aria-hidden="true"></canvas>
 
-    
-    <canvas id="petals-canvas"></canvas>
-
-    
-    <div id="letter-modal" class="letter-modal-overlay">
-        <div class="letter-card">
-            <button class="letter-close-btn" id="letter-close-btn">&times;</button>
-            <div class="letter-envelope-seal">💌</div>
-            <h2 class="letter-title">My Dearest Love,</h2>
-            <div class="letter-divider">❖ ─── ✦ ─── ❖</div>
-            <div class="letter-body">
-                <p>Happy Anniversary to the person who fills my heart with endless joy, laughter, and warmth every
-                    single day.</p>
-                <p>From the moment we first met, every day with you has been a beautiful adventure. You are my best
-                    friend, my calm in the storm, and my favorite part of every memory.</p>
-                <p>Thank you for all the sweet moments, the late-night talks, the unconditional love, and for building
-                    this wonderful life together.</p>
-                <p class="letter-highlight">Here’s to us, to our forever, and to a million more memories together! 🥂💖
-                </p>
-            </div>
-            <div class="letter-signature">
-                <p class="sig-text">Forever & Always Yours,</p>
-                <p class="sig-name" id="letter-sig-name">With All My Heart 💕</p>
-            </div>
-        </div>
+  <div id="letter-modal" class="letter-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="letter-title" aria-hidden="true" inert>
+    <div class="letter-card" tabindex="-1">
+      <button class="letter-close-btn" id="letter-close-btn" type="button" aria-label="Close letter">×</button>
+      <div class="letter-envelope-seal" aria-hidden="true">💌</div>
+      <h2 class="letter-title" id="letter-title"></h2>
+      <div class="letter-divider" aria-hidden="true">❖ ─── ✦ ─── ❖</div>
+      <div class="letter-body" id="letter-body"></div>
+      <div class="letter-signature"><p class="sig-text" id="signature-lead"></p><p class="sig-name" id="letter-sig-name"></p></div>
     </div>
-
-    
-    <div id="toast-msg">Link Copied to Clipboard! 💖</div>
-
-    <script src="../shared/bridge.js"></script>
-    <script src="script.js"></script>
+  </div>
+  <div id="experience-fallback" class="experience-fallback" role="alert" hidden><p>Something interrupted this surprise. You can still continue.</p><button id="fallback-continue" class="glow-btn" type="button">Continue</button></div>
+  <div id="toast-msg" role="status" aria-live="polite"></div>
+  <script src="../shared/bridge.js"></script>
+  <script src="script.js"></script>
 </body>
-
 </html>

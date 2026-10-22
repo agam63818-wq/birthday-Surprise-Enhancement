@@ -47,6 +47,8 @@ export interface ExperienceFrameProps {
   /** Defaults to false: a complete event is a notification, not auto-navigation. */
   advanceOnComplete?: boolean;
   title?: string;
+  /** Optional scene-owned label for the recoverable error navigation button. */
+  continueLabel?: string;
 }
 
 interface InnerProps extends ExperienceFrameProps {
@@ -57,6 +59,7 @@ interface InnerProps extends ExperienceFrameProps {
 interface BoundaryProps {
   children: ReactNode;
   title: string;
+  continueLabel?: string;
   onRetry: () => void;
   onSkip: () => void;
 }
@@ -116,11 +119,13 @@ const buttonStyle: CSSProperties = {
 function RecoveryUI({
   title,
   message,
+  continueLabel = "Skip scene",
   onRetry,
   onSkip,
 }: {
   title: string;
   message?: string;
+  continueLabel?: string;
   onRetry: () => void;
   onSkip: () => void;
 }) {
@@ -130,7 +135,7 @@ function RecoveryUI({
       <p style={{ maxWidth: 440, margin: 0 }}>{message || "You can retry this scene or continue without it."}</p>
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12 }}>
         <button type="button" style={buttonStyle} onClick={onRetry}>Retry</button>
-        <button type="button" style={buttonStyle} onClick={onSkip}>Skip scene</button>
+        <button type="button" style={buttonStyle} onClick={onSkip}>{continueLabel}</button>
       </div>
     </div>
   );
@@ -150,7 +155,7 @@ class ExperienceFrameErrorBoundary extends Component<BoundaryProps, BoundaryStat
 
   render() {
     if (this.state.hasError) {
-      return <RecoveryUI title={this.props.title} onRetry={this.props.onRetry} onSkip={this.props.onSkip} />;
+      return <RecoveryUI title={this.props.title} continueLabel={this.props.continueLabel} onRetry={this.props.onRetry} onSkip={this.props.onSkip} />;
     }
     return this.props.children;
   }
@@ -339,7 +344,7 @@ function ExperienceFrameInner(props: InnerProps) {
         </div>
       )}
       {loadState === "error" && (
-        <RecoveryUI title={title} message={error?.message} onRetry={onRetry} onSkip={advanceOnce} />
+        <RecoveryUI title={title} message={error?.message} continueLabel={props.continueLabel} onRetry={onRetry} onSkip={advanceOnce} />
       )}
     </div>
   );
@@ -363,7 +368,7 @@ export default function ExperienceFrame(props: ExperienceFrameProps) {
   const title = props.title ?? DEFAULT_TITLES[props.experience];
 
   return (
-    <ExperienceFrameErrorBoundary key={attempt} title={title} onRetry={retry} onSkip={advanceOnce}>
+    <ExperienceFrameErrorBoundary key={attempt} title={title} continueLabel={props.continueLabel} onRetry={retry} onSkip={advanceOnce}>
       <ExperienceFrameInner key={attempt} {...props} onRetry={retry} advanceOnce={advanceOnce} />
     </ExperienceFrameErrorBoundary>
   );

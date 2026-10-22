@@ -14,23 +14,23 @@ html, body {
     height: 100%;
     overflow: hidden;
     background-color: #030008;
-    touch-action: none;
+    touch-action: manipulation;
     font-family: 'Inter', sans-serif;
 }
 
 
 #tunnel-canvas {
     display: block;
-    position: fixed;
+    position: absolute;
     inset: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     z-index: 1;
 }
 
 
 #start-overlay {
-    position: fixed;
+    position: absolute;
     inset: 0;
     z-index: 20;
     background: radial-gradient(circle at center, #180928 0%, #0c0316 60%, #030008 100%);
@@ -50,7 +50,7 @@ html, body {
 .start-card {
     text-align: center;
     max-width: 460px;
-    width: 92vw;
+    width: 92%;
     padding: clamp(2rem, 5vw, 2.8rem) clamp(1.2rem, 4vw, 2rem);
     background: rgba(255, 255, 255, 0.03);
     border: 1.5px solid rgba(212, 175, 55, 0.25);
@@ -101,7 +101,7 @@ html, body {
     background-clip: text;
     animation: goldShimmer 4s ease-in-out infinite;
     letter-spacing: 0.04em;
-    white-space: nowrap;
+    white-space: normal;
     filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 25px rgba(212, 175, 55, 0.4));
 }
 
@@ -156,7 +156,7 @@ html, body {
 
 
 #cinematic-text {
-    position: fixed;
+    position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0.85);
@@ -191,7 +191,7 @@ html, body {
     background-clip: text;
     filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 30px rgba(231, 76, 111, 0.8));
     letter-spacing: 0.04em;
-    white-space: nowrap;
+    white-space: normal;
 }
 
 #cinematic-text.visible {
@@ -201,7 +201,7 @@ html, body {
 
 
 #flash-overlay {
-    position: fixed;
+    position: absolute;
     inset: 0;
     background: radial-gradient(circle at center, #fffbe8, #ffffff);
     opacity: 0;
@@ -211,7 +211,7 @@ html, body {
 
 
 #reveal {
-    position: fixed;
+    position: absolute;
     inset: 0;
     z-index: 10;
     opacity: 0;
@@ -245,10 +245,10 @@ html, body {
 
 
 #petals-canvas {
-    position: fixed;
+    position: absolute;
     inset: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     z-index: 15;
     pointer-events: none;
 }
@@ -451,22 +451,6 @@ html, body {
     display: block;
 }
 
-.photo-overlay-btn {
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    color: #ffffff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 600;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.photo-placeholder:hover .photo-overlay-btn { opacity: 1; }
-
 .polaroid-caption {
     font-family: 'Great Vibes', cursive;
     font-size: 1.35rem;
@@ -664,7 +648,7 @@ html, body {
 
 
 .letter-modal-overlay {
-    position: fixed;
+    position: absolute;
     inset: 0;
     z-index: 35;
     background: rgba(4, 1, 10, 0.85);
@@ -783,7 +767,7 @@ html, body {
 
 
 #toast-msg {
-    position: fixed;
+    position: absolute;
     bottom: 2rem;
     left: 50%;
     transform: translateX(-50%) translateY(30px);
@@ -814,4 +798,161 @@ html, body {
     .letter-modal-overlay { padding: 1.8rem 1rem; }
     .letter-card { padding: 1.5rem 1.2rem; max-height: 85vh; }
     .letter-title { font-size: 2.2rem; }
+}
+
+/* Arena integration: iframe-container layout, configuration tokens and accessible controls. */
+:root {
+    --exp-accent: #ff2d55;
+    --exp-accent-2: #c471f5;
+    --exp-bg: #1a0a10;
+    --exp-text: #ffffff;
+}
+html, body { width: 100%; height: 100%; min-height: 100%; }
+body {
+    position: relative;
+    min-height: 100%;
+    min-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    container-type: inline-size;
+    isolation: isolate;
+}
+#tunnel-canvas, #start-overlay, #flash-overlay, #reveal, #petals-canvas,
+.letter-modal-overlay, #toast-msg { position: absolute; }
+#cinematic-text { position: absolute; width: calc(100% - 24px); }
+#tunnel-canvas, #start-overlay, #flash-overlay, #reveal, #petals-canvas {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+#tunnel-canvas, #petals-canvas { display: block; }
+#start-overlay {
+    padding: calc(24px + env(safe-area-inset-top, 0px)) calc(20px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(20px + env(safe-area-inset-left, 0px));
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+.start-card { width: min(92%, 460px); }
+.start-title, .start-title-sub, .start-title-main, .start-subtitle, .start-hint {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+#cinematic-text .sub-line, #cinematic-text .main-line {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+#reveal {
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212,175,55,.4) transparent;
+}
+.reveal-content { min-width: 0; }
+.reveal-title, .reveal-couple-name, .reveal-subtitle, .reveal-quote,
+.reveal-date, .polaroid-caption, .letter-title, .letter-body, .sig-name {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+.glow-btn { min-height: 44px; max-width: 100%; white-space: normal; }
+#photo-fallback { display: block; width: 100%; height: 100%; }
+.experience-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    margin: 1rem 0 .6rem;
+}
+.experience-actions .glow-btn {
+    color: #fff;
+    background: linear-gradient(135deg, var(--exp-accent), var(--exp-accent-2));
+    border: 1px solid rgba(255,255,255,.25);
+}
+.secondary-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    max-width: 100%;
+    padding: .85rem 1.35rem;
+    border: 1px solid rgba(212,175,55,.4);
+    border-radius: 50px;
+    color: #f7e5a0;
+    background: rgba(255,255,255,.04);
+    font: 600 .9rem 'Inter', sans-serif;
+    white-space: normal;
+    cursor: pointer;
+}
+.secondary-btn:hover { background: rgba(255,255,255,.09); }
+#continue-btn:disabled { opacity: .55; cursor: default; transform: none; }
+.letter-modal-overlay {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: calc(20px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
+}
+.letter-card {
+    max-height: calc(100dvh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overscroll-behavior: contain;
+}
+.letter-close-btn { min-width: 44px; min-height: 44px; top: 4px; right: 6px; }
+.letter-close-btn:focus-visible { outline-color: #8c2339; }
+#toast-msg { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px); }
+.experience-fallback {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: calc(24px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px));
+    color: var(--exp-text);
+    background: var(--exp-bg);
+    text-align: center;
+}
+.experience-fallback p { max-width: 28rem; line-height: 1.7; }
+.experience-fallback button {
+    border: 1px solid rgba(255,255,255,.25);
+    color: white;
+    background: linear-gradient(135deg, var(--exp-accent), var(--exp-accent-2));
+}
+[hidden] { display: none !important; }
+button:focus-visible, [tabindex]:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+@container (max-width: 430px) {
+    .start-card { padding-inline: 1rem; }
+    .start-title-sub { letter-spacing: .2em; text-indent: .2em; }
+    .start-title-main { font-size: clamp(1.25rem, 7cqw, 2rem); }
+    #cinematic-text .main-line { font-size: clamp(1.8rem, 11cqw, 3rem); }
+    .reveal-content { padding-inline: .65rem; }
+    .reveal-card { padding-inline: .85rem; }
+    .reveal-title { font-size: clamp(2.25rem, 14cqw, 3.4rem); }
+    .reveal-couple-name { font-size: clamp(1.05rem, 6cqw, 1.5rem); }
+    .polaroid-frame { max-width: min(220px, 82%); }
+    .photo-placeholder { height: clamp(120px, 48cqw, 180px); }
+    .experience-actions button { flex: 1 1 140px; padding-inline: .85rem; }
+    .letter-title { font-size: clamp(2rem, 11cqw, 2.8rem); }
+    .letter-card { padding-inline: 1rem; }
+}
+.is-paused *, .is-paused *::before, .is-paused *::after { animation-play-state: paused !important; }
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+}
+.reduced-motion #flash-overlay { display: none; }
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+    #flash-overlay { display: none; }
 }
