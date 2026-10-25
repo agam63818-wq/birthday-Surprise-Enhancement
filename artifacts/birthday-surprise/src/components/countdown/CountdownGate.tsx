@@ -325,9 +325,33 @@ export default function CountdownGate(props: CountdownGateProps) {
   </div>;
 }
 
+const TOOLBAR_KEY = "countdown-owner-toolbar-collapsed";
+function initialCollapsed(): boolean {
+  try {
+    const saved = localStorage.getItem(TOOLBAR_KEY);
+    if (saved !== null) return saved === "1";
+  } catch { /* storage unavailable */ }
+  // Phones start collapsed so the toolbar never covers the surprise.
+  return typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches === true;
+}
+
 function OwnerToolbar(p: { mode: OwnerPreview; unlockLabel: string; onLocked: () => void; onFinale: () => void; onUnlocked: () => void; onOpenNow: () => void; onAuto: () => void; onUnlockForRecipients?: () => void }) {
-  return <div className="cd-owner-bar" role="region" aria-label="Creator controls" data-countdown-owner-controls>
-    <p className="cd-owner-title"><span aria-hidden="true">🔒</span> Creator controls — recipients never see this</p>
+  // UI preference only (never decides owner mode — that is the viewerMode prop).
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const toggle = () => setCollapsed(c => { const next = !c; try { localStorage.setItem(TOOLBAR_KEY, next ? "1" : "0"); } catch { /* ignore */ } return next; });
+
+  if (collapsed) {
+    return <div className="cd-owner-pill-wrap" data-countdown-owner-controls data-collapsed="true">
+      <button type="button" className="cd-owner-pill" aria-expanded={false} aria-controls="cd-owner-panel" onClick={toggle}>
+        <span aria-hidden="true">🔒</span> Creator controls <span aria-hidden="true" className="cd-owner-chev">▾</span>
+      </button>
+    </div>;
+  }
+  return <div id="cd-owner-panel" className="cd-owner-bar" role="region" aria-label="Creator controls" data-countdown-owner-controls data-collapsed="false">
+    <div className="cd-owner-head">
+      <p className="cd-owner-title"><span aria-hidden="true">🔒</span> Creator controls — recipients never see this</p>
+      <button type="button" className="cd-owner-hide" aria-expanded={true} aria-controls="cd-owner-panel" onClick={toggle}>Hide <span aria-hidden="true">▴</span></button>
+    </div>
     <p className="cd-owner-sub">Scheduled: <strong>{p.unlockLabel}</strong> · Preview actions never change your saved schedule.</p>
     <div className="cd-owner-actions">
       <button type="button" aria-pressed={p.mode === "auto"} onClick={p.onAuto}>Live schedule</button>

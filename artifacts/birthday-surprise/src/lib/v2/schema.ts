@@ -369,11 +369,23 @@ export interface SurpriseConfigV2Extension {
   /** Optional per-scene sticker placements (additive across both v1 and v2 configs). */
   stickers?: StickersConfig;
 
+  /** Interactive Letters content. Absent = letters come from lastNote.lines (legacy behaviour). */
+  letters?: LettersConfig;
+
   /** Optional Scheduled Surprise Countdown gate (additive across v1 + v2). Absent = OFF. */
   countdown?: CountdownConfig;
 
   /** Unknown extension data preserved without execution. */
   _ext?: Record<string, unknown>;
+}
+
+// ── Interactive Letters ──────────────────────────────────────────────────
+export interface LetterItem { title?: string; hint?: string; body: string }
+export interface LettersConfig {
+  heading?: string;
+  subtitle?: string;
+  signature?: string;
+  items?: LetterItem[];
 }
 
 // ── Scheduled Surprise Countdown ─────────────────────────────────────────

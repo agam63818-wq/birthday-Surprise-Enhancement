@@ -3,6 +3,7 @@ import { TextField, TextAreaField, CheckboxField } from "./FormFields";
 import FontPicker from "./FontPicker";
 import SceneStickersEditor from "@/components/stickers/SceneStickersEditor";
 import ExperienceSceneEditor from "./ExperienceSceneEditor";
+import LettersEditor from "./LettersEditor";
 import { OCCASION_IDS, OCCASION_META } from "@/lib/occasions";
 import { THEME_PRESETS } from "@/lib/themePresets";
 import { SCENE_REGISTRY, isSceneEnabled, setSceneEnabled } from "@/lib/v2/registry";
@@ -15,7 +16,7 @@ export default function V2ExperienceEditor({ config, onChange }: Props) {
   const [dragged, setDragged] = useState<number | null>(null);
   const [pageType, setPageType] = useState<NotebookPageType>("letter");
   const [error, setError] = useState("");
-  const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({});
+  const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({ letters: true });
   const n = normalizeConfig(config);
   const handleDetailsToggle = (key: string) => (e: React.SyntheticEvent<HTMLDetailsElement>) => {
     const open = e.currentTarget.open;
@@ -79,7 +80,8 @@ export default function V2ExperienceEditor({ config, onChange }: Props) {
         </li>;
       })}</ol>
     </section>
-    <details className="v2-panel" onToggle={handleDetailsToggle("letters")}><summary>Interactive letters</summary><CheckboxField label="Enable Letters" checked={enabled("letters")} onChange={v => toggle("letters", v)} />
+    <details className="v2-panel" open onToggle={handleDetailsToggle("letters")}><summary>Interactive letters</summary><CheckboxField label="Enable Letters" checked={enabled("letters")} onChange={v => toggle("letters", v)} />
+      <LettersEditor config={config} onChange={updateConfig} />
       {v2Stickers("letters", "Interactive letters")}
     </details>
     <details className="v2-panel" onToggle={handleDetailsToggle("butterfly")}><summary>Butterfly reveal</summary><CheckboxField label="Enable Butterfly" checked={enabled("butterfly")} onChange={v => toggle("butterfly", v)} />

@@ -1,24 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNormalizedConfig } from "@/contexts/ConfigContext";
+import { useConfig } from "@/contexts/ConfigContext";
 import type { SceneComponentProps } from "@/lib/v2/registry";
-import { letterHints } from "@/lib/v2/cinematicCopy";
+import { resolveLetters } from "@/lib/letters/resolve";
 
 /**
- * Letters are a collection of sealed notes. Opening one unfolds the
- * envelope and slides the paper out — never a generic card list.
+ * Letters are a collection of sealed notes. Opening one breaks the wax seal
+ * and unfolds a handwritten-feel paper letter (prev/next between letters).
+ * Content comes from config.letters (Customize → Interactive letters), with
+ * lastNote.lines as the legacy fallback.
  */
 export default function LettersScene({ onNext }: SceneComponentProps) {
-  const { raw, recipient } = useNormalizedConfig();
-  const letters = useMemo(
-    () =>
-      raw.lastNote.lines.length
-        ? raw.lastNote.lines
-        : [raw.celebration.message || "Some words are better kept close."],
-    [raw.celebration.message, raw.lastNote.lines],
-  );
-  const hints = letterHints();
+  const config = useConfig();
+  const data = useMemo(() => resolveLetters(config), [config]);
+  const letters = data.items;
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [readSet, setReadSet] = useState<Set<number>>(() => new Set());
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const openLetter = openIndex === null ? null : letters[openIndex];
 
@@ -36,11 +34,17 @@ export default function LettersScene({ onNext }: SceneComponentProps) {
       restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       dialog.showModal();
     }
+    setReadSet(prev => (prev.has(openIndex) ? prev : new Set(prev).add(openIndex)));
+    bodyRef.current?.scrollTo({ top: 0 });
   }, [openIndex]);
 
-  const toggle = (index: number) => {
-    setOpenIndex((current) => (current === index ? null : index));
+  const go = (delta: number) => setOpenIndex(i => (i === null ? i : Math.max(0, Math.min(letters.length - 1, i + delta))));
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
   };
+  const label = (i: number) => `Letter ${String(i + 1).padStart(2, "0")}`;
+  const allRead = readSet.size >= letters.length;
 
   return (
     <section className="letters-scene" data-letters-scene>
@@ -48,37 +52,31 @@ export default function LettersScene({ onNext }: SceneComponentProps) {
 
       <header className="letters-heading">
         <p className="letters-eyebrow">Words to keep</p>
-        <h1>Letters for {recipient.name || "you"}</h1>
-        <p>Some words are meant to stay. Open a note when you are ready.</p>
+        <h1>{data.heading}</h1>
+        <p>{data.subtitle}</p>
+        <p className="letters-progress" aria-live="polite">{readSet.size}/{letters.length} opened</p>
       </header>
 
       <ul className="letters-grid" aria-label="Sealed letters">
-        {letters.map((text, index) => {
-          const isOpen = openIndex === index;
-          const hint = hints[index % hints.length];
-          const label = `Letter ${String(index + 1).padStart(2, "0")}`;
+        {letters.map((letter, index) => {
+          const read = readSet.has(index);
           return (
-            <li key={index} className={`letter-item ${isOpen ? "is-open" : ""}`} style={{ ["--tilt" as string]: `${(index % 2 === 0 ? -1 : 1) * (2 + (index % 3))}deg` }}>
+            <li key={index} className="letter-item" style={{ ["--tilt" as string]: `${(index % 2 === 0 ? -1 : 1) * (1.5 + (index % 3))}deg`, ["--i" as string]: index }}>
               <button
                 type="button"
-                className={`envelope ${isOpen ? "is-open" : ""}`}
-                aria-expanded={isOpen}
-                aria-controls="letter-reader-dialog"
+                className={`envelope ${read ? "is-read" : ""}`}
                 aria-haspopup="dialog"
-                aria-label={isOpen ? `Close ${label}` : `Open ${label}`}
-                onClick={() => toggle(index)}
+                aria-controls="letter-reader-dialog"
+                aria-label={`Open ${label(index)}${read ? " (opened)" : ""}`}
+                onClick={() => setOpenIndex(index)}
               >
                 <span className="envelope-back" aria-hidden="true" />
-                <span className="letter-paper" aria-hidden="true">
-                  <small>For {recipient.name || "you"}</small>
-                  <p>Open to read</p>
-                </span>
                 <span className="envelope-front" aria-hidden="true" />
                 <span className="envelope-flap" aria-hidden="true" />
-                <span className="letter-seal" aria-hidden="true">✦</span>
+                <span className="letter-seal" aria-hidden="true">{read ? "♡" : "✦"}</span>
                 <span className="envelope-meta">
-                  <strong>{label}</strong>
-                  <em>{hint}</em>
+                  <strong>{label(index)}</strong>
+                  <em>{letter.hint}</em>
                 </span>
               </button>
             </li>
@@ -94,29 +92,39 @@ export default function LettersScene({ onNext }: SceneComponentProps) {
         onCancel={(event) => { event.preventDefault(); setOpenIndex(null); }}
         onClose={() => setOpenIndex(null)}
         onClick={(event) => { if (event.target === event.currentTarget) setOpenIndex(null); }}
+        onKeyDown={onKey}
       >
         {openLetter && openIndex !== null && (
-          <article className="letter-reader">
-            <header className="letter-reader-header">
-              <div>
-                <p className="letter-reader-eyebrow">Letter {String(openIndex + 1).padStart(2, "0")}</p>
-                <h2 id="letter-reader-title">For {recipient.name || "you"}</h2>
+          <article className="letter-reader" key={openIndex}>
+            <button type="button" className="letter-reader-close" aria-label={`Close ${label(openIndex)}`} onClick={() => setOpenIndex(null)} autoFocus>
+              <span aria-hidden="true">×</span>
+            </button>
+            <div className="letter-paper-sheet">
+              <span className="letter-stamp" aria-hidden="true">♥</span>
+              <p className="letter-reader-eyebrow">{label(openIndex)} · {letters.length > 1 ? `${openIndex + 1} of ${letters.length}` : "for you"}</p>
+              <h2 id="letter-reader-title">{openLetter.title}</h2>
+              <div className="letter-rule" aria-hidden="true" />
+              <div ref={bodyRef} className="letter-reader-body" data-letter-reader-body tabIndex={0} aria-label="Letter content">
+                {openLetter.body.trim() ? openLetter.body : <span className="letter-empty">This letter is still being written…</span>}
+                {data.signature && <p className="letter-signature">{data.signature}</p>}
               </div>
-              <button type="button" className="letter-reader-close" aria-label={`Close Letter ${String(openIndex + 1).padStart(2, "0")}`} onClick={() => setOpenIndex(null)} autoFocus>
-                <span aria-hidden="true">×</span>
-              </button>
-            </header>
-            <div className="letter-reader-body" data-letter-reader-body tabIndex={0} aria-label="Letter content">{openLetter}</div>
+            </div>
             <footer className="letter-reader-footer">
-              <button type="button" className="letter-reader-back" onClick={() => setOpenIndex(null)}>Back to letters</button>
-              <button type="button" className="letter-reader-next" onClick={onNext}>Continue <span aria-hidden="true">✦</span></button>
+              <div className="letter-pager">
+                <button type="button" className="letter-nav" aria-label="Previous letter" disabled={openIndex === 0} onClick={() => go(-1)}>‹</button>
+                <span className="letter-dots" aria-hidden="true">{letters.map((_, i) => <i key={i} className={i === openIndex ? "on" : readSet.has(i) ? "read" : ""} />)}</span>
+                <button type="button" className="letter-nav" aria-label="Next letter" disabled={openIndex === letters.length - 1} onClick={() => go(1)}>›</button>
+              </div>
+              {openIndex < letters.length - 1
+                ? <button type="button" className="letter-reader-next" onClick={() => go(1)}>Next letter <span aria-hidden="true">→</span></button>
+                : <button type="button" className="letter-reader-next" onClick={() => { setOpenIndex(null); onNext(); }}>Continue <span aria-hidden="true">✦</span></button>}
             </footer>
           </article>
         )}
       </dialog>
 
-      <button type="button" className="letters-continue" onClick={onNext}>
-        Continue <span aria-hidden="true">✦</span>
+      <button type="button" className={`letters-continue ${allRead ? "is-ready" : ""}`} onClick={onNext}>
+        {allRead ? "Continue" : "Continue anyway"} <span aria-hidden="true">✦</span>
       </button>
     </section>
   );
@@ -310,125 +318,104 @@ const LETTERS_CSS = `
     font: 600 .75rem/1 Inter, system-ui, sans-serif;
     letter-spacing: .06em;
   }
+  .letters-progress { margin-top: 10px !important; font: 600 .68rem/1 Inter, system-ui, sans-serif !important; letter-spacing: .16em; text-transform: uppercase; color: var(--letter-gold) !important; opacity: .85; }
+  .letter-item { animation: letter-in .7s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+  @keyframes letter-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  .envelope.is-read { opacity: .78; }
+  .envelope.is-read .letter-seal { background: radial-gradient(circle at 35% 30%, #e7b98a, #a8754a 70%); color: #5a2a1a; }
+  .letters-continue.is-ready { background: linear-gradient(135deg, #8c3450, #58152f); box-shadow: 0 10px 30px rgba(140,52,80,.45); }
+
+  /* ── Reader: a real paper letter ─────────────────────────── */
   .letter-reader-dialog {
-    position: fixed;
-    inset: 0;
-    box-sizing: border-box;
-    width: min(720px, calc(100% - 32px));
-    max-width: none;
-    max-height: calc(100dvh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-    margin: auto;
-    padding: 0;
-    border: 0;
-    overflow: hidden;
-    border-radius: 22px;
-    color: #4e2029;
-    background: transparent;
-    box-shadow: 0 30px 120px rgba(0,0,0,.62);
+    position: fixed; inset: 0; box-sizing: border-box;
+    width: min(620px, calc(100% - 28px)); max-width: none;
+    max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    margin: auto; padding: 0; border: 0; overflow: visible; background: transparent; color: #4a1f2a;
   }
+  .letter-reader-dialog[open] { animation: reader-in .55s cubic-bezier(.2,.9,.25,1.05) both; }
+  @keyframes reader-in { from { opacity: 0; transform: translateY(40px) rotate(-1.5deg) scale(.94); } to { opacity: 1; transform: none; } }
   .letter-reader-dialog::backdrop {
-    background: rgba(12,3,8,.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: radial-gradient(80% 60% at 50% 40%, rgba(80,20,40,.55), rgba(8,2,6,.88));
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   .letter-reader {
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    max-height: calc(100dvh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-    overflow: hidden;
-    border: 1px solid rgba(255,239,218,.7);
-    border-radius: 22px;
-    background: linear-gradient(145deg, #fff9ed, #f7e4cf);
+    position: relative; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
+    max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    animation: sheet-swap .45s ease both;
   }
-  .letter-reader-header {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 20px clamp(20px, 4vw, 32px);
-    border-bottom: 1px solid rgba(126,71,65,.18);
-    background: rgba(255,251,242,.62);
-    text-align: left;
+  @keyframes sheet-swap { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+  .letter-paper-sheet {
+    position: relative; min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column;
+    padding: clamp(26px, 5.5vw, 46px) clamp(22px, 6vw, 52px) clamp(22px, 4vw, 34px);
+    border-radius: 6px;
+    background:
+      radial-gradient(120% 70% at 0% 0%, rgba(255,255,255,.7), transparent 55%),
+      radial-gradient(90% 60% at 100% 100%, rgba(214,170,130,.28), transparent 60%),
+      repeating-linear-gradient(transparent 0 31px, rgba(150,90,80,.13) 31px 32px),
+      linear-gradient(180deg, #fffaf0, #f8ead6);
+    box-shadow: 0 2px 0 #efdcc2, 0 4px 0 #e6cfb0, 0 40px 90px rgba(0,0,0,.55), inset 0 0 60px rgba(180,120,80,.12);
+    text-align: left; overflow: hidden;
   }
-  .letter-reader-eyebrow {
-    margin: 0 0 5px;
-    color: #a66a63;
-    font: 700 .64rem/1.4 Inter, system-ui, sans-serif;
-    letter-spacing: .18em;
-    text-transform: uppercase;
+  .letter-paper-sheet::before {
+    content: ""; position: absolute; top: 0; bottom: 0; left: clamp(14px, 3.5vw, 30px); width: 1px;
+    background: rgba(200,90,110,.28);
   }
-  .letter-reader-header h2 {
-    margin: 0;
-    color: #64283b;
-    font: 500 clamp(1.3rem, 4vw, 1.85rem)/1.25 "Playfair Display", Georgia, serif;
+  .letter-stamp {
+    position: absolute; top: 40px; right: 30px; width: 46px; height: 54px; display: grid; place-items: center;
+    color: #fff3e6; font-size: 20px; transform: rotate(6deg);
+    background: linear-gradient(150deg, #b8475f, #7e203b);
+    border: 3px dotted #fff8ee; border-radius: 3px; box-shadow: 0 3px 8px rgba(80,20,30,.35);
+  }
+  .letter-reader-eyebrow { margin: 0 0 8px; color: #a86a5f; font: 700 .62rem/1.4 Inter, system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; }
+  .letter-paper-sheet h2 {
+    margin: 0 60px 0 0; color: #6b2338;
+    font: 600 clamp(1.5rem, 5.2vw, 2.2rem)/1.15 "Dancing Script", "Playfair Display", Georgia, cursive;
     overflow-wrap: anywhere;
+  }
+  .letter-rule { height: 1px; margin: 14px 0 6px; background: linear-gradient(90deg, rgba(140,52,80,.5), rgba(140,52,80,0)); }
+  .letter-reader-body {
+    min-height: 60px; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    padding: 6px 4px 4px 0; color: #43202a; white-space: pre-wrap; overflow-wrap: anywhere;
+    font: 500 clamp(1.02rem, 2.7vw, 1.16rem)/32px "Playfair Display", Georgia, serif;
+    scrollbar-width: thin; scrollbar-color: #c58c8c transparent;
+  }
+  .letter-empty { color: #a88a8a; font-style: italic; }
+  .letter-signature {
+    margin: 18px 0 0; text-align: right; white-space: normal; color: #7e203b;
+    font: 600 clamp(1.3rem, 4.4vw, 1.7rem)/1.2 "Dancing Script", Georgia, cursive;
   }
   .letter-reader-close {
-    flex: 0 0 44px;
-    width: 44px;
-    height: 44px;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    border: 1px solid rgba(126,71,65,.24);
-    border-radius: 50%;
-    color: #7e203b;
-    background: rgba(255,255,255,.56);
-    font: 400 1.65rem/1 Inter, system-ui, sans-serif;
-    cursor: pointer;
+    position: absolute; z-index: 3; top: -14px; right: -10px; width: 46px; height: 46px; display: grid; place-items: center;
+    padding: 0; border: 2px solid #fff6ea; border-radius: 50%; color: #fff6ea; cursor: pointer;
+    background: linear-gradient(145deg, #a33f58, #6e1c35); font: 400 1.6rem/1 Inter, system-ui, sans-serif;
+    box-shadow: 0 8px 20px rgba(0,0,0,.4);
   }
-  .letter-reader-body {
-    min-height: 0;
-    flex: 1 1 auto;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    padding: clamp(22px, 5vw, 38px);
-    color: #4e2029;
-    text-align: left;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    font: 500 clamp(1rem, 2.5vw, 1.12rem)/1.85 "Playfair Display", Georgia, serif;
-    scrollbar-width: thin;
-    scrollbar-color: #c58c8c transparent;
+  .letter-reader-footer { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .letter-pager { display: flex; align-items: center; gap: 10px; }
+  .letter-nav {
+    width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font: 400 1.5rem/1 Inter, sans-serif;
+    border: 1px solid rgba(247,216,184,.35); color: #fbe7d6; background: rgba(255,255,255,.08);
   }
-  .letter-reader-footer {
-    flex: 0 0 auto;
-    display: flex;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 16px clamp(20px, 4vw, 32px);
-    border-top: 1px solid rgba(126,71,65,.18);
-    background: rgba(255,251,242,.74);
+  .letter-nav:disabled { opacity: .3; cursor: default; }
+  .letter-dots { display: flex; gap: 6px; }
+  .letter-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(247,216,184,.28); transition: all .3s ease; }
+  .letter-dots i.read { background: rgba(247,216,184,.6); }
+  .letter-dots i.on { width: 20px; border-radius: 99px; background: #e6bb7b; }
+  .letter-reader-next {
+    min-height: 46px; padding: 12px 22px; border-radius: 999px; cursor: pointer;
+    border: 1px solid rgba(230,187,123,.5); color: #fff4ea; background: linear-gradient(135deg, #a33f58, #6e1c35);
+    font: 600 .86rem/1.2 Inter, system-ui, sans-serif; box-shadow: 0 10px 26px rgba(110,28,53,.5);
   }
-  .letter-reader-footer button {
-    min-height: 44px;
-    padding: 11px 20px;
-    border-radius: 999px;
-    font: 600 .82rem/1.3 Inter, system-ui, sans-serif;
-    cursor: pointer;
-  }
-  .letter-reader-back { border: 1px solid rgba(126,71,65,.3); color: #7e203b; background: transparent; }
-  .letter-reader-next { border: 1px solid rgba(230,187,123,.38); color: #fff1e7; background: linear-gradient(135deg, #8c3450, #58152f); }
-  .letter-reader button:focus-visible, .letter-reader-body:focus-visible { outline: 3px solid #a66a63; outline-offset: 3px; }
+  .letter-reader button:focus-visible, .letter-reader-body:focus-visible { outline: 3px solid #e6bb7b; outline-offset: 3px; }
   @media (max-width: 520px) {
     .letters-grid { grid-template-columns: 1fr 1fr; gap: 18px 14px; }
     .envelope-meta em { display: none; }
-    .letter-reader-dialog {
-      width: calc(100% - 20px);
-      max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-      border-radius: 18px;
-    }
-    .letter-reader {
-      max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-      border-radius: 18px;
-    }
-    .letter-reader-header { padding: 16px 18px; }
-    .letter-reader-footer { padding: 14px 18px; }
-    .letter-reader-footer button { flex: 1 1 125px; }
+    .letter-reader-dialog { width: calc(100% - 22px); }
+    .letter-paper-sheet { padding: 24px 18px 18px 26px; }
+    .letter-stamp { width: 36px; height: 42px; font-size: 15px; top: 40px; right: 18px; }
+    .letter-reader-close { top: -12px; right: -6px; }
+    .letter-reader-footer { justify-content: center; }
+    .letter-reader-next { flex: 1 1 100%; }
   }
   @media (prefers-reduced-motion: reduce) {
     .letters-scene *, .letters-scene *::before, .letters-scene *::after {
