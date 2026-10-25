@@ -263,7 +263,7 @@ const KNOWN_V2_KEYS = new Set([
   "_version", "occasionId", "scenes", "features", "themePreset",
   "notebook", "roseBloom", "butterfly", "giftReveal", "youAndMe",
   "heartTunnel", "loveConfession", "loveDrive",
-  "textStyles", "stickers", "countdown", "_ext",
+  "textStyles", "stickers", "countdown", "letters", "_ext",
 ]);
 
 function preserveExtensionData(raw: SurpriseConfig): Record<string, unknown> {
