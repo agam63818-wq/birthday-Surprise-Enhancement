@@ -16,6 +16,7 @@ import type { SurpriseRow } from "@/types/surprise";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { countdownActive } from "@/lib/countdown/defaults";
 import { unlockNowPatch } from "@/lib/countdown/editor";
+import PreviewStickerStudio from "@/components/stickers/PreviewStickerStudio";
 
 // Owner-only countdown preview chunk (loaded only when the draft has an active countdown).
 const CountdownGate = lazy(() => import("@/components/countdown/CountdownGate"));
@@ -87,6 +88,31 @@ export default function Dashboard() {
     return operation;
   };
   const dirty = !!surprise && !!config && JSON.stringify(config) !== JSON.stringify(surprise.config);
+  const stickersDirty = !!surprise && !!config && JSON.stringify(config.stickers ?? null) !== JSON.stringify(surprise.config.stickers ?? null);
+  const [stickerSaving, setStickerSaving] = useState(false);
+  // Saves ONLY the draft's stickers on top of the SAVED config (other unsaved
+  // draft edits stay in the draft and still need Save in Customize).
+  const saveStickers = async () => {
+    const row = savedRowRef.current;
+    const current = configRef.current;
+    if (!row || !current || stickerSaving) return;
+    const savedConfig = { ...row.config, stickers: current.stickers };
+    try { validateV2Config(savedConfig); } catch (e) { toast.error((e as Error).message); return; }
+    setStickerSaving(true);
+    try {
+      let query = supabase.from("surprises").update({ config: savedConfig }).eq("id", row.id).eq("user_id", row.user_id);
+      if (row.updated_at) query = query.eq("updated_at", row.updated_at);
+      const { data, error } = await query.select().single();
+      if (error || !data) throw new Error("save_failed");
+      savedRowRef.current = data as SurpriseRow;
+      setSurprise(data as SurpriseRow);
+      toast.success("Stickers saved! ✨");
+    } catch {
+      toast.error("Couldn't save stickers. Check your connection or reload if another tab saved newer changes. Your draft is retained.");
+    } finally { setStickerSaving(false); }
+  };
+  const updateDraft = (fn: (prev: SurpriseConfig) => SurpriseConfig) =>
+    setDraft((prev) => fn(prev ?? savedRowRef.current!.config));
   const canUndo = !!history && JSON.stringify(config) === history.after;
   const undoAI = () => {
     if (!history || !canUndo) { toast.error("Newer edits exist. Undo is blocked to protect them."); return; }
@@ -241,7 +267,14 @@ export default function Dashboard() {
           {history && <button type="button" disabled={!canUndo || audioPending > 0} title={canUndo ? "Restore the exact pre-AI draft" : "Undo blocked because newer changes exist"} onClick={undoAI}>Undo last AI change</button>}
         </div>
         {tab === "preview" ? (
-          countdownActive(config) ? (
+          <PreviewStickerStudio
+            config={config}
+            onChange={updateDraft}
+            stickersDirty={stickersDirty}
+            saving={stickerSaving}
+            onSaveStickers={saveStickers}
+          >
+          {countdownActive(config) ? (
             <Suspense fallback={<FullScreenState><Spinner className="size-8" style={{ color: "var(--violet)" }} /></FullScreenState>}>
               {/* The ONLY place viewerMode="owner-preview" is set (authenticated dashboard). */}
               <CountdownGate
@@ -258,7 +291,8 @@ export default function Dashboard() {
             </Suspense>
           ) : (
             <BirthdayExperience config={config} />
-          )
+          )}
+          </PreviewStickerStudio>
         ) : tab === "customize" ? (
           <div
             style={{
