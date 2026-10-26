@@ -3,8 +3,8 @@ import StickerLayer from "@/components/stickers/StickerLayer";
 import StickerGalleryPicker from "@/components/stickers/StickerGalleryPicker";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import { FONT_PRESETS, DEFAULT_FONT_PRESET } from "@/lib/fontPresets";
+import { clampInFrame, useViewportSize } from "@/lib/stickers/frame";
 import {
-  clampStickerToSceneBox,
   DEFAULT_STICKER_PLACEMENT,
   duplicateStickerPlacement,
   resetStickerPlacementToDefault,
@@ -31,16 +31,31 @@ import { renderLegacySceneById } from "@/BirthdayExperience";
 import { getLazyScene } from "@/scenes/SceneEngine";
 import type { SceneKey, StickerPlacement, SurpriseConfig } from "@/lib/v2/schema";
 
-const VIRTUAL_STAGE_W = 390;
-const VIRTUAL_STAGE_H = 660;
+const PHONE_STAGE = { w: 390, h: 844 };
+const DESKTOP_STAGE = { w: 1366, h: 768 };
 const NOOP = () => {};
+type StageDevice = "auto" | "phone" | "desktop";
+
+/** Virtual stage = the real device viewport (auto) or a reference phone/desktop. */
+function useStageSize(device: StageDevice): { w: number; h: number; isPhone: boolean } {
+  const vp = useViewportSize();
+  if (device === "phone") return { ...PHONE_STAGE, isPhone: true };
+  if (device === "desktop") return { ...DESKTOP_STAGE, isPhone: false };
+  const w = Math.round(Math.min(Math.max(vp.width, 320), 1920));
+  const h = Math.round(Math.min(Math.max(vp.height, 480), 1200));
+  return { w, h, isPhone: w / h < 1 };
+}
 
 function SceneLivePreviewStage({
   sceneKey,
   config,
+  stageW: VIRTUAL_STAGE_W,
+  stageH: VIRTUAL_STAGE_H,
 }: {
   sceneKey: SceneKey;
   config: SurpriseConfig;
+  stageW: number;
+  stageH: number;
 }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(308);
@@ -83,9 +98,11 @@ function SceneLivePreviewStage({
       ({
         ...THEME_PRESETS[themeId].vars,
         "--v2-body-font": fontFamily,
+        "--stage-w": `${VIRTUAL_STAGE_W}px`,
+        "--stage-h": `${VIRTUAL_STAGE_H}px`,
         fontFamily,
       }) as React.CSSProperties,
-    [themeId, fontFamily],
+    [themeId, fontFamily, VIRTUAL_STAGE_W, VIRTUAL_STAGE_H],
   );
 
   return (
@@ -148,6 +165,8 @@ export default function SceneStickersEditor({
 
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [galleryMode, setGalleryMode] = useState<"add" | "replace" | null>(null);
+  const [stageDevice, setStageDevice] = useState<StageDevice>("auto");
+  const stage = useStageSize(stageDevice);
 
   // Keep selection valid if items change or if user switches scenes
   useEffect(() => {
@@ -247,7 +266,7 @@ export default function SceneStickersEditor({
         prev.stickers,
         sceneKey,
         uid,
-        VIRTUAL_STAGE_W / VIRTUAL_STAGE_H,
+        stage.w / stage.h,
       );
       created = res.createdUid;
       return res.next;
@@ -277,14 +296,15 @@ export default function SceneStickersEditor({
         patch.w !== undefined ||
         patch.rotate !== undefined
       ) {
-        const clamped = clampStickerToSceneBox(
+        const clamped = clampInFrame(
           {
             x: patch.x ?? currentItem.x,
             y: patch.y ?? currentItem.y,
             w: patch.w ?? currentItem.w,
             rotate: patch.rotate ?? currentItem.rotate,
           },
-          VIRTUAL_STAGE_W / VIRTUAL_STAGE_H,
+          stage.w,
+          stage.h,
           meta.aspect,
         );
         return updateStickerPlacement(prev.stickers, sceneKey, targetUid, {
@@ -385,17 +405,40 @@ export default function SceneStickersEditor({
               color: "rgba(226, 199, 255, 0.72)",
             }}
           >
-            <span>Live scene placement preview</span>
-            {isEnabled && items.length > 0 && (
-              <span>Tap a sticker to select, then drag, resize ↘ or rotate ↻</span>
-            )}
+            <span>Live preview · first screen as seen on {stageDevice === "auto" ? "this device" : stageDevice}</span>
+            <span className="sticker-stage-devices" role="group" aria-label="Preview device">
+              {(["auto", "phone", "desktop"] as const).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={stageDevice === d}
+                  onClick={() => setStageDevice(d)}
+                >
+                  {d === "auto" ? "This device" : d === "phone" ? "📱 Phone" : "💻 Desktop"}
+                </button>
+              ))}
+            </span>
           </div>
+          {isEnabled && items.length > 0 && (
+            <span style={{ fontSize: "0.72rem", color: "rgba(226, 199, 255, 0.6)" }}>
+              Tap a sticker to select, then drag, resize ↘ or rotate ↻ — it lands in the same spot in Preview.
+            </span>
+          )}
 
-          <div className="sticker-stage-wrap" data-sticker-stage={sceneKey}>
-            <SceneLivePreviewStage sceneKey={sceneKey} config={config} />
+          <div
+            className={`sticker-stage-wrap${stage.isPhone ? "" : " sticker-stage-wrap--wide"}`}
+            data-sticker-stage={sceneKey}
+          >
+            <SceneLivePreviewStage
+              sceneKey={sceneKey}
+              config={config}
+              stageW={stage.w}
+              stageH={stage.h}
+            />
             <ConfigProvider config={config}>
               <StickerLayer
                 sceneKey={sceneKey}
+                frame="fill"
                 editable={isEnabled}
                 selectedUid={isEnabled ? selectedUid : null}
                 onSelectUid={setSelectedUid}

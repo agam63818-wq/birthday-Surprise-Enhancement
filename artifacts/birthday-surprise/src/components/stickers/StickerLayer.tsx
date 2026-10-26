@@ -10,6 +10,8 @@ import {
 } from "@/lib/stickers/editorMath";
 import { getStickerById } from "@/lib/stickers/manifest";
 import { areStickersSupported, getSceneStickers } from "@/lib/stickers/model";
+import { fromFrameSpace, stickerUnitScale, toFrameSpace } from "@/lib/stickers/frame";
+import { useStickerEditSession } from "@/components/stickers/StickerEditContext";
 import type { SceneKey, StickerPlacement } from "@/lib/v2/schema";
 
 export interface StickerLayerProps {
@@ -22,6 +24,33 @@ export interface StickerLayerProps {
   onSelectUid?: (uid: string | null) => void;
   onCommitPlacement?: (uid: string, patch: StickerTransformValues) => void;
   onRemoveUid?: (uid: string) => void;
+  /**
+   * "viewport" (default): the sticker frame is the scene's first screen —
+   * full width × 100dvh anchored at the scene top (public + Preview).
+   * "fill": the frame fills the parent box (Customize scaled stage, which is
+   * itself sized to the device viewport).
+   */
+  frame?: "viewport" | "fill";
+}
+
+/** Width of a sticker: `w` × sticker unit, where unit = min(frameW, 0.75·frameH). */
+export function stickerCssWidth(w: number): string {
+  const pct = Math.round(w * 1000000) / 10000;
+  const cqh = Math.round(w * 75 * 10000) / 10000;
+  return `min(${pct}cqw, ${cqh}cqh)`;
+}
+
+function frameStyle(frame: "viewport" | "fill", extra: React.CSSProperties): React.CSSProperties {
+  return {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: frame === "fill" ? "100%" : "100dvh",
+    containerType: "size",
+    overflow: "hidden",
+    ...extra,
+  } as React.CSSProperties;
 }
 
 function usePrefersReducedMotion(override?: boolean): boolean {
@@ -102,7 +131,7 @@ const StickerImg = React.memo(
           position: "absolute",
           left: `${item.x * 100}%`,
           top: `${item.y * 100}%`,
-          width: `${item.w * 100}%`,
+          width: stickerCssWidth(item.w),
           aspectRatio: String(manifestItem.aspect),
           transform: `translate(-50%, -50%) rotate(${item.rotate}deg)${flip}`,
           zIndex: item.z,
@@ -126,11 +155,14 @@ interface ActiveGesture {
   draft: StickerTransformValues;
   stageRect: StageRectLike;
   stickerAspect: number;
+  /** sticker unit / frame width for this gesture's stage */
+  unit: number;
   moved: boolean;
 }
 
 function EditableStickerOverlay({
   sceneKey,
+  frame,
   items,
   reducedMotion,
   selectedUid,
@@ -139,6 +171,7 @@ function EditableStickerOverlay({
   onRemoveUid,
 }: {
   sceneKey: SceneKey;
+  frame: "viewport" | "fill";
   items: readonly StickerPlacement[];
   reducedMotion: boolean;
   selectedUid: string | null;
@@ -165,7 +198,7 @@ function EditableStickerOverlay({
     if (!el) return;
     el.style.left = `${draft.x * 100}%`;
     el.style.top = `${draft.y * 100}%`;
-    el.style.width = `${draft.w * 100}%`;
+    el.style.width = stickerCssWidth(draft.w);
     el.style.transform = `translate(-50%, -50%) rotate(${draft.rotate}deg)`;
   };
 
@@ -209,6 +242,7 @@ function EditableStickerOverlay({
         height: rect.height,
       },
       stickerAspect,
+      unit: stickerUnitScale(rect.width, rect.height),
       moved: false,
     };
   };
@@ -219,9 +253,10 @@ function EditableStickerOverlay({
     e.stopPropagation();
 
     let next: StickerTransformValues;
+    const initialFs = toFrameSpace(g.initial, g.unit);
     if (g.mode === "move") {
       next = applyDragDelta(
-        g.initial,
+        initialFs,
         e.clientX - g.startClientX,
         e.clientY - g.startClientY,
         g.stageRect,
@@ -229,7 +264,7 @@ function EditableStickerOverlay({
       );
     } else if (g.mode === "resize") {
       next = applyCornerResize(
-        g.initial,
+        initialFs,
         g.startClientX,
         g.startClientY,
         e.clientX,
@@ -238,9 +273,10 @@ function EditableStickerOverlay({
         g.stickerAspect,
       );
     } else {
-      next = applyHandleRotate(g.initial, e.clientX, e.clientY, g.stageRect, g.stickerAspect);
+      next = applyHandleRotate(initialFs, e.clientX, e.clientY, g.stageRect, g.stickerAspect);
     }
 
+    next = fromFrameSpace(next, g.unit);
     g.draft = next;
     g.moved = true;
 
@@ -290,8 +326,9 @@ function EditableStickerOverlay({
   ) => {
     const rect = stageRef.current?.getBoundingClientRect();
     const sceneAspect = rect && rect.height > 0 ? rect.width / rect.height : 9 / 16;
+    const unit = rect ? stickerUnitScale(rect.width, rect.height) : 1;
     const outcome = applyKeyboardShortcut(
-      { x: item.x, y: item.y, w: item.w, rotate: item.rotate },
+      toFrameSpace({ x: item.x, y: item.y, w: item.w, rotate: item.rotate }, unit),
       e.key,
       e.shiftKey,
       sceneAspect,
@@ -303,7 +340,7 @@ function EditableStickerOverlay({
     e.stopPropagation();
 
     if (outcome.action === "update") {
-      onCommitPlacement?.(item.uid, outcome.values);
+      onCommitPlacement?.(item.uid, fromFrameSpace(outcome.values, unit));
     } else if (outcome.action === "remove") {
       onRemoveUid?.(item.uid);
     } else if (outcome.action === "deselect") {
@@ -319,14 +356,13 @@ function EditableStickerOverlay({
       onClick={(e) => {
         if (e.target === e.currentTarget) onSelectUid?.(null);
       }}
-      style={{
-        position: "absolute",
-        inset: 0,
+      style={frameStyle(frame, {
         zIndex: 60,
-        pointerEvents: "auto",
+        // In-Preview mode only the stickers are interactive so the scene's
+        // own buttons keep working underneath.
+        pointerEvents: frame === "viewport" ? "none" : "auto",
         touchAction: "pan-y",
-        overflow: "hidden",
-      }}
+      })}
     >
       {ordered.map((item) => {
         const manifestItem = getStickerById(item.stickerId);
@@ -368,13 +404,14 @@ function EditableStickerOverlay({
               position: "absolute",
               left: `${item.x * 100}%`,
               top: `${item.y * 100}%`,
-              width: `${item.w * 100}%`,
+              width: stickerCssWidth(item.w),
               minWidth: "44px",
               minHeight: "44px",
               aspectRatio: String(manifestItem.aspect),
               transform: `translate(-50%, -50%) rotate(${item.rotate}deg)`,
               zIndex: isSelected ? 100 + item.z : item.z,
               cursor: isSelected ? "grab" : "pointer",
+              pointerEvents: "auto",
               touchAction: isSelected ? "none" : "pan-y",
               userSelect: "none",
               display: "flex",
@@ -444,10 +481,12 @@ function EditableStickerOverlay({
 const StickerLayerBody = React.memo(
   function StickerLayerBody({
     sceneKey,
+    frame,
     items,
     reducedMotion,
   }: {
     sceneKey: SceneKey;
+    frame: "viewport" | "fill";
     items: readonly StickerPlacement[];
     reducedMotion: boolean;
   }) {
@@ -459,12 +498,7 @@ const StickerLayerBody = React.memo(
         className="sticker-layer"
         data-sticker-layer={sceneKey}
         aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          overflow: "hidden",
-        }}
+        style={frameStyle(frame, { pointerEvents: "none" })}
       >
         {ordered.map((item) => (
           <StickerImg key={item.uid} item={item} reducedMotion={reducedMotion} />
@@ -474,6 +508,7 @@ const StickerLayerBody = React.memo(
   },
   (prev, next) =>
     prev.sceneKey === next.sceneKey &&
+    prev.frame === next.frame &&
     prev.reducedMotion === next.reducedMotion &&
     arePlacementListsEqual(prev.items, next.items),
 );
@@ -486,17 +521,42 @@ function StickerLayerInner({
   onSelectUid,
   onCommitPlacement,
   onRemoveUid,
+  frame = "viewport",
 }: StickerLayerProps) {
   const config = useConfig();
   const reducedMotion = usePrefersReducedMotion(reducedMotionProp);
   const items = useMemo(() => getSceneStickers(config, sceneKey), [config, sceneKey]);
+  // Owner-only Preview editing session (provided ONLY by the Dashboard Preview).
+  const session = useStickerEditSession();
+  const reportScene = session?.reportScene;
+  const sessionActive = !editable && frame === "viewport" && !!session;
+  useEffect(() => {
+    if (!sessionActive || !reportScene) return;
+    reportScene(sceneKey);
+  }, [sessionActive, reportScene, sceneKey]);
 
   if (!areStickersSupported(sceneKey)) return null;
+
+  if (sessionActive && session.editing) {
+    return (
+      <EditableStickerOverlay
+        sceneKey={sceneKey}
+        frame="viewport"
+        items={items}
+        reducedMotion={reducedMotion}
+        selectedUid={session.selectedUid}
+        onSelectUid={session.setSelectedUid}
+        onCommitPlacement={(uid, patch) => session.commitPlacement(sceneKey, uid, patch)}
+        onRemoveUid={(uid) => session.removeSticker(sceneKey, uid)}
+      />
+    );
+  }
 
   if (editable) {
     return (
       <EditableStickerOverlay
         sceneKey={sceneKey}
+        frame={frame}
         items={items}
         reducedMotion={reducedMotion}
         selectedUid={selectedUid}
@@ -509,7 +569,7 @@ function StickerLayerInner({
 
   if (items.length === 0) return null;
 
-  return <StickerLayerBody sceneKey={sceneKey} items={items} reducedMotion={reducedMotion} />;
+  return <StickerLayerBody sceneKey={sceneKey} frame={frame} items={items} reducedMotion={reducedMotion} />;
 }
 
 const StickerLayer = React.memo(StickerLayerInner);
