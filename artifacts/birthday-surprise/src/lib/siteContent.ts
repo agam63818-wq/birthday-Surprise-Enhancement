@@ -13,6 +13,9 @@
 //  vite.config.ts imports it outside the app bundle.
 // ============================================================
 
+// Relative import on purpose: pricing.ts is also dependency-free.
+import { formatPrice, PRICE_INR } from "./pricing";
+
 // Production canonical origin. Vercel preview / localhost URLs must never
 // leak into canonical, og:url or sitemap values. Override only via
 // VITE_SITE_URL if the project ever moves to a custom domain.
@@ -84,7 +87,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Can I make a personalized birthday surprise online for free?",
-    a: "Previewing the full experience and creating an account are free. Editing the content of your own surprise requires a one-time ₹20 unlock, paid securely through Razorpay, after which your surprise stays yours.",
+    a: `Previewing the full experience and creating an account are free. Editing the content of your own surprise requires a one-time ${formatPrice(PRICE_INR)} unlock, paid securely through Razorpay, after which your surprise stays yours.`,
   },
   {
     q: "Is my surprise public or searchable?",

@@ -45,7 +45,7 @@ function FullScreenState({ children }: { children: React.ReactNode }) {
 // Real authenticated dashboard: fetches the caller's own row from
 // `surprises` (exactly one per user, enforced by RLS + a signup trigger),
 // and switches between a live Preview of their surprise and a Customize
-// form gated behind the ₹20 paywall stub.
+// form gated behind the one-time unlock paywall (price: src/lib/pricing.ts).
 export default function Dashboard() {
   // Private/auth route: never indexed (also X-Robots-Tag via vercel.json).
   usePageMeta({ title: "Dashboard — Birthday Surprise", noindex: true });
