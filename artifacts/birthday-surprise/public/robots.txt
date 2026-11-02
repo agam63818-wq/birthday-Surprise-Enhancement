@@ -1,6 +1,7 @@
 # Birthday Surprise — https://birthday-surprise-enhancement.vercel.app
 #
-# The only indexable page is "/". Private routes (/s/:slug share links,
+# Indexable pages: "/", "/privacy-policy" and "/terms". Non-indexed routes
+# (/s/:slug unlisted share links,
 # /login, /signup, /forgot-password, /reset-password, /dashboard, /api/*)
 # are excluded from search with `noindex` (X-Robots-Tag header via
 # vercel.json + <meta name="robots"> in the rendered page) rather than

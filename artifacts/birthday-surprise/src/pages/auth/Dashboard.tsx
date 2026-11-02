@@ -17,6 +17,7 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 import { countdownActive } from "@/lib/countdown/defaults";
 import { unlockNowPatch } from "@/lib/countdown/editor";
 import PreviewStickerStudio from "@/components/stickers/PreviewStickerStudio";
+import SiteFooter from "@/components/SiteFooter";
 
 // Owner-only countdown preview chunk (loaded only when the draft has an active countdown).
 const CountdownGate = lazy(() => import("@/components/countdown/CountdownGate"));
@@ -45,7 +46,7 @@ function FullScreenState({ children }: { children: React.ReactNode }) {
 // Real authenticated dashboard: fetches the caller's own row from
 // `surprises` (exactly one per user, enforced by RLS + a signup trigger),
 // and switches between a live Preview of their surprise and a Customize
-// form gated behind the ₹20 paywall stub.
+// form gated behind the one-time unlock paywall (price: src/lib/pricing.ts).
 export default function Dashboard() {
   // Private/auth route: never indexed (also X-Robots-Tag via vercel.json).
   usePageMeta({ title: "Dashboard — Birthday Surprise", noindex: true });
@@ -340,6 +341,7 @@ export default function Dashboard() {
             />
           </div>
         )}
+        {tab !== "preview" && <SiteFooter compact />}
       </div>
     </div>
   );

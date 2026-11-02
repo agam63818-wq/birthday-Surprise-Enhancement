@@ -26,7 +26,7 @@ export const config = {
 
 // Case-insensitive fragments of known crawler UAs.
 //
-// INDEXING DECISION: /s/:slug pages are private, per-person surprises
+// INDEXING DECISION: /s/:slug pages are unlisted, per-person surprises
 // (names, photos, personal letters). They must remain shareable with rich
 // previews, but are NOT meant to appear in Google or be ingested by AI
 // crawlers. So search / AI bots are ALSO intercepted here and receive the

@@ -1,4 +1,5 @@
 import { ABOUT, HOW_IT_WORKS, FEATURES, WHO_FOR, FAQ, SITE_NAME } from "@/lib/siteContent";
+import SiteFooter from "@/components/SiteFooter";
 
 // "About / how it works / FAQ" block shown BELOW the hero on the public
 // landing page ("/") only. It renders the exact same copy that
@@ -97,8 +98,9 @@ export default function PublicAbout() {
       </article>
 
       <footer style={{ textAlign: "center", color: "var(--ink-faint)", fontSize: "0.8rem", marginTop: "8px" }}>
-        <p>{SITE_NAME} — made with love, shared with one private link.</p>
+        <p>{SITE_NAME} — made with love, shared with one unlisted link.</p>
       </footer>
+      <SiteFooter compact />
     </section>
   );
 }

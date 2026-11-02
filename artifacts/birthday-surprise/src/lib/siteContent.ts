@@ -13,6 +13,9 @@
 //  vite.config.ts imports it outside the app bundle.
 // ============================================================
 
+// Relative import on purpose: pricing.ts is also dependency-free.
+import { formatPrice, PRICE_INR } from "./pricing";
+
 // Production canonical origin. Vercel preview / localhost URLs must never
 // leak into canonical, og:url or sitemap values. Override only via
 // VITE_SITE_URL if the project ever moves to a custom domain.
@@ -24,7 +27,7 @@ export const SITE_TITLE =
   "Birthday Surprise — Create a Personalized Birthday Surprise Website";
 
 export const SITE_DESCRIPTION =
-  "Birthday Surprise is a free-to-preview web app for building a personalized, 10-page animated birthday surprise: a tap-to-cut cake, memory wall with your photos, your own music, heartfelt messages and a private share link.";
+  "Birthday Surprise is a free-to-preview web app for building a personalized, 10-page animated birthday surprise: a tap-to-cut cake, memory wall with your photos, your own music, heartfelt messages and an unlisted share link.";
 
 export const OG_IMAGE_PATH = "/opengraph.jpg";
 export const OG_IMAGE_WIDTH = 1536;
@@ -34,8 +37,8 @@ export const OG_IMAGE_HEIGHT = 1024;
 export const ABOUT = {
   heading: "What is Birthday Surprise?",
   paragraphs: [
-    "Birthday Surprise is a web app for creating a personalized, cinematic birthday surprise website for someone you love. Instead of a plain greeting card, the recipient opens a private link and walks through ten animated pages — an intro, a cuteness meter, a celebration, a cake they tap to cut, reasons why they matter, your story together, a memory wall of photos, and a final letter revealed line by line with confetti.",
-    "You can preview the full experience on this page for free. To personalize it, create an account, open your dashboard, and edit every message, photo and song — or let the built-in AI assistant draft the whole thing from a few answers. When you are done, share it with a single private link.",
+    "Birthday Surprise is a web app for creating a personalized, cinematic birthday surprise website for someone you love. Instead of a plain greeting card, the recipient opens an unlisted link and walks through ten animated pages — an intro, a cuteness meter, a celebration, a cake they tap to cut, reasons why they matter, your story together, a memory wall of photos, and a final letter revealed line by line with confetti.",
+    "You can preview the full experience on this page for free. To personalize it, create an account, open your dashboard, and edit every message, photo and song — or let the built-in AI assistant draft the whole thing from a few answers. When you are done, share it with a single unlisted link.",
   ],
 };
 
@@ -45,7 +48,7 @@ export const HOW_IT_WORKS = {
     "Preview the default surprise on the home page to see all ten pages in action.",
     "Sign up with your email and open your dashboard, where one surprise is created for you automatically.",
     "Customize the text, photos, music, occasion, colour theme and font style — or answer a few questions in the AI Assistant tab to generate the content.",
-    "Copy your private share link (/s/your-link) and send it to the birthday person on WhatsApp, Instagram or anywhere else. The link preview shows their name.",
+    "Copy your unlisted share link (/s/your-link) and send it to the birthday person on WhatsApp, Instagram or anywhere else. The link preview shows their name.",
   ],
 };
 
@@ -59,7 +62,7 @@ export const FEATURES = {
     "Occasion variants beyond birthdays: Rakshabandhan, Father's Day, Mother's Day and Love Day hero pages.",
     "Four colour themes (Midnight Purple, Rose Gold, Deep Emerald, Royal Gold) and four font styles.",
     "An AI Assistant that drafts all the messages from the recipient's name, your relationship, tone and shared memories — using the default AI or your own OpenAI, Gemini or Anthropic API key.",
-    "A private share link with a personalized social preview (title, description and image carry the recipient's name).",
+    "An unlisted share link with a personalized social preview (title, description and image carry the recipient's name).",
   ],
 };
 
@@ -72,11 +75,11 @@ export const WHO_FOR = {
 export const FAQ: { q: string; a: string }[] = [
   {
     q: "What is Birthday Surprise?",
-    a: "Birthday Surprise is a web app that lets you build a personalized, animated birthday surprise website — ten pages of messages, a tap-to-cut cake, a photo memory wall, music and a final letter — and share it with one private link.",
+    a: "Birthday Surprise is a web app that lets you build a personalized, animated birthday surprise website — ten pages of messages, a tap-to-cut cake, a photo memory wall, music and a final letter — and share it with one unlisted link.",
   },
   {
     q: "How does Birthday Surprise work?",
-    a: "Preview the default surprise for free, sign up to get your own dashboard, customize the text, photos, songs, theme and occasion (or let the AI Assistant draft it), then copy your private share link and send it to the recipient.",
+    a: "Preview the default surprise for free, sign up to get your own dashboard, customize the text, photos, songs, theme and occasion (or let the AI Assistant draft it), then copy your unlisted share link and send it to the recipient.",
   },
   {
     q: "What can I create with Birthday Surprise?",
@@ -84,11 +87,11 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Can I make a personalized birthday surprise online for free?",
-    a: "Previewing the full experience and creating an account are free. Editing the content of your own surprise requires a one-time ₹20 unlock, paid securely through Razorpay, after which your surprise stays yours.",
+    a: `Previewing the full experience and creating an account are free. Editing the content of your own surprise requires a one-time ${formatPrice(PRICE_INR)} unlock, paid securely through Razorpay, after which your surprise stays yours.`,
   },
   {
     q: "Is my surprise public or searchable?",
-    a: "No. Each surprise lives at a private /s/ link that is only reachable by people you share it with. Share pages are marked noindex so they are not meant to appear in search engines, while link previews on WhatsApp, Instagram and similar apps still show the recipient's name.",
+    a: "Each surprise lives at an unlisted /s/ link: it is not listed anywhere on the site, but it is not password-protected, so anyone who has the link can open it and links can be forwarded. Uploaded photos and audio are served from publicly accessible URLs. Share pages are marked noindex so search engines are asked not to list them, while link previews on WhatsApp, Instagram and similar apps still show the recipient's name.",
   },
 ];
 
@@ -142,7 +145,7 @@ export function renderStaticHtml(): string {
         </article>
       </main>
       <footer style="text-align:center;padding:24px;opacity:.7;font-size:.85rem">
-        <p>${escapeHtml(SITE_NAME)} — made with love, shared with one private link.</p>
+        <p>${escapeHtml(SITE_NAME)} — made with love, shared with one unlisted link.</p>
       </footer>`;
 }
 

@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { performSignUp, type ConsentMetadata } from "@/lib/legal/consent";
 
 type AuthResult = { error: string | null };
 
@@ -15,7 +16,7 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<AuthResult>;
-  signUp: (email: string, password: string) => Promise<AuthResult & { needsEmailConfirmation: boolean }>;
+  signUp: (email: string, password: string, consent?: ConsentMetadata) => Promise<AuthResult & { needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<AuthResult>;
 }
@@ -92,8 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? friendlyAuthError(error.message) : null };
   };
 
-  const signUp: AuthContextValue["signUp"] = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+  const signUp: AuthContextValue["signUp"] = async (email, password, consent) => {
+    // Consent (terms/privacy versions + timestamp) goes into auth user_metadata.
+    // user_metadata is client-writable: a convenience record, not tamper-proof.
+    const { data, error } = await performSignUp(supabase.auth, email, password, consent);
     if (error) {
       return { error: friendlyAuthError(error.message), needsEmailConfirmation: false };
     }

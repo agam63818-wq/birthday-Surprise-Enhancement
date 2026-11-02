@@ -6,78 +6,50 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import type { SurpriseRow } from "@/types/surprise";
 import type { RazorpaySuccessResponse } from "@/types/razorpay";
+import { formatPrice } from "@/lib/pricing";
+import { startUnlockPayment, UNLOCK_ERRORS } from "@/lib/payments/unlockPayment";
 
-// Real Razorpay checkout flow:
+// Real Razorpay checkout flow (see src/lib/payments/unlockPayment.ts):
 // 1. Ask our own Edge Function to create a Razorpay order (server-side,
-//    using the secret key — never exposed here).
-// 2. Open Razorpay's Checkout with that order.
-// 3. On successful payment, send the payment id/signature to another
+//    using the secret key — never exposed here). The SERVER decides the amount.
+// 2. Price guard: only open Checkout if the order matches the displayed
+//    price (PRICE_PAISE / INR) — never charge a different amount.
+// 3. Open Razorpay's Checkout with that order.
+// 4. On successful payment, send the payment id/signature to another
 //    Edge Function which verifies the signature server-side and only
 //    THEN flips is_paid = true. The client never sets is_paid directly.
-async function initiatePayment(userEmail: string | undefined): Promise<void> {
-  const { data: orderData, error: orderError } = await supabase.functions.invoke(
-    "create-razorpay-order",
+function initiatePayment(userEmail: string | undefined): Promise<void> {
+  return startUnlockPayment(
+    {
+      invoke: (fn, options) => supabase.functions.invoke(fn, options),
+      openCheckout: (opts) => {
+        const razorpay = new window.Razorpay({
+          key: opts.key,
+          amount: opts.amount,
+          currency: opts.currency,
+          order_id: opts.order_id,
+          name: "Birthday Surprise",
+          description: "Unlock customization",
+          prefill: opts.email ? { email: opts.email } : undefined,
+          theme: { color: "#a78bfa" },
+          handler: (response: RazorpaySuccessResponse) => opts.onSuccess(response),
+          modal: {
+            // User closed the popup without paying — not an error.
+            ondismiss: opts.onDismiss,
+          },
+        });
+        razorpay.open();
+      },
+    },
+    userEmail,
   );
-
-  if (orderError || !orderData) {
-    throw new Error(orderError?.message ?? "Could not start payment");
-  }
-
-  const { order_id, amount, currency, key_id } = orderData as {
-    order_id: string;
-    amount: number;
-    currency: string;
-    key_id: string;
-  };
-
-  return new Promise<void>((resolve, reject) => {
-    const razorpay = new window.Razorpay({
-      key: key_id,
-      amount,
-      currency,
-      order_id,
-      name: "Birthday Surprise",
-      description: "Unlock customization",
-      prefill: userEmail ? { email: userEmail } : undefined,
-      theme: { color: "#a78bfa" },
-      handler: async (response: RazorpaySuccessResponse) => {
-        try {
-          const { data: verifyData, error: verifyError } =
-            await supabase.functions.invoke("verify-razorpay-payment", {
-              body: {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              },
-            });
-
-          if (verifyError || !(verifyData as { success?: boolean })?.success) {
-            reject(new Error("verification_failed"));
-            return;
-          }
-
-          resolve();
-        } catch {
-          reject(new Error("verification_failed"));
-        }
-      },
-      modal: {
-        ondismiss: () => {
-          // User closed the popup without paying — not an error.
-          reject(new Error("dismissed"));
-        },
-      },
-    });
-
-    razorpay.open();
-  });
 }
 
 const FEATURES = [
   "💝 Personalize all 10 pages",
   "📸 Upload your own photos",
   "🎵 Add your special songs",
-  "🔗 Share with a private link",
+  "🔗 Share with an unlisted link",
 ];
 
 export default function PaywallLock({
@@ -98,9 +70,13 @@ export default function PaywallLock({
       onUnlocked();
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
-      if (message === "dismissed") {
+      if (message === UNLOCK_ERRORS.dismissed) {
         // Popup closed without paying — silent, not an error.
-      } else if (message === "verification_failed") {
+      } else if (message === UNLOCK_ERRORS.priceMismatch) {
+        // Server order did not match the displayed price: checkout was NOT
+        // opened and nothing was charged. Button stays usable for retry.
+        toast.error("We're updating our price — please refresh in a minute and try again.");
+      } else if (message === UNLOCK_ERRORS.verificationFailed) {
         toast.error(
           "Payment could not be verified. If money was deducted, it will be refunded automatically — please contact support.",
         );
@@ -204,7 +180,7 @@ export default function PaywallLock({
                   backgroundClip: "text",
                 }}
               >
-                ₹20
+                {formatPrice()}
               </span>
               <span style={{ color: "var(--ink-soft)", fontSize: "0.78rem" }}>one-time · yours forever</span>
             </div>
@@ -215,7 +191,7 @@ export default function PaywallLock({
                   <Spinner /> Unlocking…
                 </>
               ) : (
-                <>✨ Unlock for ₹20</>
+                <>✨ Unlock for {formatPrice()}</>
               )}
             </button>
 
