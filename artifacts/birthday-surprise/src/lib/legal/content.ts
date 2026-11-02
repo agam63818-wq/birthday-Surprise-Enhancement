@@ -11,7 +11,7 @@
 // ============================================================
 
 import { formatPrice, PRICE_INR } from "../pricing";
-import { ownerToConfirm, PRIVACY_PATH, SUPPORT_CONTACT, TERMS_PATH } from "./constants";
+import { OPERATOR_DESCRIPTION, ownerToConfirm, PRIVACY_PATH, SUPPORT_CONTACT, TERMS_PATH } from "./constants";
 
 export type LegalBlock =
   | { type: "p"; text: string }
@@ -33,7 +33,7 @@ export interface LegalDocument {
   sections: LegalSection[];
 }
 
-const OPERATOR = ownerToConfirm("operator / business name");
+const OPERATOR = OPERATOR_DESCRIPTION;
 
 // ── PRIVACY POLICY ──────────────────────────────────────────
 export const PRIVACY_POLICY: LegalDocument = {
@@ -108,9 +108,9 @@ export const PRIVACY_POLICY: LegalDocument = {
             "Supabase: authentication, database, file storage for photos and audio, and server functions.",
             "Vercel: website hosting, the code that builds link previews for share pages, preview image generation and a server-time endpoint used by countdowns.",
             "Razorpay: payment processing for the one-time unlock.",
-            `An AI service provider: when you use the AI Assistant with the default AI, your text is sent from our server to an AI provider we configure. The code supports OpenAI, Google (Gemini) and Anthropic. Currently configured: ${ownerToConfirm("which AI provider is active")}`,
+            `An AI service provider: when you use the AI Assistant with the default AI, your text is sent from our server to an AI provider we configure. The default AI currently used is Google Gemini. The code can also be configured to use OpenAI or Anthropic, and you may bring your own OpenAI, Gemini or Anthropic API key instead (see below).`,
             "Google Fonts: pages load fonts from Google's servers, so your browser sends a request (including your IP address) to Google.",
-            `Email delivery: account emails are sent through Supabase Auth using ${ownerToConfirm("email delivery provider / custom SMTP service")}.`,
+            "Resend: account emails (such as email confirmation and password reset) are sent through Supabase Auth using Resend as a custom SMTP provider.",
           ],
         },
       ],
@@ -166,6 +166,7 @@ export const PRIVACY_POLICY: LegalDocument = {
           items: [
             "We keep your account and surprise content while your account exists.",
             "There is currently no self-service button to delete your account or your uploaded files.",
+            "When an account is deleted, its profile, surprises and payment records are removed from our database. Uploaded photo and audio files are stored separately, in public storage buckets under that user's folder, so they are not removed together with the account. They are removed separately on request.",
             `To ask us to delete your account, your surprise or uploaded files, contact ${SUPPORT_CONTACT}. ${ownerToConfirm("deletion process and timeline, including removal of stored media files")}`,
             "We do not promise automatic deletion. Removing a photo or song from your surprise in the editor does not necessarily delete the file from storage.",
             "Copies may remain in backups or third-party caches for some time, and anyone who already saved or downloaded your content may keep it.",
@@ -343,7 +344,7 @@ export const TERMS: LegalDocument = {
             "Payments are processed by Razorpay, and Razorpay's own terms apply. We do not receive your card, UPI or bank details.",
             "The price shown in the app before you pay is the amount you are charged. We do not add other charges.",
             "We may change the price for future purchases. Any change will be shown in the app before you pay.",
-            ownerToConfirm("whether the price includes GST or other taxes"),
+            "The price shown at checkout is the total amount payable.",
           ],
         },
       ],

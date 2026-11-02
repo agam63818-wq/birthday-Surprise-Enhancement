@@ -18,4 +18,10 @@ export function ownerToConfirm(what: string): string {
   return `[Owner to confirm: ${what}]`;
 }
 
-export const SUPPORT_CONTACT = ownerToConfirm("support email address");
+/** Support / privacy contact (rendered as a mailto: link on the legal pages). */
+export const SUPPORT_EMAIL = "agamk5651@gmail.com";
+export const SUPPORT_CONTACT = SUPPORT_EMAIL;
+
+/** Who operates the service. */
+export const OPERATOR_NAME = "Agam";
+export const OPERATOR_DESCRIPTION = `${OPERATOR_NAME}, the independent operator of Birthday Surprise`;
