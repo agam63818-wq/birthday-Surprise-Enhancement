@@ -1851,3 +1851,15 @@ button.dash-mobile-dropdown-item.is-current:hover {
 .signup-consent-box:focus-visible { outline: 2px solid #e8c98a; outline-offset: 3px; }
 .signup-consent-label a { color: #f9a8d4; text-decoration: underline; text-underline-offset: 2px; }
 .signup-consent-error { margin: 6px 0 0 32px; font-size: 0.8rem; color: #fda4af; }
+.legal-mail { color: #f9a8d4; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+
+/* Preview sticker studio must never cover the music toggle
+   (MusicToggle: fixed, right 22px, bottom 22px + safe-area, 48×48). */
+.pss-fab { right: calc(22px + env(safe-area-inset-right, 0px)); bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
+.pss-mini { left: max(12px, env(safe-area-inset-left, 0px)); transform: none; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 96px); overflow-x: auto; }
+/* Audio "blocked" notice normally sits right above the music button: lift it above the FAB. */
+body:has(.pss-fab) .audio-runtime-notice { bottom: calc(140px + env(safe-area-inset-bottom, 0px)); }
+@media (max-width: 720px) {
+  /* Full-width panel on phones: float above the music button instead of hiding it. */
+  .pss-panel { bottom: calc(82px + env(safe-area-inset-bottom, 0px)); max-height: calc(100dvh - 160px); overflow-y: auto; }
+}

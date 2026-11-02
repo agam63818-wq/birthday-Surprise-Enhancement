@@ -1,23 +1,26 @@
 import { Link } from "wouter";
 import { usePageMeta, SITE_URL } from "@/hooks/use-page-meta";
 import SiteFooter from "@/components/SiteFooter";
-import { LEGAL_LAST_UPDATED, PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal/constants";
+import { LEGAL_LAST_UPDATED, PRIVACY_VERSION, SUPPORT_EMAIL, TERMS_VERSION } from "@/lib/legal/constants";
 import type { LegalBlock, LegalDocument } from "@/lib/legal/content";
 
-const OWNER_RE = /(\[Owner to confirm:[^\]]*\])/g;
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const TOKEN_RE = new RegExp(`(\\[Owner to confirm:[^\\]]*\\]|${escapeRe(SUPPORT_EMAIL)})`, "g");
 
-/** Renders text, highlighting "[Owner to confirm: …]" placeholders. */
+/** Renders text, highlighting "[Owner to confirm: …]" and linking the support email. */
 function Rich({ text }: { text: string }) {
-  const parts = text.split(OWNER_RE);
+  const parts = text.split(TOKEN_RE);
   return (
     <>
-      {parts.map((part, i) =>
-        OWNER_RE.test(part) ? (
-          <mark key={i} className="legal-owner">{part}</mark>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
+      {parts.map((part, i) => {
+        if (part === SUPPORT_EMAIL) {
+          return <a key={i} className="legal-mail" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>;
+        }
+        if (part.startsWith("[Owner to confirm:")) {
+          return <mark key={i} className="legal-owner">{part}</mark>;
+        }
+        return <span key={i}>{part}</span>;
+      })}
     </>
   );
 }

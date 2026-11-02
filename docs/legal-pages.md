@@ -28,18 +28,24 @@
 - These pages are plain-language information, **not legal advice**. Have a lawyer review
   them before launch.
 
-## [Owner to confirm] items to fill in (`src/lib/legal/content.ts` / `constants.ts`)
-1. Support email address (`SUPPORT_CONTACT` in `constants.ts`)
-2. Operator / business name
-3. Active AI provider (`PLATFORM_AI_PROVIDER`: Gemini by default in code, or OpenAI / Anthropic)
-4. Email delivery provider / custom SMTP (e.g. Resend). Not verifiable from the repo
-5. Refund and cancellation policy
-6. Whether ₹30 includes GST / other taxes
-7. Deletion process and timeline (including removal of stored photo/audio files)
-8. Payment record fields stored on our side and how long they are kept
-9. What Vercel / Supabase log for this project, and for how long
-10. That platform request logs don't retain request bodies containing user API keys
-11. Governing-law jurisdiction (city / state in India)
+## Filled in (2 November 2026)
+- Support / privacy email: agamk5651@gmail.com (shown as a `mailto:` link)
+- Operator: Agam, the independent operator of Birthday Surprise
+- Default AI provider: Google Gemini (users may still bring their own OpenAI / Gemini / Anthropic key)
+- Email delivery: Resend (custom SMTP via Supabase Auth)
+- Price wording: "The price shown at checkout is the total amount payable." (no GST mention)
+- Deletion: deleting an account removes the profile, surprises and payment records from the
+  database; uploaded photo/audio files live in public storage buckets under the user's folder
+  and are removed separately on request.
+
+## [Owner to confirm] items still open (`src/lib/legal/content.ts`)
+1. Refund and cancellation policy
+2. Deletion process and timeline (including removal of stored photo/audio files)
+3. Payment record fields stored on our side and how long they are kept
+4. Payment record retention period
+5. What Vercel / Supabase log for this project, and for how long
+6. That platform request logs don't retain request bodies containing user API keys
+7. Governing-law jurisdiction (city / state in India)
 
 When a document changes in substance, bump `TERMS_VERSION` / `PRIVACY_VERSION` and
 `LEGAL_LAST_UPDATED` in `src/lib/legal/constants.ts`.
