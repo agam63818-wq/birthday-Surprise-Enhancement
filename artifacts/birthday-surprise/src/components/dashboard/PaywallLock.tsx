@@ -49,7 +49,7 @@ const FEATURES = [
   "💝 Personalize all 10 pages",
   "📸 Upload your own photos",
   "🎵 Add your special songs",
-  "🔗 Share with a private link",
+  "🔗 Share with an unlisted link",
 ];
 
 export default function PaywallLock({

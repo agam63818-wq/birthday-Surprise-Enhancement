@@ -40,7 +40,7 @@ export default function PublicShare({ slug }: { slug: string }) {
   const mountedRef = useRef(true);
   const attemptRef = useRef(0);
 
-  // Share pages are private, per-person content: noindex, no canonical.
+  // Share pages are unlisted, per-person content: noindex, no canonical.
   // Social previews are unaffected — link-preview bots are served by
   // middleware.js and never reach this component. The title becomes
   // personalized once the config loads (matches the middleware's OG title).

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -12,11 +13,17 @@ import PublicShare from "@/pages/PublicShare";
 import PublicHome from "@/pages/PublicHome";
 import NotFound from "@/pages/not-found";
 import ExperienceFrameFixture from "@/pages/ExperienceFrameFixture";
+import SiteFooter from "@/components/SiteFooter";
+import { PRIVACY_PATH, TERMS_PATH } from "@/lib/legal/constants";
+
+// Legal pages are lazy so they don't bloat the main bundle.
+const PrivacyPolicyPage = lazy(() => import("@/pages/legal/PrivacyPolicyPage"));
+const TermsPage = lazy(() => import("@/pages/legal/TermsPage"));
 
 // Auth pages share a lightweight background + font-loading shell; the
 // full birthday experience (with its own ambient FX, music, confetti,
 // etc.) lives entirely inside BirthdayExperience and is mounted at "/".
-function AuthShell({ children }: { children: React.ReactNode }) {
+function AuthShell({ children, footer = false }: { children: React.ReactNode; footer?: boolean }) {
   return (
     <>
       <link
@@ -25,6 +32,7 @@ function AuthShell({ children }: { children: React.ReactNode }) {
       />
       <Background />
       {children}
+      {footer && <SiteFooter />}
     </>
   );
 }
@@ -42,29 +50,43 @@ export default function App() {
         <Route path="/s/:slug">
           {(params) => <PublicShare slug={params.slug} />}
         </Route>
-        <Route path="/login">
+        <Route path={PRIVACY_PATH}>
           <AuthShell>
+            <Suspense fallback={<div className="min-h-screen-dvh" />}>
+              <PrivacyPolicyPage />
+            </Suspense>
+          </AuthShell>
+        </Route>
+        <Route path={TERMS_PATH}>
+          <AuthShell>
+            <Suspense fallback={<div className="min-h-screen-dvh" />}>
+              <TermsPage />
+            </Suspense>
+          </AuthShell>
+        </Route>
+        <Route path="/login">
+          <AuthShell footer>
             <PublicOnlyRoute>
               <Login />
             </PublicOnlyRoute>
           </AuthShell>
         </Route>
         <Route path="/signup">
-          <AuthShell>
+          <AuthShell footer>
             <PublicOnlyRoute>
               <Signup />
             </PublicOnlyRoute>
           </AuthShell>
         </Route>
         <Route path="/forgot-password">
-          <AuthShell>
+          <AuthShell footer>
             <PublicOnlyRoute>
               <ForgotPassword />
             </PublicOnlyRoute>
           </AuthShell>
         </Route>
         <Route path="/reset-password">
-          <AuthShell>
+          <AuthShell footer>
             <ResetPassword />
           </AuthShell>
         </Route>

@@ -17,6 +17,7 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 import { countdownActive } from "@/lib/countdown/defaults";
 import { unlockNowPatch } from "@/lib/countdown/editor";
 import PreviewStickerStudio from "@/components/stickers/PreviewStickerStudio";
+import SiteFooter from "@/components/SiteFooter";
 
 // Owner-only countdown preview chunk (loaded only when the draft has an active countdown).
 const CountdownGate = lazy(() => import("@/components/countdown/CountdownGate"));
@@ -340,6 +341,7 @@ export default function Dashboard() {
             />
           </div>
         )}
+        {tab !== "preview" && <SiteFooter compact />}
       </div>
     </div>
   );
