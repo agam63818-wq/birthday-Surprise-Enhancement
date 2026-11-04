@@ -66,7 +66,6 @@ export default function PageLanding({ onNext }: { onNext: () => void }) {
           subtitleFontFamily={bodyFont}
           ctaText={config.landing.buttonText}
           onCta={handleCta}
-          ctaStyle={{ background: "linear-gradient(135deg, #7c1d6f, #9d174d, #be185d, #7c3aed)" }}
           exiting={pressed}
         />
       )}

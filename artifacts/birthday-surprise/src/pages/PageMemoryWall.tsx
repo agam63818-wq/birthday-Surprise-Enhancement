@@ -89,10 +89,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
         <p style={{ color: "var(--ink-faint)", fontSize: "13px", fontFamily: bodyFont, maxWidth: "420px" }}>
           {subtitle || "The album is waiting for its first picture."}
         </p>
-        <GlowButton onClick={onNext} style={{
-          background: "linear-gradient(135deg, #4c1d95, #7c3aed, #be185d)",
-          position: "relative", zIndex: 5,
-        }}>
+        <GlowButton onClick={onNext} style={{ position: "relative", zIndex: 5 }}>
           {buttonText}
         </GlowButton>
       </div>
@@ -120,7 +117,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
             fontSize: "clamp(1.9rem, 5.5vw, 2.8rem)",
             lineHeight: "var(--leading-tight)",
             marginBottom: "6px",
-            filter: "drop-shadow(0 0 18px rgba(196, 132, 252, 0.4))",
+            filter: "drop-shadow(0 0 18px color-mix(in srgb, var(--pink) 35%, transparent))",
           }}
         />
         <p style={{ color: "var(--ink-faint)", fontSize: "13px", fontFamily: bodyFont }}>
@@ -267,7 +264,6 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
       <TeddySVGOnly size={64} animate="wave" style={{ marginBottom: "14px", position: "relative", zIndex: 5 }} />
 
       <GlowButton onClick={onNext} style={{
-        background: "linear-gradient(135deg, #4c1d95, #7c3aed, #be185d)",
         opacity: seenAll ? 1 : 0.35,
         pointerEvents: seenAll ? "all" : "none",
         transition: "opacity var(--dur-slow) var(--ease-smooth)",

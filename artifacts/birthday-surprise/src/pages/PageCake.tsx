@@ -107,39 +107,33 @@ function playCelebrateSfx() {
   } catch {}
 }
 
-/* ── Page-local keyframes (glow flash + wish shimmer) ────────── */
+/* ── Page-local keyframes (glow flash) ────────────────────── */
 const LOCAL_KEYFRAMES = `
 @keyframes cake-flash {
   0%   { opacity: 0; }
   12%  { opacity: 1; }
   100% { opacity: 0; }
 }
-@keyframes wish-shimmer {
-  0%, 100% { opacity: 0.55; }
-  50%      { opacity: 1; }
-}
 `;
 
-/* ── Radial sparkle particles that burst on cut ───────────── */
+/* ── Radial sparkle particles that burst on cut (theme colours) ── */
+const SPARK_COLORS = ["var(--pink)", "var(--violet)", "var(--lavender)", "var(--magenta)", "#fff6d8"];
 function SparkleParticles({ active }: { active: boolean }) {
   if (!active) return null;
-  const sparks = Array.from({ length: 18 }, (_, i) => {
-    const angle = (i / 18) * 360;
-    const dist = 85 + (i % 3) * 38;
+  const sparks = Array.from({ length: 20 }, (_, i) => {
+    const angle = (i / 20) * 360;
+    const dist = 90 + (i % 3) * 40;
     const rad = (angle * Math.PI) / 180;
     return {
       x: Math.cos(rad) * dist,
       y: Math.sin(rad) * dist,
-      color: ["#f9a8d4","#c084fc","#fde68a","#a78bfa","#fbcfe8","#e879f9","#fcd34d"][i % 7],
-      size: 5 + (i % 4) * 3,
-      delay: `${i * 0.03}s`,
+      color: SPARK_COLORS[i % SPARK_COLORS.length],
+      size: 4 + (i % 4) * 3,
+      delay: `${i * 0.025}s`,
     };
   });
   return (
-    <div style={{
-      position: "absolute", inset: 0, pointerEvents: "none",
-      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10,
-    }}>
+    <div className="cake-sparks" aria-hidden="true">
       {sparks.map((s, i) => (
         <div key={i} style={{
           position: "absolute",
@@ -153,91 +147,157 @@ function SparkleParticles({ active }: { active: boolean }) {
   );
 }
 
-/* ── Hand-crafted celebration cake with the name written on it ─── */
-const CANDLE_X = [98, 114, 130, 146, 162];
-const CANDLE_COLORS = ["#f9a8d4", "#c084fc", "#a78bfa", "#f472b6", "#818cf8"];
+/* ── Premium tiered cake (SVG). Every colour comes from the active theme
+      via CSS custom properties defined on .cake-art (see index.css). ── */
+const CANDLE_X = [100, 115, 130, 145, 160];
+const VIEW_W = 260;
+const VIEW_H = 272;
+const FLAME_Y = 44;
+
+function Stop({ offset, color }: { offset: string; color: string }) {
+  return <stop offset={offset} style={{ stopColor: color }} />;
+}
+
+/** Cream drip line hanging from a tier's top edge. */
+function dripPath(x: number, y: number, w: number, seed: number) {
+  const n = Math.max(5, Math.round(w / 16));
+  const step = w / n;
+  let d = `M${x} ${y} h${w} v4`;
+  for (let i = n - 1; i >= 0; i--) {
+    const depth = 5 + ((i * 7 + seed) % 4) * 3.2;
+    const cx = x + i * step + step / 2;
+    d += ` L${cx + step / 2} ${y + 4} Q${cx + step * 0.28} ${y + 4} ${cx + step * 0.22} ${y + depth} a${step * 0.22} ${step * 0.22} 0 0 1 ${-step * 0.44} 0 Q${cx - step * 0.28} ${y + 4} ${cx - step / 2} ${y + 4}`;
+  }
+  return `${d} Z`;
+}
+
+function Pearls({ x, y, w, gap = 11, r = 2.4, prefix }: { x: number; y: number; w: number; gap?: number; r?: number; prefix: string }) {
+  const count = Math.floor(w / gap);
+  const start = x + (w - (count - 1) * gap) / 2;
+  return (
+    <g>
+      {Array.from({ length: count }, (_, i) => (
+        <g key={i}>
+          <circle cx={start + i * gap} cy={y} r={r} fill={`url(#${prefix}gold)`} />
+          <circle cx={start + i * gap - r * 0.35} cy={y - r * 0.35} r={r * 0.35} fill="rgba(255,255,255,0.75)" />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+function Tier({ x, y, w, h, prefix, fill, drip, seed }: {
+  x: number; y: number; w: number; h: number; prefix: string; fill: string; drip: string; seed: number;
+}) {
+  const rx = w / 2;
+  const ry = Math.max(6, w * 0.055);
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={10} fill={`url(#${prefix}${fill})`} />
+      {/* Cylinder shading */}
+      <rect x={x} y={y} width={w} height={h} rx={10} fill={`url(#${prefix}sheen)`} />
+      {/* Tier top surface */}
+      <ellipse cx={x + rx} cy={y} rx={rx} ry={ry} style={{ fill: drip }} />
+      <ellipse cx={x + rx} cy={y - 1} rx={rx - 5} ry={ry - 2.5} fill="rgba(255,255,255,0.22)" />
+      {/* Ganache / cream drips */}
+      <path d={dripPath(x, y, w, seed)} style={{ fill: drip }} />
+    </g>
+  );
+}
 
 function CakeArt({ flamesLit, prefix }: { flamesLit: boolean; prefix: string }) {
   const config = useConfig();
   const name = config.name;
-  const nameSize = name.length > 9 ? 15 : 19;
+  const long = name.length > 12;
+  const nameSize = long ? 14 : name.length > 9 ? 16.5 : 20;
   return (
-    <svg viewBox="0 0 260 250" width="100%" height="100%" style={{ display: "block" }}>
+    <svg className="cake-art" viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} width="100%" height="100%" style={{ display: "block", overflow: "visible" }}>
       <defs>
         <linearGradient id={`${prefix}t1`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#be185d"/><stop offset="100%" stopColor="#7e1544"/>
+          <Stop offset="0%" color="var(--cake-b1)" /><Stop offset="100%" color="var(--cake-b2)" />
         </linearGradient>
         <linearGradient id={`${prefix}t2`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ec4899"/><stop offset="100%" stopColor="#be185d"/>
+          <Stop offset="0%" color="var(--cake-m1)" /><Stop offset="100%" color="var(--cake-m2)" />
         </linearGradient>
         <linearGradient id={`${prefix}t3`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#fdf2f8"/><stop offset="100%" stopColor="#fbcfe8"/>
+          <Stop offset="0%" color="var(--cake-c1)" /><Stop offset="100%" color="var(--cake-c2)" />
         </linearGradient>
-        <radialGradient id={`${prefix}fl`} cx="50%" cy="35%" r="65%">
-          <stop offset="0%" stopColor="#fefce8"/><stop offset="55%" stopColor="#fde047"/><stop offset="100%" stopColor="#f97316"/>
+        <linearGradient id={`${prefix}gold`} x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0%" color="var(--cake-gold-1)" /><Stop offset="55%" color="var(--cake-gold-2)" /><Stop offset="100%" color="var(--cake-gold-1)" />
+        </linearGradient>
+        <linearGradient id={`${prefix}sheen`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="rgba(0,0,0,0.30)" />
+          <stop offset="22%" stopColor="rgba(255,255,255,0.16)" />
+          <stop offset="40%" stopColor="rgba(255,255,255,0.04)" />
+          <stop offset="78%" stopColor="rgba(0,0,0,0.06)" />
+          <stop offset="100%" stopColor="rgba(0,0,0,0.34)" />
+        </linearGradient>
+        <linearGradient id={`${prefix}candle`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#efe4d6" /><stop offset="45%" stopColor="#fffaf2" /><stop offset="100%" stopColor="#d9cbb8" />
+        </linearGradient>
+        <radialGradient id={`${prefix}fl`} cx="50%" cy="38%" r="65%">
+          <stop offset="0%" stopColor="#fffdf0" /><stop offset="50%" stopColor="#ffd86b" /><stop offset="100%" stopColor="#ff8a2a" />
         </radialGradient>
-        <linearGradient id={`${prefix}pl`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(196,181,253,0.5)"/><stop offset="100%" stopColor="rgba(124,58,237,0.25)"/>
-        </linearGradient>
+        <radialGradient id={`${prefix}halo`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(255,214,120,0.55)" /><stop offset="100%" stopColor="rgba(255,214,120,0)" />
+        </radialGradient>
       </defs>
 
-      {/* Plate */}
-      <ellipse cx="130" cy="231" rx="104" ry="13" fill={`url(#${prefix}pl)`}/>
-      <ellipse cx="130" cy="229" rx="96" ry="10" fill="rgba(255,255,255,0.12)"/>
+      {/* Cake stand */}
+      <ellipse cx="130" cy="264" rx="56" ry="7" fill="rgba(0,0,0,0.35)" />
+      <path d="M112 262 Q130 252 148 262 L142 240 L118 240 Z" fill={`url(#${prefix}gold)`} />
+      <ellipse cx="130" cy="240" rx="112" ry="12" fill={`url(#${prefix}gold)`} />
+      <ellipse cx="130" cy="237" rx="104" ry="9" style={{ fill: "var(--cake-plate)" }} />
+      <ellipse cx="96" cy="235" rx="34" ry="2.4" fill="rgba(255,255,255,0.35)" />
 
       {/* Bottom tier */}
-      <rect x="40" y="166" width="180" height="58" rx="10" fill={`url(#${prefix}t1)`}/>
-      <rect x="40" y="166" width="180" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
-      <path d="M40 170 h180 v6 q-10 14 -20 0 q-10 16 -20 0 q-10 12 -20 0 q-10 18 -20 0 q-10 12 -20 0 q-10 16 -20 0 q-10 12 -20 0 q-10 16 -20 0 q-10 14 -20 0 Z" fill="#fdf2f8" opacity="0.92"/>
-      <text x="130" y="206" textAnchor="middle" fontSize="10.5" letterSpacing="2.5"
-        fontFamily="Inter, sans-serif" fontWeight="600" fill="rgba(255,255,255,0.72)">
+      <Tier x={38} y={174} w={184} h={62} prefix={prefix} fill="t1" drip="var(--cake-cream)" seed={1} />
+      <rect x="38" y="214" width="184" height="5" fill={`url(#${prefix}gold)`} opacity="0.9" />
+      <text x="130" y="205" textAnchor="middle" fontSize="9.5" letterSpacing="3.2"
+        fontFamily="Inter, sans-serif" fontWeight="700" style={{ fill: "var(--cake-text)" }}>
         HAPPY BIRTHDAY
       </text>
+      <Pearls x={44} y={232} w={172} prefix={prefix} />
 
       {/* Middle tier */}
-      <rect x="62" y="122" width="136" height="48" rx="8" fill={`url(#${prefix}t2)`}/>
-      <rect x="62" y="122" width="136" height="10" rx="5" fill="rgba(255,255,255,0.14)"/>
-      <path d="M62 126 h136 v5 q-8.5 12 -17 0 q-8.5 14 -17 0 q-8.5 10 -17 0 q-8.5 15 -17 0 q-8.5 10 -17 0 q-8.5 14 -17 0 q-8.5 10 -17 0 q-8.5 13 -17 0 Z" fill="#fdf2f8" opacity="0.9"/>
-      {/* The name — written on the cake */}
-      <text x="130" y="158" textAnchor="middle" fontSize={nameSize}
-        fontFamily="'Dancing Script', cursive" fontWeight="700" fill="#fff8fc"
-        style={{ filter: "drop-shadow(0 1px 2px rgba(131,24,67,0.9))" }}>
+      <Tier x={62} y={128} w={136} h={50} prefix={prefix} fill="t2" drip="var(--cake-cream)" seed={4} />
+      <text x="130" y="163" textAnchor="middle" fontSize={nameSize}
+        fontFamily="'Dancing Script', cursive" fontWeight="700"
+        {...(long ? { textLength: 118, lengthAdjust: "spacingAndGlyphs" } : {})}
+        style={{ fill: "#fffaf5", filter: "drop-shadow(0 1px 1.5px rgba(0,0,0,0.55))" }}>
         {name}
       </text>
-      {/* Cherries on middle tier edges */}
-      <circle cx="74" cy="122" r="4.5" fill="#f43f5e"/>
-      <circle cx="72.5" cy="120.5" r="1.4" fill="rgba(255,255,255,0.65)"/>
-      <circle cx="186" cy="122" r="4.5" fill="#f43f5e"/>
-      <circle cx="184.5" cy="120.5" r="1.4" fill="rgba(255,255,255,0.65)"/>
+      <Pearls x={66} y={175} w={128} gap={10} r={2.1} prefix={prefix} />
 
       {/* Top tier */}
-      <rect x="84" y="82" width="92" height="42" rx="7" fill={`url(#${prefix}t3)`}/>
-      <path d="M84 86 h92 v4 q-7.6 10 -15.3 0 q-7.6 12 -15.3 0 q-7.6 9 -15.3 0 q-7.6 12 -15.3 0 q-7.6 9 -15.4 0 q-7.7 11 -15.4 0 Z" fill="#ec4899" opacity="0.55"/>
-      <path d="M118 108 c0 0 -5 -3.6 -5 -6.6 c0 -2 1.7 -2.9 3.3 -2.1 c0.8 0.4 1.3 1.2 1.7 2 c0.4 -0.8 0.9 -1.6 1.7 -2 c1.6 -0.8 3.3 0.1 3.3 2.1 c0 3 -5 6.6 -5 6.6 Z" fill="rgba(236,72,153,0.75)"/>
-      <path d="M142 108 c0 0 -5 -3.6 -5 -6.6 c0 -2 1.7 -2.9 3.3 -2.1 c0.8 0.4 1.3 1.2 1.7 2 c0.4 -0.8 0.9 -1.6 1.7 -2 c1.6 -0.8 3.3 0.1 3.3 2.1 c0 3 -5 6.6 -5 6.6 Z" fill="rgba(192,132,252,0.75)"/>
+      <Tier x={86} y={88} w={88} h={42} prefix={prefix} fill="t3" drip="var(--cake-drip)" seed={2} />
+      {[110, 130, 150].map((hx, i) => (
+        <path key={hx} transform={`translate(${hx - 5} ${108 + (i === 1 ? -2 : 0)}) scale(0.85)`}
+          d="M6 11 c0 0 -6 -4 -6 -7.4 c0 -2.2 1.9 -3.3 3.7 -2.4 c0.9 0.5 1.5 1.3 2.3 2.2 c0.8 -0.9 1.4 -1.7 2.3 -2.2 c1.8 -0.9 3.7 0.2 3.7 2.4 c0 3.4 -6 7.4 -6 7.4 Z"
+          style={{ fill: i === 1 ? "var(--cake-accent)" : "var(--cake-drip)" }} />
+      ))}
+      <Pearls x={90} y={127} w={80} gap={9} r={1.9} prefix={prefix} />
 
       {/* Sprinkles */}
-      {[[55,192],[85,214],[120,190],[152,212],[182,192],[206,208],[70,146],[100,166],[160,166],[190,148]].map(([x,y],i)=>(
-        <circle key={i} cx={x} cy={y} r="2" fill={["#fde68a","#fbcfe8","#c4b5fd","#a5f3fc"][i%4]} opacity="0.85"/>
+      {[[56,196],[78,222],[196,198],[208,222],[84,148],[176,150],[108,190],[156,190]].map(([sx, sy], i) => (
+        <rect key={i} x={sx} y={sy} width="5" height="1.8" rx="0.9"
+          transform={`rotate(${(i * 47) % 180} ${sx + 2.5} ${sy + 0.9})`}
+          style={{ fill: ["var(--cake-gold-1)", "#fffaf2", "var(--cake-accent)"][i % 3] }} opacity="0.9" />
       ))}
 
-      {/* Candles + flames — flames fade in when lit, out when blown */}
+      {/* Candles + flames */}
       {CANDLE_X.map((x, i) => (
         <g key={i}>
-          <rect x={x-3} y="58" width="6" height="25" rx="3" fill={CANDLE_COLORS[i]}/>
-          <rect x={x-3} y="63" width="6" height="3" fill="rgba(255,255,255,0.45)"/>
-          <rect x={x-3} y="72" width="6" height="3" fill="rgba(255,255,255,0.45)"/>
-          <rect x={x-0.6} y="53" width="1.2" height="6" fill="#78350f"/>
-          <g style={{
-            opacity: flamesLit ? 1 : 0,
-            transition: `opacity 0.5s ease ${flamesLit ? i * 0.12 : 0}s`,
-          }}>
-            <circle cx={x} cy="48" r="9" fill="rgba(253,224,71,0.18)"/>
-            <ellipse cx={x} cy="48" rx="4" ry="7.5" fill={`url(#${prefix}fl)`}
-              style={{
-                animation: `candle-flicker ${0.55 + i * 0.17}s ease-in-out infinite`,
-                transformOrigin: `${x}px 54px`,
-              }}/>
+          <rect x={x - 3.2} y="54" width="6.4" height="34" rx="3" fill={`url(#${prefix}candle)`} />
+          {[60, 69, 78].map((ry) => (
+            <rect key={ry} x={x - 3.2} y={ry} width="6.4" height="2.2" fill={`url(#${prefix}gold)`} opacity="0.85" />
+          ))}
+          <rect x={x - 0.6} y="49" width="1.2" height="6" rx="0.6" fill="#3b2412" />
+          <g style={{ opacity: flamesLit ? 1 : 0, transition: `opacity 0.5s ease ${flamesLit ? i * 0.12 : 0}s` }}>
+            <circle cx={x} cy={FLAME_Y} r="13" fill={`url(#${prefix}halo)`} />
+            <ellipse cx={x} cy={FLAME_Y} rx="4" ry="8" fill={`url(#${prefix}fl)`}
+              style={{ animation: `candle-flicker ${0.55 + i * 0.17}s ease-in-out infinite`, transformOrigin: `${x}px ${FLAME_Y + 6}px` }} />
+            <ellipse cx={x} cy={FLAME_Y + 2} rx="1.5" ry="3" fill="rgba(255,255,255,0.85)" />
           </g>
         </g>
       ))}
@@ -248,29 +308,32 @@ function CakeArt({ flamesLit, prefix }: { flamesLit: boolean; prefix: string }) 
 /* Knife that slices through the middle */
 function Knife() {
   return (
-    <svg width="44" height="116" viewBox="0 0 44 116" style={{ filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.5))" }}>
-      <rect x="15" y="0" width="14" height="28" rx="6" fill="#6d28d9"/>
-      <rect x="15" y="10" width="14" height="3" fill="rgba(255,255,255,0.25)"/>
-      <path d="M16 28 L28 28 L23 104 L20 104 Z" fill="#e2e8f0"/>
-      <path d="M22 28 L28 28 L23.5 104 L22 104 Z" fill="#cbd5e1"/>
+    <svg width="44" height="120" viewBox="0 0 44 120" style={{ filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.55))" }}>
+      <defs>
+        <linearGradient id="knife-blade" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#f8fafc" /><stop offset="55%" stopColor="#e2e8f0" /><stop offset="100%" stopColor="#94a3b8" />
+        </linearGradient>
+      </defs>
+      <rect x="14" y="0" width="16" height="30" rx="7" style={{ fill: "var(--cake-gold-2)" }} />
+      <rect x="14" y="11" width="16" height="3" fill="rgba(255,255,255,0.35)" />
+      <path d="M16 30 L28 30 L23.5 108 L20 108 Z" fill="url(#knife-blade)" />
     </svg>
   );
 }
 
 /**
  * The cake-cutting moment — the emotional climax of the whole experience.
- * Upgraded from a single tap into a three-step ritual that builds
- * anticipation (tap-only — no microphone interactions):
- *
- *   1. \"unlit\"  — tap to light the candles (ignite chime, flames fade in)
- *   2. \"lit\"    — make a wish… tap to blow them out (blow SFX, smoke)
- *   3. \"blown\"  — tap to cut: knife slice, cake splits, grand
- *      CelebrationBurst, golden glow flash, Song 1 → Song 2 crossfade.
- *
- * Custom cake photos (useImage) skip the candle ritual — a photo has no
- * drawn candles — and go straight to the cut, exactly as before.
+ * Three-step ritual (tap-only): light the candles → make a wish and blow →
+ * cut. Custom cake photos (useImage) skip the candle ritual.
+ * Every colour follows the active theme.
  */
 type Stage = "unlit" | "lit" | "blown" | "cut";
+const STEPS: { stage: Stage; label: string; icon: string }[] = [
+  { stage: "unlit", label: "Light", icon: "🕯️" },
+  { stage: "lit", label: "Wish", icon: "✨" },
+  { stage: "blown", label: "Cut", icon: "🔪" },
+];
+const STAGE_INDEX: Record<Stage, number> = { unlit: 0, lit: 1, blown: 2, cut: 3 };
 
 export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
   const config = useConfig();
@@ -308,20 +371,17 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
     if (cutting) return;
     try { navigator.vibrate?.([30, 40, 60]); } catch { /* haptics unsupported */ }
     setCutting(true);
-
-    // 1. Knife slices down
     setKnife(true);
     playSliceSfx();
 
-    // 2. Cake splits and the celebration erupts — burst, flash, Song 2
     setTimeout(() => {
       setStage("cut");
       setShaking(true);
       setSparkling(true);
-      setBurst(true);            // grand CelebrationBurst
-      setFlash(true);            // full-screen golden glow flash
+      setBurst(true);
+      setFlash(true);
       playCelebrateSfx();
-      playCakeSong?.();          // Song 1 → Song 2 crossfade
+      playCakeSong?.();
     }, 620);
 
     setTimeout(() => setKnife(false), 1150);
@@ -355,87 +415,62 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
     position: "absolute", inset: 0,
     clipPath: side === "left" ? "inset(0 50% 0 0)" : "inset(0 0 0 50%)",
     transform: cut
-      ? side === "left"
-        ? "translateX(-13px) rotate(-2.5deg)"
-        : "translateX(13px) rotate(2.5deg)"
+      ? side === "left" ? "translateX(-14px) rotate(-2.5deg)" : "translateX(14px) rotate(2.5deg)"
       : "none",
     transformOrigin: "50% 100%",
     transition: "transform 0.75s var(--ease-luxe)",
     willChange: "transform",
   });
 
+  const current = STAGE_INDEX[stage];
+
   return (
-    <div className="min-h-screen-dvh" style={{
-      display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "center",
-      padding: "calc(56px + env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px))",
-      position: "relative", zIndex: 5,
-    }}>
+    <div className="min-h-screen-dvh cake-page" data-stage={stage}>
       <style>{LOCAL_KEYFRAMES}</style>
       <BackgroundEffectsLayer accent="rose" density="medium" zIndex={1} />
       <CelebrationBurst active={burst} intensity="grand" origin={{ x: 0.5, y: 0.5 }} />
 
-      {/* Full-screen golden glow flash at the moment of the cut */}
-      {flash && (
-        <div aria-hidden="true" style={{
-          position: "fixed", inset: 0, zIndex: 40, pointerEvents: "none",
-          background: "radial-gradient(circle at 50% 55%, rgba(253,224,71,0.42), rgba(236,72,153,0.26) 38%, rgba(124,58,237,0.12) 60%, transparent 75%)",
-          animation: "cake-flash 2s ease-out forwards",
-          willChange: "opacity",
-        }} />
-      )}
+      {flash && <div aria-hidden="true" className="cake-flash" />}
 
-      <GlassCard enter style={{
-        maxWidth: "430px", width: "100%", padding: "32px 26px",
-        textAlign: "center", position: "relative", zIndex: 5,
-      }}>
+      <GlassCard enter className="cake-card">
         <p className="chip" style={{ marginBottom: "12px" }}>🎂 Birthday Wishes</p>
         <StaggeredText
           as="h1"
           text={config.cake.title}
           delay={0.2}
-          className="font-script hero-gradient-text"
-          style={{
-            fontSize: "clamp(1.7rem, 5vw, 2.5rem)",
-            lineHeight: "var(--leading-tight)",
-            marginBottom: "6px",
-            filter: "drop-shadow(0 0 20px rgba(236, 72, 153, 0.35))",
-          }}
+          className="font-script hero-gradient-text pm-title"
+          style={{ fontSize: "clamp(1.8rem, 5.4vw, 2.6rem)", lineHeight: "var(--leading-tight)", marginBottom: "6px" }}
         />
-        <p className="blur-in" style={{ color: "var(--ink-faint)", fontSize: "13px", fontFamily: bodyFont, marginBottom: "20px", animationDelay: "0.5s" }}>
+        <p className="blur-in pm-subtitle" style={{ fontFamily: bodyFont, marginBottom: "16px", animationDelay: "0.5s" }}>
           {config.cake.subtitle}
         </p>
 
+        {/* Ritual progress: Light → Wish → Cut */}
+        {!useImage && (
+          <ol className="cake-steps" aria-label="Cake ritual progress">
+            {STEPS.map((step, i) => (
+              <li key={step.stage}
+                className={`cake-step${i === current ? " is-current" : ""}${i < current ? " is-done" : ""}`}
+                aria-current={i === current ? "step" : undefined}>
+                <span className="cake-step-dot" aria-hidden="true">{i < current ? "✓" : step.icon}</span>
+                <span>{step.label}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+
         {/* Cake stage */}
-        <div style={{ position: "relative", display: "flex", justifyContent: "center", marginBottom: "16px" }}>
-          {/* Cinematic buildup — soft glow pulse inviting the tap */}
+        <div className="cake-stage">
           {!cut && <div className="cake-invite-glow" aria-hidden="true" />}
-
-          {/* Rotating golden celebration rays behind the cake */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute", inset: "-14%", zIndex: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              pointerEvents: "none", overflow: "hidden",
-            }}
-          >
-            <div style={{
-              width: "125%", aspectRatio: "1", borderRadius: "50%",
-              opacity: cut ? 0.55 : stage === "lit" ? 0.42 : 0.3,
-              transition: "opacity 0.8s ease",
-              background: "repeating-conic-gradient(rgba(253,224,71,0.16) 0deg 9deg, transparent 9deg 32deg)",
-              WebkitMaskImage: "radial-gradient(circle, black 26%, transparent 68%)",
-              maskImage: "radial-gradient(circle, black 26%, transparent 68%)",
-              animation: "ray-spin 28s linear infinite",
-            }} />
+          <div className="cake-rays-wrap" aria-hidden="true">
+            <div className="cake-rays" style={{ opacity: cut ? 0.6 : stage === "lit" ? 0.45 : 0.28 }} />
           </div>
+          <div className="cake-spotlight" aria-hidden="true" />
 
-          {/* Party emojis rising after the cut */}
           {cut && ["🎉", "🎈", "💖", "✨", "🎊", "💝"].map((e, i) => (
-            <span key={i} style={{
-              position: "absolute", bottom: "6%", left: `${10 + i * 15}%`,
-              fontSize: `${18 + (i % 3) * 7}px`, zIndex: 11, pointerEvents: "none",
+            <span key={i} aria-hidden="true" className="cake-party" style={{
+              left: `${10 + i * 15}%`,
+              fontSize: `${18 + (i % 3) * 7}px`,
               animation: `fun-heart-rise ${2.6 + (i % 3) * 0.7}s ease-out ${i * 0.25}s infinite`,
             }}>{e}</span>
           ))}
@@ -444,110 +479,58 @@ export default function PageCake({ onNext, playCakeSong }: CakePageProps) {
 
           <div
             onClick={handleTap}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleTap(); } }}
             role="button"
+            tabIndex={cut ? -1 : 0}
             aria-label={ariaLabel}
+            className={`cake-hit${cut ? " is-cut" : ""}`}
             style={{
-              cursor: cut ? "default" : "pointer",
-              userSelect: "none",
-              position: "relative",
-              width: "min(72vw, 280px)",
-              aspectRatio: useImage ? "1" : "260 / 250",
+              aspectRatio: useImage ? "1" : `${VIEW_W} / ${VIEW_H}`,
               animation: shaking ? "screen-shake 0.55s ease" : undefined,
-              filter: cut
-                ? "drop-shadow(0 16px 48px rgba(236,72,153,0.65)) drop-shadow(0 0 60px rgba(192,132,252,0.35))"
-                : stage === "lit"
-                ? "drop-shadow(0 12px 34px rgba(236,72,153,0.45)) drop-shadow(0 0 44px rgba(253,224,71,0.28))"
-                : "drop-shadow(0 12px 34px rgba(236,72,153,0.4))",
-              transition: "filter 0.6s ease",
             }}
           >
-            {/* Two halves — they separate when the knife cuts through */}
             <div style={halfStyle("left")}>
               {useImage
-                ? <img src={cakeSrc} alt="Birthday cake" onError={() => setImgError(true)}
-                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "18px", display: "block" }}/>
+                ? <img src={cakeSrc} alt="Birthday cake" onError={() => setImgError(true)} className="cake-photo" />
                 : <CakeArt flamesLit={stage === "lit"} prefix="cl" />}
             </div>
             <div style={halfStyle("right")}>
               {useImage
-                ? <img src={cakeSrc} alt="" aria-hidden="true"
-                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "18px", display: "block" }}/>
+                ? <img src={cakeSrc} alt="" aria-hidden="true" className="cake-photo" />
                 : <CakeArt flamesLit={stage === "lit"} prefix="cr" />}
             </div>
 
-            {/* Knife slice */}
             {knife && (
-              <div style={{
-                position: "absolute", left: "50%", top: "-6%", zIndex: 6,
-                animation: "knife-cut 1.1s cubic-bezier(0.4,0,0.2,1) forwards",
-                pointerEvents: "none",
-              }}>
+              <div className="cake-knife">
                 <Knife />
               </div>
             )}
 
-            {/* Candle smoke after blow-out */}
             {(stage === "blown" || cut) && !useImage && CANDLE_X.map((x, i) => (
-              <div key={i} style={{
-                position: "absolute",
-                left: `${(x / 260) * 100}%`, top: "17%",
-                width: "9px", height: "9px", borderRadius: "50%",
-                background: "rgba(203,213,225,0.55)",
-                filter: "blur(2px)",
-                animation: `smoke-rise 1.7s ease-out ${i * 0.13}s both`,
-                pointerEvents: "none",
+              <div key={i} className="cake-smoke" style={{
+                left: `${(x / VIEW_W) * 100}%`,
+                top: `${(FLAME_Y / VIEW_H) * 100}%`,
+                animationDelay: `${i * 0.13}s`,
               }} />
             ))}
           </div>
         </div>
 
-        {/* Stage-aware tap hint — anticipation, not abruptness */}
         {!cut && (
-          <div key={stage} style={{
-            marginBottom: "18px", padding: "9px 22px",
-            borderRadius: "var(--rad-pill)", display: "inline-block",
-            background: stage === "lit" ? "rgba(253,224,71,0.07)" : "rgba(236,72,153,0.07)",
-            border: stage === "lit" ? "1px solid rgba(253,224,71,0.25)" : "1px solid rgba(236,72,153,0.22)",
-            color: stage === "lit" ? "rgba(253,230,138,0.85)" : "rgba(249,168,212,0.7)",
-            fontSize: "12.5px",
-            letterSpacing: "0.05em",
-            animation: stage === "lit"
-              ? "wish-shimmer 2s ease-in-out infinite"
-              : "pulse-glow 2.4s ease-in-out infinite",
-            transition: "background 0.5s ease, border-color 0.5s ease, color 0.5s ease",
-          }}>
+          <div key={stage} className={`cake-hint${stage === "lit" ? " is-wish" : ""}`}>
             {hint}
           </div>
         )}
 
-        {/* Dynamic text reaction after the cut */}
         {showMessage && (
-          <div className="section-enter" style={{
-            background: "linear-gradient(165deg, rgba(236,72,153,0.1), rgba(124,58,237,0.08))",
-            border: "1px solid rgba(236,72,153,0.28)",
-            borderRadius: "var(--rad-lg)", padding: "18px", marginBottom: "22px",
-            boxShadow: "var(--glow-subtle), 0 0 0 1px rgba(255,255,255,0.03) inset",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "10px" }}>
-              <span aria-hidden="true" style={{ fontSize: "1.5rem", display: "inline-block", animation: "teddy-bounce 1.3s ease-in-out infinite" }}>🧸</span>
-              <span className="chip">✨ Wish granted ✨</span>
-              <span aria-hidden="true" style={{ fontSize: "1.5rem", display: "inline-block", animation: "teddy-bounce 1.3s ease-in-out 0.35s infinite" }}>🐻</span>
-            </div>
-            <p className="shimmer-text font-script" style={{ fontSize: "1.45rem", marginBottom: "8px" }}>
-              Happy Birthday {config.name}! 🎂
-            </p>
-            <p style={{
-              color: "rgba(249,168,212,0.92)", fontSize: "1.05rem",
-              lineHeight: "var(--leading-relaxed)",
-              fontFamily: bodyFont,
-            }}>
-              {config.cake.message}
-            </p>
+          <div className="section-enter cake-wish-card">
+            <span className="chip">✨ Wish granted ✨</span>
+            <p className="font-script cake-wish-title">Happy Birthday {config.name}! 🎂</p>
+            <p className="cake-wish-message" style={{ fontFamily: bodyFont }}>{config.cake.message}</p>
           </div>
         )}
 
         <GlowButton onClick={onNext} style={{
-          background: "linear-gradient(135deg,#7c1d6f,#be185d,#7c3aed)",
           opacity: showButton ? 1 : 0,
           transform: showButton ? "translateY(0)" : "translateY(12px)",
           pointerEvents: showButton ? "all" : "none",

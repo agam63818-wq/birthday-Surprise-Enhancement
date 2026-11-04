@@ -350,9 +350,9 @@ export default function PageLastNote() {
         <div className="section-enter" style={{ marginTop: "24px", textAlign: "center", position: "relative", zIndex: 5 }}>
           <h2 className="font-script" style={{
             fontSize: "clamp(1.6rem, 5vw, 2.6rem)",
-            background: "linear-gradient(135deg, #f9a8d4, #e879f9)",
+            background: "var(--grad-brand)",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-            filter: "drop-shadow(0 0 20px rgba(236,72,153,0.5))",
+            filter: "drop-shadow(0 0 20px color-mix(in srgb, var(--pink) 45%, transparent))",
             marginBottom: "6px",
           }}>
             Happy Birthday, {config.name} 🎂

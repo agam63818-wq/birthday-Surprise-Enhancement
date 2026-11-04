@@ -248,12 +248,7 @@ export default function GiftRevealScene({ onNext, isActive, reducedMotion }: Sce
             — {senderName}
           </p>
         )}
-        <button onClick={onNext} style={{
-          marginTop: "16px", padding: "14px 32px", borderRadius: "999px",
-          border: "1px solid rgba(255,51,119,0.5)",
-          background: "linear-gradient(135deg, rgba(255,51,119,0.2), rgba(157,78,221,0.2))",
-          color: "#fff", fontSize: "1rem", cursor: "pointer",
-        }}>Continue ✨</button>
+        <button type="button" className="pm-scene-cta" onClick={onNext} style={{ marginTop: "16px" }}>Continue ✨</button>
       </div>
     );
   }

@@ -46,7 +46,7 @@ export default function PageOurStory({ onNext }: { onNext: () => void }) {
             fontSize: "clamp(1.9rem, 5.5vw, 2.8rem)",
             lineHeight: "var(--leading-tight)",
             marginBottom: "10px",
-            filter: "drop-shadow(0 0 18px rgba(232, 121, 249, 0.35))",
+            filter: "drop-shadow(0 0 18px color-mix(in srgb, var(--pink) 35%, transparent))",
           }}
         />
         <p
@@ -82,7 +82,7 @@ export default function PageOurStory({ onNext }: { onNext: () => void }) {
           ))}
         </div>
 
-        <GlowButton onClick={onNext} style={{ background: "linear-gradient(135deg, #4c1d95, #7c3aed, #be185d)" }}>
+        <GlowButton onClick={onNext}>
           {buttonText}
         </GlowButton>
       </GlassCard>

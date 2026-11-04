@@ -522,8 +522,6 @@ export default function PageLoveDay({ onNext, playCakeSong }: LoveDayPageProps) 
         <GlowButton
           onClick={onNext}
           style={{
-            background:
-              "linear-gradient(135deg, #9d174d, #ec4899, #7c3aed)",
             opacity: showButton ? 1 : 0,
             transform: showButton ? "translateY(0)" : "translateY(12px)",
             pointerEvents: showButton ? "all" : "none",
