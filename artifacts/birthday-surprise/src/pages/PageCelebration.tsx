@@ -46,7 +46,7 @@ export default function PageCelebration({ onNext }: { onNext: () => void }) {
             fontSize: "clamp(2rem, 6vw, 3rem)",
             lineHeight: "var(--leading-tight)",
             marginBottom: "10px",
-            filter: "drop-shadow(0 0 20px rgba(232, 121, 249, 0.35))",
+            filter: "drop-shadow(0 0 20px color-mix(in srgb, var(--pink) 35%, transparent))",
           }}
         />
 
@@ -57,15 +57,7 @@ export default function PageCelebration({ onNext }: { onNext: () => void }) {
           {subtitle2}
         </p>
 
-        <div
-          className="blur-in"
-          style={{
-            display: "inline-block", padding: "5px 16px", borderRadius: "var(--rad-pill)",
-            background: "rgba(167, 139, 250, 0.08)", border: "1px solid rgba(167, 139, 250, 0.18)",
-            color: "var(--ink-faint)", fontSize: "10px", letterSpacing: "0.15em",
-            marginBottom: "28px", animationDelay: "0.8s",
-          }}
-        >
+        <div className="blur-in pm-badge" style={{ marginBottom: "28px", animationDelay: "0.8s" }}>
           {badge}
         </div>
 
@@ -73,7 +65,7 @@ export default function PageCelebration({ onNext }: { onNext: () => void }) {
 
         <p
           style={{
-            color: "rgba(235, 210, 255, 0.85)", fontSize: "1.05rem",
+            color: "var(--ink-soft)", fontSize: "1.05rem",
             lineHeight: "var(--leading-relaxed)", marginBottom: "32px",
             fontFamily: bodyFont,
           }}
@@ -81,7 +73,7 @@ export default function PageCelebration({ onNext }: { onNext: () => void }) {
           <TypewriterText text={message} speed={40} delay={0.3} />
         </p>
 
-        <GlowButton onClick={onNext} style={{ background: "linear-gradient(135deg, #4c1d95, #7c3aed, #be185d)" }}>
+        <GlowButton onClick={onNext}>
           {buttonText}
         </GlowButton>
       </GlassCard>

@@ -731,9 +731,6 @@ export default function PageFamilyDay({
         <GlowButton
           onClick={onNext}
           style={{
-            background: isFather
-              ? "linear-gradient(135deg, #92400e, #d97706, #fbbf24)"
-              : "linear-gradient(135deg, #9d174d, #ec4899, #f9a8d4)",
             opacity: showButton ? 1 : 0,
             transform: showButton ? "translateY(0)" : "translateY(12px)",
             pointerEvents: showButton ? "all" : "none",

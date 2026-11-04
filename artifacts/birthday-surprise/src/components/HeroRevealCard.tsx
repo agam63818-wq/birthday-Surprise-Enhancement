@@ -65,7 +65,7 @@ export default function HeroRevealCard({
           fontSize: "var(--text-hero)",
           lineHeight: "var(--leading-tight)",
           marginBottom: "14px",
-          filter: "drop-shadow(0 0 30px rgba(236, 72, 153, 0.4))",
+          filter: "drop-shadow(0 0 30px color-mix(in srgb, var(--pink) 35%, transparent))",
         }}
       />
       {subtitle && (

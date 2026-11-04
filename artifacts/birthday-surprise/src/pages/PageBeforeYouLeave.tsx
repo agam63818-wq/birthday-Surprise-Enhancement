@@ -52,9 +52,9 @@ export default function PageBeforeYouLeave({ onNext }: { onNext: () => void }) {
             fontSize: "clamp(1.7rem, 5vw, 2.5rem)",
             lineHeight: 1.35,
             marginBottom: "36px",
-            background: "linear-gradient(135deg, #f9a8d4, #c084fc)",
+            background: "var(--grad-brand)",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-            filter: "drop-shadow(0 0 16px rgba(196, 132, 252, 0.3))",
+            filter: "drop-shadow(0 0 16px color-mix(in srgb, var(--violet) 30%, transparent))",
             fontFamily: bodyFont,
           }}
         >
@@ -64,7 +64,6 @@ export default function PageBeforeYouLeave({ onNext }: { onNext: () => void }) {
         <GlowButton
           onClick={onNext}
           style={{
-            background: "linear-gradient(135deg, #4c1d95, #7c3aed, #be185d)",
             opacity: showButton ? 1 : 0,
             transform: showButton ? "translateY(0)" : "translateY(10px)",
             pointerEvents: showButton ? "all" : "none",

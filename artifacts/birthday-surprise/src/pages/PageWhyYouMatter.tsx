@@ -45,7 +45,7 @@ export default function PageWhyYouMatter({ onNext }: { onNext: () => void }) {
             fontSize: "clamp(1.9rem, 5.5vw, 2.8rem)",
             lineHeight: "var(--leading-tight)",
             marginBottom: "10px",
-            filter: "drop-shadow(0 0 18px rgba(196, 132, 252, 0.4))",
+            filter: "drop-shadow(0 0 18px color-mix(in srgb, var(--pink) 35%, transparent))",
           }}
         />
         <p
@@ -72,10 +72,10 @@ export default function PageWhyYouMatter({ onNext }: { onNext: () => void }) {
                 <div style={{ fontSize: "24px", marginBottom: "10px", filter: "drop-shadow(0 0 12px rgba(236, 72, 153, 0.35))" }}>
                   {card.icon}
                 </div>
-                <div style={{ fontFamily: bodyFont, color: "rgba(235, 205, 255, 0.92)", fontSize: "1rem", fontWeight: 700, marginBottom: "6px" }}>
+                <div style={{ fontFamily: bodyFont, color: "var(--ink)", fontSize: "1rem", fontWeight: 700, marginBottom: "6px" }}>
                   {card.title}
                 </div>
-                <div style={{ color: "rgba(200, 170, 255, 0.68)", fontSize: "12px", lineHeight: 1.65, fontFamily: bodyFont }}>
+                <div style={{ color: "var(--ink-soft)", fontSize: "12px", lineHeight: 1.65, fontFamily: bodyFont }}>
                   {card.desc}
                 </div>
               </div>
@@ -83,7 +83,7 @@ export default function PageWhyYouMatter({ onNext }: { onNext: () => void }) {
           ))}
         </div>
 
-        <GlowButton onClick={onNext} style={{ background: "linear-gradient(135deg, #4c1d95, #7c3aed, #be185d)" }}>
+        <GlowButton onClick={onNext}>
           {buttonText}
         </GlowButton>
       </GlassCard>

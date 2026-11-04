@@ -70,7 +70,7 @@ export default function PageIntro({ onNext }: { onNext: () => void }) {
             fontSize: "clamp(1.8rem, 5.5vw, 2.6rem)",
             lineHeight: "var(--leading-tight)",
             marginBottom: "18px",
-            filter: "drop-shadow(0 0 20px rgba(196, 132, 252, 0.4))",
+            filter: "drop-shadow(0 0 20px color-mix(in srgb, var(--pink) 35%, transparent))",
           }}
         />
 
@@ -89,25 +89,8 @@ export default function PageIntro({ onNext }: { onNext: () => void }) {
 
         {/* Progress bar — tokenized glow */}
         <div style={{ marginBottom: "24px" }}>
-          <div
-            style={{
-              height: "3px",
-              background: "rgba(167, 139, 250, 0.12)",
-              borderRadius: "var(--rad-pill)",
-              overflow: "hidden",
-              marginBottom: "10px",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: `${progress}%`,
-                background: "linear-gradient(90deg, #7c3aed, #ec4899, #f9a8d4)",
-                borderRadius: "var(--rad-pill)",
-                transition: "width 0.04s linear",
-                boxShadow: "var(--glow-subtle)",
-              }}
-            />
+          <div className="pm-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
+            <div className="pm-progress-fill" style={{ width: `${progress}%` }} />
           </div>
           <p
             style={{
