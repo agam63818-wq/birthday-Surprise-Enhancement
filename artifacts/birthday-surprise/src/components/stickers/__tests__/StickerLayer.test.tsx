@@ -3,7 +3,7 @@ import React from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import defaultConfig from "@/config";
-import StickerLayer from "@/components/stickers/StickerLayer";
+import StickerLayer, { stickerCssWidth } from "@/components/stickers/StickerLayer";
 import SceneStickersEditor from "@/components/stickers/SceneStickersEditor";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import { STICKERS_BY_ID } from "@/lib/stickers/manifest";
@@ -68,7 +68,10 @@ describe("StickerLayer component", () => {
     const layer = container.querySelector(".sticker-layer") as HTMLElement | null;
     expect(layer).not.toBeNull();
     expect(layer?.style.position).toBe("absolute");
-    expect(layer?.style.inset).toBe("0px");
+    // Canonical sticker frame: first screen of the scene (top-left anchored, full width).
+    expect(layer?.style.top).toBe("0px");
+    expect(layer?.style.left).toBe("0px");
+    expect(layer?.style.width).toBe("100%");
     expect(layer?.style.pointerEvents).toBe("none");
 
     const imgs = Array.from(container.querySelectorAll("img"));
@@ -82,7 +85,7 @@ describe("StickerLayer component", () => {
     expect(first.draggable).toBe(false);
     expect(first.style.left).toBe("25%");
     expect(first.style.top).toBe("40%");
-    expect(first.style.width).toBe("20%");
+    expect(first.style.width).toBe(stickerCssWidth(0.2));
     expect(first.style.aspectRatio).toContain(String(STICKERS_BY_ID["kitty-02"].aspect));
     expect(first.style.transform).toBe("translate(-50%, -50%) rotate(-15deg)");
     expect(first.style.zIndex).toBe("1");
@@ -90,7 +93,7 @@ describe("StickerLayer component", () => {
     expect(second.getAttribute("src")).toBe(STICKERS_BY_ID["kitty-22"].webp);
     expect(second.style.left).toBe("75%");
     expect(second.style.top).toBe("80%");
-    expect(second.style.width).toBe("15%");
+    expect(second.style.width).toBe(stickerCssWidth(0.15));
     expect(second.style.transform).toBe("translate(-50%, -50%) rotate(20deg) scaleX(-1)");
     expect(second.style.zIndex).toBe("4");
   });
@@ -289,7 +292,7 @@ describe("StickerLayer component", () => {
     expect(imgsBefore).toHaveLength(2);
     expect(imgsBefore[0].style.left).toBe("100%");
     expect(imgsBefore[0].style.top).toBe("0%");
-    expect(imgsBefore[0].style.width).toBe("90%");
+    expect(imgsBefore[0].style.width).toBe(stickerCssWidth(0.9));
     expect(imgsBefore[0].style.transform).toContain("rotate(-180deg)");
 
     // Simulate HTTP 404 error on first sticker -> removed cleanly with no broken icon left in DOM
