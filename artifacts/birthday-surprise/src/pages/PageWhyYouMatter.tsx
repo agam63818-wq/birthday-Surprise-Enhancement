@@ -69,7 +69,7 @@ export default function PageWhyYouMatter({ onNext }: { onNext: () => void }) {
           {cards.map((card, i) => (
             <Reveal key={i} delay={i * 0.14}>
               <div className="spotlight-card glow-hover">
-                <div style={{ fontSize: "24px", marginBottom: "10px", filter: "drop-shadow(0 0 12px rgba(236, 72, 153, 0.35))" }}>
+                <div style={{ fontSize: "24px", marginBottom: "10px", filter: "drop-shadow(0 0 12px color-mix(in srgb, var(--pink) 35%, transparent))" }}>
                   {card.icon}
                 </div>
                 <div style={{ fontFamily: bodyFont, color: "var(--ink)", fontSize: "1rem", fontWeight: 700, marginBottom: "6px" }}>

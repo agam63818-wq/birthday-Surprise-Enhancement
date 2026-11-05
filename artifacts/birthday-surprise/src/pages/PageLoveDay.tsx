@@ -93,8 +93,8 @@ function playUnlockSfx() {
 /* ── Local keyframes ─────────────────────────────────────────────────── */
 const LOCAL_KEYFRAMES = `
 @keyframes heart-breathe {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 14px rgba(236,72,153,0.55)); }
-  50%       { transform: scale(1.07); filter: drop-shadow(0 0 28px rgba(236,72,153,0.85)); }
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 14px color-mix(in srgb, var(--pink) 55%, transparent)); }
+  50%       { transform: scale(1.07); filter: drop-shadow(0 0 28px color-mix(in srgb, var(--pink) 85%, transparent)); }
 }
 @keyframes shackle-open {
   0%   { transform: rotate(0deg); }
@@ -374,7 +374,7 @@ export default function PageLoveDay({ onNext, playCakeSong }: LoveDayPageProps) 
             fontSize: "clamp(1.7rem, 5vw, 2.5rem)",
             lineHeight: "var(--leading-tight)",
             marginBottom: "6px",
-            filter: "drop-shadow(0 0 20px rgba(236,72,153,0.45))",
+            filter: "drop-shadow(0 0 20px color-mix(in srgb, var(--pink) 45%, transparent))",
           }}
         />
 
@@ -397,7 +397,7 @@ export default function PageLoveDay({ onNext, playCakeSong }: LoveDayPageProps) 
                 inset: "5%",
                 borderRadius: "50%",
                 background:
-                  "radial-gradient(circle, rgba(236,72,153,0.18) 0%, transparent 70%)",
+                  "radial-gradient(circle, color-mix(in srgb, var(--pink) 18%, transparent) 0%, transparent 70%)",
                 animation: "heart-breathe 2.2s ease-in-out infinite",
                 pointerEvents: "none",
               }}
@@ -442,9 +442,9 @@ export default function PageLoveDay({ onNext, playCakeSong }: LoveDayPageProps) 
               padding: "9px 22px",
               borderRadius: "var(--rad-pill)",
               display: "inline-block",
-              background: "rgba(236,72,153,0.07)",
-              border: "1px solid rgba(236,72,153,0.25)",
-              color: "rgba(249,168,212,0.8)",
+              background: "color-mix(in srgb, var(--pink) 7%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--pink) 25%, transparent)",
+              color: "color-mix(in srgb, var(--lavender) 80%, transparent)",
               fontSize: "12.5px",
               letterSpacing: "0.05em",
               animation: reduced
@@ -462,13 +462,13 @@ export default function PageLoveDay({ onNext, playCakeSong }: LoveDayPageProps) 
             className="section-enter"
             style={{
               background:
-                "linear-gradient(165deg, rgba(236,72,153,0.1), rgba(124,58,237,0.08))",
-              border: "1px solid rgba(236,72,153,0.28)",
+                "linear-gradient(165deg, color-mix(in srgb, var(--pink) 10%, transparent), color-mix(in srgb, var(--violet) 8%, transparent))",
+              border: "1px solid color-mix(in srgb, var(--pink) 28%, transparent)",
               borderRadius: "var(--rad-lg)",
               padding: "18px",
               marginBottom: "22px",
               boxShadow:
-                "0 0 24px rgba(236,72,153,0.18), 0 0 0 1px rgba(255,255,255,0.03) inset",
+                "0 0 24px color-mix(in srgb, var(--pink) 18%, transparent), 0 0 0 1px rgba(255,255,255,0.03) inset",
             }}
           >
             <div
@@ -508,7 +508,7 @@ export default function PageLoveDay({ onNext, playCakeSong }: LoveDayPageProps) 
             </div>
             <p
               style={{
-                color: "rgba(249,168,212,0.92)",
+                color: "color-mix(in srgb, var(--lavender) 92%, transparent)",
                 fontSize: "1.05rem",
                 lineHeight: "var(--leading-relaxed)",
                 fontFamily: bodyFont,

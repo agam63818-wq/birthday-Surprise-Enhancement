@@ -240,8 +240,8 @@ export default function PageLastNote() {
         {/* Header bar */}
         <div style={{
           padding: "12px 28px",
-          background: "linear-gradient(90deg, rgba(124,58,237,0.5), rgba(190,24,93,0.35))",
-          borderBottom: "1px solid rgba(167,139,250,0.15)",
+          background: "linear-gradient(90deg, color-mix(in srgb, var(--violet) 50%, transparent), color-mix(in srgb, var(--pink) 35%, transparent))",
+          borderBottom: "1px solid color-mix(in srgb, var(--violet) 15%, transparent)",
           display: "flex", alignItems: "center", gap: "8px",
         }}>
           <div style={{ display: "flex", gap: "5px" }}>
@@ -249,7 +249,7 @@ export default function PageLastNote() {
               <div key={i} style={{ width:"8px",height:"8px",borderRadius:"50%",background:c }} />
             ))}
           </div>
-          <span style={{ color:"rgba(220,185,255,0.6)", fontSize:"11px", letterSpacing:"0.15em", marginLeft:"6px" }}>
+          <span style={{ color:"color-mix(in srgb, var(--lavender) 60%, transparent)", fontSize:"11px", letterSpacing:"0.15em", marginLeft:"6px" }}>
             LAST NOTE 💌
           </span>
         </div>
@@ -304,7 +304,7 @@ export default function PageLastNote() {
                       display: "inline-block",
                       width: "2px",
                       height: "1.1em",
-                      background: "rgba(236,72,153,0.9)",
+                      background: "color-mix(in srgb, var(--pink) 90%, transparent)",
                       marginLeft: "2px",
                       verticalAlign: "text-bottom",
                       opacity: cursor ? 1 : 0,
@@ -317,9 +317,9 @@ export default function PageLastNote() {
           })}
 
           {showEnding && (
-            <div className="section-enter" style={{ marginTop: "28px", paddingTop: "22px", borderTop: "1px solid rgba(167,139,250,0.12)" }}>
+            <div className="section-enter" style={{ marginTop: "28px", paddingTop: "22px", borderTop: "1px solid color-mix(in srgb, var(--violet) 12%, transparent)" }}>
               {/* Closing signature flourish — script only when short enough */}
-              <p aria-hidden="true" style={{ color: "rgba(232,121,249,0.5)", fontSize: "14px", marginBottom: "12px", textAlign: "center" }}>
+              <p aria-hidden="true" style={{ color: "color-mix(in srgb, var(--magenta) 50%, transparent)", fontSize: "14px", marginBottom: "12px", textAlign: "center" }}>
                 ❦
               </p>
               <p style={{
@@ -357,7 +357,7 @@ export default function PageLastNote() {
           }}>
             Happy Birthday, {config.name} 🎂
           </h2>
-          <p style={{ color: "rgba(200,170,255,0.5)", fontSize: "12px", fontStyle: "italic" }}>
+          <p style={{ color: "color-mix(in srgb, var(--lavender) 50%, transparent)", fontSize: "12px", fontStyle: "italic" }}>
             {footerText}
           </p>
           <button
@@ -367,8 +367,8 @@ export default function PageLastNote() {
               marginTop: "18px",
               display: "inline-flex", alignItems: "center", gap: "8px",
               padding: "11px 26px", borderRadius: "var(--rad-pill)",
-              border: "1px solid rgba(236,72,153,0.4)",
-              background: "linear-gradient(135deg, rgba(236,72,153,0.18), rgba(124,58,237,0.15))",
+              border: "1px solid color-mix(in srgb, var(--pink) 40%, transparent)",
+              background: "linear-gradient(135deg, color-mix(in srgb, var(--pink) 18%, transparent), color-mix(in srgb, var(--violet) 15%, transparent))",
               color: "#f9a8d4", fontSize: "0.85rem", fontWeight: 600,
               cursor: "pointer", letterSpacing: "0.04em",
               boxShadow: "var(--glow-subtle)",

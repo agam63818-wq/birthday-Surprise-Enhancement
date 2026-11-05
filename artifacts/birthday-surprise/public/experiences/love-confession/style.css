@@ -135,3 +135,20 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid white; outli
         scroll-behavior: auto !important;
     }
 }
+
+/* ── Premium polish (presentation only; no behaviour change) ── */
+#question-screen { gap: 0; }
+#confession-root #question-text { font-size: clamp(1.9rem, 8.5cqw, 3.1rem); line-height: 1.15; letter-spacing: -.015em; text-wrap: balance; }
+#confession-root #cute-heart { animation: lc-float 3.2s ease-in-out infinite; }
+@keyframes lc-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+#confession-root #yesBtn, #confession-root #noBtn { min-height: 52px; letter-spacing: .01em; transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, background-color .2s ease, filter .2s ease; }
+#confession-root #yesBtn { box-shadow: 0 12px 30px -8px rgba(255,45,85,.55), inset 0 1px 0 rgba(255,255,255,.25); }
+#confession-root #yesBtn:active, #confession-root #noBtn:active { transform: scale(.96); }
+#confession-root #noBtn { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+#confession-root .no-reaction { padding: 10px 14px; border-radius: 14px; background: rgba(255,45,85,.08); border: 1px solid rgba(255,45,85,.22); }
+#confession-root #letter-box { border-radius: 26px; box-shadow: 0 30px 80px -20px rgba(0,0,0,.65), 0 0 0 1px rgba(255,45,85,.12); background: linear-gradient(180deg, #fffdfb, #fff6f8); }
+#confession-root #letter-text { font-size: clamp(.95rem, 3.6cqw, 1.05rem); line-height: 1.8; }
+#confession-root .final-primary { box-shadow: 0 12px 28px -8px rgba(255,45,85,.5), inset 0 1px 0 rgba(255,255,255,.22); }
+#confession-root .final-secondary { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+#confession-root .final-actions button:active { transform: scale(.97); }
+@media (max-width: 360px) { #confession-root .answer-row button { font-size: 1rem; } }

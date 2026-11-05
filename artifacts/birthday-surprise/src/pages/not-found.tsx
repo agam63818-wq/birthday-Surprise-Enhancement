@@ -1,6 +1,7 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { Link } from "wouter";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import Background from "@/components/Background";
+import SiteFooter from "@/components/SiteFooter";
 
 export default function NotFound() {
   // Unknown SPA routes are served with HTTP 200 by the Vercel rewrite, so the
@@ -8,19 +9,23 @@ export default function NotFound() {
   usePageMeta({ title: "Page not found — Birthday Surprise", noindex: true });
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" aria-hidden="true" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
-
-          <p className="mt-4 text-sm text-gray-600">
-            This page doesn't exist. <a href="/" className="underline">Go back to Birthday Surprise</a>.
+    <>
+      <Background />
+      <main className="nf-shell">
+        <div className="ui-card nf-card">
+          <p className="ui-eyebrow">✦ Birthday Surprise ✦</p>
+          <p className="nf-code" aria-hidden="true">404</p>
+          <h1 className="ui-heading" style={{ fontSize: "clamp(1.4rem, 4vw, 1.8rem)" }}>This page doesn't exist</h1>
+          <p className="ui-lead" style={{ fontSize: ".98rem" }}>
+            The link may be mistyped or the page may have moved. Surprise links look like <code>/s/your-link</code>.
           </p>
-        </CardContent>
-      </Card>
-    </main>
+          <div className="nf-actions">
+            <Link href="/" className="ui-btn ui-btn--primary">Go to home</Link>
+            <Link href="/dashboard" className="ui-btn ui-btn--secondary">Open dashboard</Link>
+          </div>
+        </div>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

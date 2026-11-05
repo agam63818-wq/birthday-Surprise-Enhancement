@@ -39,7 +39,7 @@ export function AuthLayout({
           height: "300px",
           top: "10%",
           left: "-70px",
-          background: "radial-gradient(circle, rgba(124,58,237,0.5), transparent 70%)",
+          background: "radial-gradient(circle, color-mix(in srgb, var(--violet) 50%, transparent), transparent 70%)",
         }}
       />
       <div
@@ -50,7 +50,7 @@ export function AuthLayout({
           height: "340px",
           bottom: "6%",
           right: "-90px",
-          background: "radial-gradient(circle, rgba(190,24,93,0.42), transparent 70%)",
+          background: "radial-gradient(circle, color-mix(in srgb, var(--pink) 42%, transparent), transparent 70%)",
           animationDelay: "-7s",
         }}
       />
@@ -104,7 +104,7 @@ export function AuthLayout({
                 style={{
                   height: "1px",
                   background:
-                    "linear-gradient(90deg, transparent, rgba(167,139,250,0.3), transparent)",
+                    "linear-gradient(90deg, transparent, color-mix(in srgb, var(--violet) 30%, transparent), transparent)",
                   margin: "24px 0 18px",
                 }}
               />

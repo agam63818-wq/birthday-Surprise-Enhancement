@@ -64,23 +64,16 @@ function OccasionAndThemeSection({
   const themeIds = Object.keys(THEME_PRESETS) as ThemePresetId[];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="cz-picker">
       {/* ── Occasion selector ─────────────────────────────────── */}
       <div>
-        <p style={{
-          fontSize: "0.78rem",
-          fontWeight: 600,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-          color: "rgba(220,185,255,0.7)",
-          marginBottom: "10px",
-        }}>
+        <p className="cz-label">
           Occasion
         </p>
         <div
           role="radiogroup"
           aria-label="Occasion type"
-          style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}
+          className="cz-pill-row"
         >
           {OCCASION_OPTIONS.map(({ value, label, emoji }) => {
             const isActive = value === selectedOccasion;
@@ -91,31 +84,7 @@ function OccasionAndThemeSection({
                 role="radio"
                 aria-checked={isActive}
                 onClick={() => onOccasionChange(value)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "8px 14px",
-                  borderRadius: "999px",
-                  fontSize: "0.82rem",
-                  fontWeight: isActive ? 600 : 500,
-                  cursor: "pointer",
-                  lineHeight: 1.2,
-                  border: isActive
-                    ? "1px solid rgba(236,72,153,0.65)"
-                    : "1px solid rgba(167,139,250,0.28)",
-                  background: isActive
-                    ? "linear-gradient(135deg, rgba(236,72,153,0.28), rgba(124,58,237,0.22))"
-                    : "rgba(167,139,250,0.08)",
-                  color: isActive ? "#fde68a" : "var(--ink)",
-                  boxShadow: isActive
-                    ? "0 6px 22px rgba(236,72,153,0.28), 0 0 0 1px rgba(255,255,255,0.04) inset"
-                    : "none",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  transition:
-                    "background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease",
-                }}
+                className="cz-pill"
               >
                 <span aria-hidden="true" style={{ fontSize: "0.95rem" }}>{emoji}</span>
                 <span>{label}</span>
@@ -127,20 +96,13 @@ function OccasionAndThemeSection({
 
       {/* ── Color theme swatch picker ─────────────────────────── */}
       <div>
-        <p style={{
-          fontSize: "0.78rem",
-          fontWeight: 600,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-          color: "rgba(220,185,255,0.7)",
-          marginBottom: "10px",
-        }}>
+        <p className="cz-label">
           Color theme
         </p>
         <div
           role="radiogroup"
           aria-label="Color theme"
-          style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}
+          className="cz-swatch-grid"
         >
           {themeIds.map((id) => {
             const preset = THEME_PRESETS[id];
@@ -153,67 +115,18 @@ function OccasionAndThemeSection({
                 aria-checked={isActive}
                 onClick={() => onThemeChange(id)}
                 title={preset.label}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "10px 12px",
-                  borderRadius: "14px",
-                  cursor: "pointer",
-                  border: isActive
-                    ? "2px solid rgba(236,72,153,0.75)"
-                    : "2px solid rgba(167,139,250,0.22)",
-                  background: isActive
-                    ? "rgba(236,72,153,0.12)"
-                    : "rgba(167,139,250,0.06)",
-                  boxShadow: isActive
-                    ? "0 6px 22px rgba(236,72,153,0.28)"
-                    : "none",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  transition:
-                    "border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease",
-                  minWidth: "72px",
-                }}
+                className="cz-swatch"
               >
                 {/* Gradient swatch circle */}
-                <span
-                  aria-hidden="true"
-                  style={{
-                    display: "block",
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "50%",
-                    background: preset.swatchGradient,
-                    boxShadow: isActive
-                      ? "0 0 14px rgba(236,72,153,0.5)"
-                      : "0 2px 8px rgba(0,0,0,0.4)",
-                    border: "2px solid rgba(255,255,255,0.12)",
-                    flexShrink: 0,
-                  }}
-                />
-                <span style={{
-                  fontSize: "0.72rem",
-                  fontWeight: isActive ? 600 : 500,
-                  color: isActive ? "#fde68a" : "var(--ink-soft)",
-                  textAlign: "center",
-                  lineHeight: 1.3,
-                  whiteSpace: "nowrap",
-                }}>
+                <span aria-hidden="true" className="cz-swatch-dot" style={{ background: preset.swatchGradient }} />
+                <span className="cz-swatch-label">
                   {preset.emoji} {preset.label}
                 </span>
               </button>
             );
           })}
         </div>
-        <p style={{
-          marginTop: "8px",
-          fontSize: "0.75rem",
-          color: "rgba(220,185,255,0.6)",
-          lineHeight: 1.5,
-          fontStyle: "italic",
-        }}>
+        <p className="cz-hint" style={{ marginTop: "8px" }}>
           The theme applies to the public surprise page. Preview it in the Preview tab.
         </p>
       </div>
@@ -437,40 +350,17 @@ export default function CustomizeForm({
   );
 
   return (
-    <div className="customize-shell" style={{ maxWidth: "560px", width: "100%", margin: "0 auto", padding: "0 4px" }}>
+    <div className="customize-shell cz-shell">
       <fieldset disabled={saving} style={{ border: 0, padding: 0, minWidth: 0 }}><V2ExperienceEditor config={config} onChange={onConfigChange} /></fieldset>
       <fieldset disabled={saving} style={{ border: 0, padding: 0, minWidth: 0, margin: "0 0 16px" }}><CountdownEditor config={config} onChange={setConfig} /></fieldset>
       {/* Draft-restored notice */}
       {draftRestored && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "12px",
-            padding: "10px 14px",
-            marginBottom: "12px",
-            borderRadius: "var(--rad-md)",
-            background: "rgba(124,58,237,0.12)",
-            border: "1px solid rgba(124,58,237,0.3)",
-            fontSize: "0.8rem",
-            color: "var(--ink-soft)",
-          }}
-        >
+        <div className="cz-notice" role="status">
           <span>✏️ Restored your unsaved changes.</span>
           <button
             type="button"
             onClick={discardDraft}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--pink)",
-              fontWeight: 600,
-              cursor: "pointer",
-              fontSize: "inherit",
-              padding: 0,
-              flexShrink: 0,
-            }}
+            className="cz-link-btn"
           >
             Discard
           </button>
@@ -632,7 +522,7 @@ export default function CustomizeForm({
                     onChange={(v) => setOccasionContent("fathersday", { buttonText: v })}
                     placeholder={defs.buttonText}
                   />
-                  <p style={{ fontSize: "0.75rem", color: "rgba(220,185,255,0.6)", marginTop: "4px", fontStyle: "italic" }}>
+                  <p className="cz-hint">
                     Tip: Add a photo in the Memory Wall section — it will appear in the Father's Day frame.
                   </p>
                 </>
@@ -663,7 +553,7 @@ export default function CustomizeForm({
                     onChange={(v) => setOccasionContent("mothersday", { buttonText: v })}
                     placeholder={defs.buttonText}
                   />
-                  <p style={{ fontSize: "0.75rem", color: "rgba(220,185,255,0.6)", marginTop: "4px", fontStyle: "italic" }}>
+                  <p className="cz-hint">
                     Tip: Add a photo in the Memory Wall section — it will appear in the Mother's Day frame.
                   </p>
                 </>
@@ -808,21 +698,8 @@ export default function CustomizeForm({
       </div>
 
       {/* Sticky save bar — always reachable, with live completion state */}
-      <div style={{ position: "sticky", bottom: "calc(12px + env(safe-area-inset-bottom, 0px))", marginTop: "24px", zIndex: 20 }}>
-        <div
-          style={{
-            padding: "12px",
-            borderRadius: "var(--rad-md)",
-            background: "rgba(10,3,28,0.72)",
-            backdropFilter: "blur(var(--blur-soft))",
-            WebkitBackdropFilter: "blur(var(--blur-soft))",
-            border: "1px solid rgba(167,139,250,0.2)",
-            boxShadow: "var(--shadow-medium)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px",
-          }}
-        >
+      <div className="cz-savebar-wrap">
+        <div className="cz-savebar">
           <ProgressIndicator completed={completedCount} total={totalSections} />
           <SaveStatusIndicator dirty={dirty} saving={saving} lastSavedAt={lastSavedAt} />
           <Button className="w-full" size="lg" disabled={saving || audioSaving || !dirty} onClick={handleSave}>
