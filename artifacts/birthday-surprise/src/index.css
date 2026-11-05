@@ -2363,3 +2363,19 @@ button, a, [role="button"], input, select, textarea { touch-action: manipulation
   .legal-card > .legal-section, .legal-card > .legal-disclaimer { grid-column: 2; }
   .legal-main { width: min(1160px, 100%); }
 }
+
+/* ═══ GROUP 5 — LEGACY SCENES ═══ */
+/* Memory wall: premium print frame, balanced on desktop */
+.experience-root .memory-frame > .glass-card-dark { box-shadow: var(--elev-3), 0 0 50px -18px var(--pm-glow) !important; }
+@media (min-width: 900px) { .experience-root .memory-frame > .glass-card-dark { width: min(46vw, 460px) !important; } }
+.experience-root .memory-frame img { transition: transform .6s var(--ease-smooth); }
+@media (hover: hover) { .experience-root .memory-frame:hover img { transform: scale(1.02); } }
+/* Spotlight cards: comfortable grid on wide screens */
+@media (min-width: 900px) { .experience-root .spotlight-card { padding: 22px 20px; } }
+/* Timeline: readable measure */
+.experience-root .timeline { max-width: 640px; margin-inline: auto; }
+/* Story/why cards keyboard focus */
+.experience-root .spotlight-card:focus-within, .experience-root .timeline-item:focus-within { outline: none; box-shadow: var(--focus-ring); border-radius: var(--rad-lg); }
+/* Glass cards never overflow small screens */
+.experience-root .glass-card-dark { max-width: min(100%, var(--card-max, 100%)); }
+@media (max-width: 360px) { .experience-root .glass-card-dark { padding-left: 18px !important; padding-right: 18px !important; } }

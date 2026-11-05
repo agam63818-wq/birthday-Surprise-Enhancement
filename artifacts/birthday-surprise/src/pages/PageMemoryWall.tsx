@@ -157,7 +157,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
             {/* Cinematic bottom gradient + caption */}
             <div style={{
               position: "absolute", inset: 0,
-              background: "linear-gradient(to top, rgba(8,2,24,0.82) 0%, transparent 42%)",
+              background: "linear-gradient(to top, color-mix(in srgb, var(--bg-deep) 82%, transparent) 0%, transparent 42%)",
               pointerEvents: "none",
             }} />
             <p style={{
@@ -173,8 +173,8 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
             <span style={{
               position: "absolute", top: "12px", right: "12px",
               padding: "5px 12px", borderRadius: "var(--rad-pill)",
-              background: "rgba(8,2,24,0.6)", backdropFilter: "blur(10px)",
-              border: "1px solid rgba(167,139,250,0.25)",
+              background: "color-mix(in srgb, var(--bg-deep) 60%, transparent)", backdropFilter: "blur(10px)",
+              border: "1px solid color-mix(in srgb, var(--violet) 25%, transparent)",
               color: "rgba(240,200,255,0.9)", fontSize: "11.5px", fontWeight: 600,
               letterSpacing: "0.1em", pointerEvents: "none",
             }}>
@@ -187,8 +187,8 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
               style={{
                 position: "absolute", top: "12px", left: "12px",
                 width: "34px", height: "34px", borderRadius: "50%",
-                border: "1px solid rgba(167,139,250,0.3)",
-                background: "rgba(8,2,24,0.6)", backdropFilter: "blur(10px)",
+                border: "1px solid color-mix(in srgb, var(--violet) 30%, transparent)",
+                background: "color-mix(in srgb, var(--bg-deep) 60%, transparent)", backdropFilter: "blur(10px)",
                 color: "rgba(240,200,255,0.9)", fontSize: "15px", lineHeight: 1,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 cursor: "pointer",
@@ -201,7 +201,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
             <span key={h.id} style={{
               position: "absolute", left: h.x, top: h.y,
               fontSize: "24px", color: "#f472b6", zIndex: 20,
-              textShadow: "0 0 14px rgba(236,72,153,0.8)",
+              textShadow: "0 0 14px color-mix(in srgb, var(--pink) 80%, transparent)",
               animation: "heart-pop 1s ease-out forwards",
               pointerEvents: "none",
             }}>♥</span>
@@ -219,8 +219,8 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
               transition: "all 0.45s ease",
               background: i === idx
                 ? "linear-gradient(90deg, #ec4899, #a855f7)"
-                : i <= maxSeen ? "rgba(236,72,153,0.5)" : "rgba(167,139,250,0.18)",
-              boxShadow: i === idx ? "0 0 10px rgba(236,72,153,0.6)" : "none",
+                : i <= maxSeen ? "color-mix(in srgb, var(--pink) 50%, transparent)" : "color-mix(in srgb, var(--violet) 18%, transparent)",
+              boxShadow: i === idx ? "0 0 10px color-mix(in srgb, var(--pink) 60%, transparent)" : "none",
             }} />
           ))}
         </div>
@@ -240,11 +240,11 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
             style={{
               width: "42px", height: "42px", objectFit: "cover",
               borderRadius: "10px", cursor: "pointer",
-              border: i === idx ? "2px solid rgba(236,72,153,0.85)" : "2px solid rgba(167,139,250,0.18)",
+              border: i === idx ? "2px solid color-mix(in srgb, var(--pink) 85%, transparent)" : "2px solid color-mix(in srgb, var(--violet) 18%, transparent)",
               opacity: i === idx ? 1 : 0.55,
               transform: i === idx ? "scale(1.12)" : `rotate(${(p.rotate ?? 0) / 2}deg)`,
               transition: "all 0.35s ease",
-              boxShadow: i === idx ? "0 4px 16px rgba(236,72,153,0.4)" : "none",
+              boxShadow: i === idx ? "0 4px 16px color-mix(in srgb, var(--pink) 40%, transparent)" : "none",
             }}
             onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = "0.15"; }}
           />
@@ -321,7 +321,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
           </p>
           <div style={{ display: "flex", gap: "16px", marginTop: "18px", alignItems: "center" }}>
             <button aria-label="Previous photo" onClick={(e) => { e.stopPropagation(); go(-1); }} style={navBtnStyle}>‹</button>
-            <span style={{ color: "rgba(220,185,255,0.6)", fontSize: "12.5px", letterSpacing: "0.1em" }}>
+            <span style={{ color: "color-mix(in srgb, var(--lavender) 60%, transparent)", fontSize: "12.5px", letterSpacing: "0.1em" }}>
               {idx + 1} / {total}
             </span>
             <button aria-label="Next photo" onClick={(e) => { e.stopPropagation(); go(1); }} style={navBtnStyle}>›</button>
@@ -339,7 +339,7 @@ export default function PageMemoryWall({ onNext }: { onNext: () => void }) {
 
 const navBtnStyle: React.CSSProperties = {
   width: "40px", height: "40px", borderRadius: "50%",
-  border: "1px solid rgba(167,139,250,0.25)",
+  border: "1px solid color-mix(in srgb, var(--violet) 25%, transparent)",
   background: "rgba(12,3,28,0.7)", backdropFilter: "blur(12px)",
   color: "#d8b4fe", fontSize: "22px", lineHeight: 1, cursor: "pointer",
   display: "flex", alignItems: "center", justifyContent: "center",

@@ -68,13 +68,13 @@ export default function PageOurStory({ onNext }: { onNext: () => void }) {
             >
               <span className="timeline-dot" aria-hidden="true" />
               <div className="timeline-card glow-hover">
-                <div style={{ fontSize: "22px", marginBottom: "8px", filter: "drop-shadow(0 0 10px rgba(249, 168, 212, 0.35))" }}>
+                <div style={{ fontSize: "22px", marginBottom: "8px", filter: "drop-shadow(0 0 10px color-mix(in srgb, var(--lavender) 35%, transparent))" }}>
                   {card.icon}
                 </div>
                 <div style={{ fontFamily: bodyFont, color: "rgba(235, 205, 255, 0.92)", fontSize: "1rem", fontWeight: 700, marginBottom: "6px" }}>
                   {card.title}
                 </div>
-                <div style={{ color: "rgba(200, 170, 255, 0.68)", fontSize: "12px", lineHeight: 1.65, fontFamily: bodyFont }}>
+                <div style={{ color: "color-mix(in srgb, var(--lavender) 68%, transparent)", fontSize: "12px", lineHeight: 1.65, fontFamily: bodyFont }}>
                   {card.desc}
                 </div>
               </div>

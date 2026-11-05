@@ -405,11 +405,11 @@ function PhotoFrame({
               position: "absolute",
               inset: "-8px",
               borderRadius: "20px",
-              border: `3px solid ${occasion === "fathersday" ? "rgba(251,191,36,0.6)" : "rgba(249,168,212,0.6)"}`,
+              border: `3px solid ${occasion === "fathersday" ? "rgba(251,191,36,0.6)" : "color-mix(in srgb, var(--lavender) 60%, transparent)"}`,
               boxShadow:
                 occasion === "fathersday"
                   ? "0 0 24px rgba(251,191,36,0.3)"
-                  : "0 0 24px rgba(249,168,212,0.3)",
+                  : "0 0 24px color-mix(in srgb, var(--lavender) 30%, transparent)",
               pointerEvents: "none",
             }}
           />
@@ -525,9 +525,9 @@ export default function PageFamilyDay({
   };
 
   const isFather = occasion === "fathersday";
-  const accentColor = isFather ? "rgba(251,191,36,0.7)" : "rgba(249,168,212,0.7)";
-  const accentBg = isFather ? "rgba(251,191,36,0.08)" : "rgba(249,168,212,0.08)";
-  const accentBorder = isFather ? "rgba(251,191,36,0.3)" : "rgba(249,168,212,0.3)";
+  const accentColor = isFather ? "rgba(251,191,36,0.7)" : "color-mix(in srgb, var(--lavender) 70%, transparent)";
+  const accentBg = isFather ? "rgba(251,191,36,0.08)" : "color-mix(in srgb, var(--lavender) 8%, transparent)";
+  const accentBorder = isFather ? "rgba(251,191,36,0.3)" : "color-mix(in srgb, var(--lavender) 30%, transparent)";
   const chipLabel = isFather ? "👨‍👧 Father's Day" : "👩‍👧 Mother's Day";
 
   return (
@@ -670,7 +670,7 @@ export default function PageFamilyDay({
           <div
             className="section-enter"
             style={{
-              background: `linear-gradient(165deg, ${accentBg}, rgba(124,58,237,0.06))`,
+              background: `linear-gradient(165deg, ${accentBg}, color-mix(in srgb, var(--violet) 6%, transparent))`,
               border: `1px solid ${accentBorder}`,
               borderRadius: "var(--rad-lg)",
               padding: "18px",
@@ -717,7 +717,7 @@ export default function PageFamilyDay({
             </div>
             <p
               style={{
-                color: "rgba(249,168,212,0.92)",
+                color: "color-mix(in srgb, var(--lavender) 92%, transparent)",
                 fontSize: "1.05rem",
                 lineHeight: "var(--leading-relaxed)",
                 fontFamily: bodyFont,
