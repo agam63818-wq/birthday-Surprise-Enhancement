@@ -2238,3 +2238,42 @@ button, a, [role="button"], input, select, textarea { touch-action: manipulation
 .nf-card { width: min(440px, 100%); padding: clamp(28px, 6vw, 44px); text-align: center; display: grid; gap: 14px; justify-items: center; }
 .nf-code { font: 700 clamp(4rem, 18vw, 6.5rem)/1 var(--font-heading); background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -.03em; }
 .nf-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 6px; }
+
+/* ═══ GROUP 2 — PUBLIC HOME: About / How it works / FAQ ═══ */
+.pa-shell { position: relative; z-index: 5; width: min(var(--page-max), 100% - 2 * var(--gutter)); margin: 0 auto; padding: clamp(24px, 5vw, 56px) 0 calc(24px + env(safe-area-inset-bottom, 0px)); }
+.pa-head { display: grid; justify-items: center; gap: 14px; text-align: center; margin-bottom: clamp(24px, 4vw, 40px); }
+.pa-title { font: 600 clamp(1.8rem, 4.4vw, 2.8rem)/1.15 var(--font-heading); letter-spacing: -.01em; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; max-width: 22ch; }
+.pa-intro { display: grid; gap: 12px; max-width: 62ch; color: var(--ink-soft); font-size: clamp(.98rem, 1.5vw, 1.08rem); line-height: 1.75; }
+.pa-grid { display: grid; gap: clamp(14px, 2vw, 20px); grid-template-columns: 1fr; }
+@media (min-width: 860px) {
+  .pa-grid { grid-template-columns: repeat(12, 1fr); }
+  .pa-card--steps { grid-column: span 5; }
+  .pa-card--features { grid-column: span 7; }
+  .pa-card--who { grid-column: span 5; }
+  .pa-card--faq { grid-column: span 7; }
+}
+.pa-card { padding: clamp(20px, 3.4vw, 32px); border-radius: 22px; border: 1px solid var(--surface-line); background: linear-gradient(165deg, var(--surface-2), var(--surface-1)); box-shadow: var(--elev-2); min-width: 0; }
+.pa-h2 { font: 600 clamp(1.15rem, 2.2vw, 1.4rem)/1.3 var(--font-heading); color: var(--ink); margin-bottom: 16px; }
+.pa-p { color: var(--ink-soft); line-height: 1.75; font-size: .97rem; }
+.pa-steps { list-style: none; display: grid; gap: 14px; }
+.pa-steps li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; color: var(--ink-soft); line-height: 1.65; font-size: .96rem; }
+.pa-step-num { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 .9rem/1 var(--font-body); color: #fff; background: var(--action-grad); box-shadow: 0 6px 16px -6px var(--action-glow); }
+.pa-features { list-style: none; display: grid; gap: 10px; }
+@media (min-width: 560px) { .pa-features { grid-template-columns: 1fr 1fr; } }
+.pa-features li { position: relative; padding: 12px 14px 12px 36px; border-radius: 14px; border: 1px solid var(--surface-line); background: color-mix(in srgb, var(--violet) 5%, transparent); color: var(--ink-soft); font-size: .92rem; line-height: 1.6; }
+.pa-features li::before { content: "✦"; position: absolute; left: 14px; top: 12px; color: var(--pink); }
+.pa-faq { display: grid; gap: 8px; }
+.pa-faq details { border: 1px solid var(--surface-line); border-radius: 14px; background: color-mix(in srgb, var(--violet) 4%, transparent); transition: border-color .2s ease, background-color .2s ease; }
+.pa-faq details[open] { border-color: var(--surface-line-strong); background: color-mix(in srgb, var(--violet) 8%, transparent); }
+.pa-faq summary { list-style: none; cursor: pointer; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+.pa-faq summary::-webkit-details-marker { display: none; }
+.pa-faq summary::after { content: "+"; flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); background: color-mix(in srgb, var(--violet) 14%, transparent); font-weight: 700; transition: transform .25s var(--ease-smooth); }
+.pa-faq details[open] summary::after { transform: rotate(45deg); }
+.pa-faq summary h3 { font: 600 .98rem/1.4 var(--font-body); color: var(--ink); }
+.pa-faq details > p { padding: 0 16px 16px; }
+.pa-sign { text-align: center; color: var(--ink-faint); font-size: .85rem; margin-top: clamp(20px, 3vw, 32px); }
+
+/* Landing hero: wider, balanced on desktop */
+@media (min-width: 900px) {
+  .experience-root .page-enter.glass-card-dark { --hero-scale: 1; }
+}
