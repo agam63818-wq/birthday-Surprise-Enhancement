@@ -2379,3 +2379,22 @@ button, a, [role="button"], input, select, textarea { touch-action: manipulation
 /* Glass cards never overflow small screens */
 .experience-root .glass-card-dark { max-width: min(100%, var(--card-max, 100%)); }
 @media (max-width: 360px) { .experience-root .glass-card-dark { padding-left: 18px !important; padding-right: 18px !important; } }
+
+/* ═══ GROUP 7 — PERFORMANCE ═══ */
+/* Hidden tab: freeze decorative CSS animations (iframes/canvases manage themselves) */
+html[data-doc-hidden] *, html[data-doc-hidden] *::before, html[data-doc-hidden] *::after { animation-play-state: paused !important; }
+/* Small / low-power screens: lighter blur + fewer stacked filters */
+@media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+  .bgfx-orb { filter: blur(60px); }
+  .auth-orb { filter: blur(60px); }
+  .experience-root .chip, .experience-root .glass-card-dark, .accordion-item { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  .cake-spotlight { filter: none; }
+}
+/* Long editor lists skip off-screen rendering work */
+.accordion-item:not(.open) .accordion-panel-inner { content-visibility: auto; }
+.pa-card, .legal-section { content-visibility: auto; contain-intrinsic-size: auto 400px; }
+/* Reduced motion: kill shimmer/orbit/ray loops added by the premium layer */
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton, .pm-ring-orbit, .cake-rays, .cake-hint, .cake-step.is-current .cake-step-dot, #cute-heart { animation: none !important; }
+  .btn-primary::after, .btn-auth-submit::after { animation: none !important; display: none; }
+}
